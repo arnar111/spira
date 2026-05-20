@@ -1,52 +1,76 @@
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/cn';
 
 interface LogoProps {
   size?: number;
+  color?: string;
   className?: string;
   animated?: boolean;
 }
 
-export function Logo({ size = 32, className, animated = false }: LogoProps) {
+export function Logo({
+  size = 32,
+  color = 'var(--moss-300)',
+  className,
+  animated = false,
+}: LogoProps) {
   const leaf = (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
       <path
-        d="M16 28C16 28 4 22 4 12C4 8 7 4 12 4C14.5 4 16 5.5 16 5.5C16 5.5 17.5 4 20 4C25 4 28 8 28 12C28 22 16 28 16 28Z"
-        fill="#548255"
+        d="M16 28c-9-3-12-10-12-16C4 8 7 4 12 4c3 0 4 2 4 2s1-2 4-2c5 0 8 4 8 8 0 6-3 13-12 16Z"
+        fill={color}
       />
       <path
-        d="M16 6 V28"
-        stroke="#243827"
-        strokeWidth="1.5"
+        d="M16 6c0 4-3 6-6 7M16 6c0 4 3 6 6 7M16 10c-1 4-4 7-8 9M16 10c1 4 4 7 8 9"
+        stroke="rgba(18,31,20,.6)"
+        strokeWidth={1.4}
         strokeLinecap="round"
-      />
-      <path
-        d="M16 12 L11 16 M16 18 L11 22 M16 12 L21 16 M16 18 L21 22"
-        stroke="#243827"
-        strokeWidth="1"
-        strokeLinecap="round"
-        opacity="0.5"
       />
     </svg>
   );
 
   if (!animated) {
-    return <span className={cn('inline-flex', className)}>{leaf}</span>;
+    return <span className={className} style={{ display: 'inline-flex' }}>{leaf}</span>;
   }
 
   return (
     <motion.span
-      className={cn('inline-flex origin-bottom', className)}
+      className={className}
+      style={{ display: 'inline-flex', transformOrigin: 'bottom center' }}
       animate={{ rotate: [-2, 2, -2] }}
       transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
     >
       {leaf}
     </motion.span>
+  );
+}
+
+interface WordmarkProps {
+  size?: number;
+  color?: string;
+  className?: string;
+}
+
+export function Wordmark({
+  size = 28,
+  color = 'var(--cream-50)',
+  className,
+}: WordmarkProps) {
+  return (
+    <div
+      className={className}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'baseline',
+        gap: 8,
+        color,
+        fontFamily: 'var(--font-display)',
+        fontSize: size,
+        fontWeight: 500,
+        letterSpacing: '-0.02em',
+      }}
+    >
+      <Logo size={size * 0.85} />
+      <span>Spíra</span>
+    </div>
   );
 }

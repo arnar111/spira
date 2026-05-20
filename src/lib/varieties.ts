@@ -1,11 +1,17 @@
+import type { ChiliVariety } from '@/components/Chili';
 import type { VarietyPreset } from './db';
 
-export const BUILT_IN_VARIETIES: VarietyPreset[] = [
+export interface VarietyWithChili extends VarietyPreset {
+  chili: ChiliVariety;
+}
+
+export const BUILT_IN_VARIETIES: VarietyWithChili[] = [
   {
     id: 'pepper-habanero-helios',
     commonName: 'Habanero Helios',
     scientificName: 'Capsicum chinense',
     category: 'pepper',
+    chili: 'habanero_helios',
     shu: 200000,
     flavor: 'Ávaxtaríkt, sítrus, klassísk habanero',
     origin: 'Norðlægt hybrid — sérvalið fyrir kaldari loftslag',
@@ -20,6 +26,7 @@ export const BUILT_IN_VARIETIES: VarietyPreset[] = [
     commonName: 'Carolina Reaper',
     scientificName: 'Capsicum chinense',
     category: 'pepper',
+    chili: 'reaper',
     shu: 1640000,
     flavor: 'Ávaxtaríkt, kirsuber, mikill hiti',
     origin: 'Ed Currie, PuckerButt Pepper Co., S-Karólína',
@@ -34,6 +41,7 @@ export const BUILT_IN_VARIETIES: VarietyPreset[] = [
     commonName: '7 Pot Primo',
     scientificName: 'Capsicum chinense',
     category: 'pepper',
+    chili: 'primo',
     shu: 1470000,
     flavor: 'Sætt, blómaríkt, sítrus undirtónn',
     origin: 'Troy Primeaux, Louisiana — kross 7 Pot × Naga Morich',
@@ -48,6 +56,7 @@ export const BUILT_IN_VARIETIES: VarietyPreset[] = [
     commonName: 'Bhut Jolokia Chocolate',
     scientificName: 'Capsicum chinense',
     category: 'pepper',
+    chili: 'ghost_chocolate',
     shu: 900000,
     flavor: 'Súkkulaði, rúsínu, dökk sæta',
     origin: 'Norðaustur-Indland — afbrigði af Ghost pepper',
@@ -62,6 +71,7 @@ export const BUILT_IN_VARIETIES: VarietyPreset[] = [
     commonName: 'Habanero Orange',
     scientificName: 'Capsicum chinense',
     category: 'pepper',
+    chili: 'habanero_orange',
     shu: 200000,
     flavor: 'Klassík, ávaxtaríkt, sítrus',
     origin: 'Yucatán — víða ræktuð',
@@ -72,10 +82,14 @@ export const BUILT_IN_VARIETIES: VarietyPreset[] = [
   },
 ];
 
-export async function ensureBuiltInVarieties(
-  upsert: (variety: VarietyPreset) => Promise<unknown>,
-): Promise<void> {
-  for (const v of BUILT_IN_VARIETIES) {
-    await upsert(v);
-  }
+export function chiliForVarietyId(id?: string): ChiliVariety {
+  if (!id) return 'jalapeno';
+  const v = BUILT_IN_VARIETIES.find((x) => x.id === id);
+  return v?.chili ?? 'jalapeno';
+}
+
+export function chiliForVarietyName(name?: string): ChiliVariety {
+  if (!name) return 'jalapeno';
+  const v = BUILT_IN_VARIETIES.find((x) => x.commonName === name);
+  return v?.chili ?? 'jalapeno';
 }
