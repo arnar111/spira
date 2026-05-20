@@ -17,6 +17,7 @@ import {
   type AccountResponse,
 } from '@/lib/account';
 import { clearLocalData, importSnapshot } from '@/lib/sync';
+import { DEMO_CODE, DEMO_NAME, seedDemoData } from '@/lib/demo';
 
 type Mode = 'signin' | 'signup';
 
@@ -44,6 +45,15 @@ export function Login({ onSignedIn }: LoginProps) {
     setBusy(true);
     setError(null);
     try {
+      // Demo account — bypass network and seed a rich ghost dataset locally.
+      if (code === DEMO_CODE) {
+        await seedDemoData();
+        setCurrentAccount({ code: DEMO_CODE, name: DEMO_NAME });
+        onSignedIn();
+        navigate('/home', { replace: true });
+        return;
+      }
+
       let result: AccountResponse;
       if (mode === 'signup') {
         await clearLocalData();
@@ -181,6 +191,17 @@ export function Login({ onSignedIn }: LoginProps) {
               </Button>
             </form>
           </Card>
+
+          {mode === 'signin' && (
+            <button
+              type="button"
+              onClick={() => setCode(DEMO_CODE)}
+              className="w-full mt-4 rounded-xl border border-dashed border-terracotta-700/40 bg-terracotta-900/20 hover:bg-terracotta-900/30 transition-colors px-4 py-3 text-sm text-terracotta-200"
+            >
+              <span className="font-semibold">Prufa demo</span>
+              <span className="text-terracotta-200/70"> — kóði {DEMO_CODE} með tilbúnum ræktunum</span>
+            </button>
+          )}
 
           <p className="text-xs text-cream-400/50 text-center mt-5 px-4 leading-relaxed">
             Gögnin þín eru samstillt við skýið og fylgja kóðanum þínum á öllum tækjum.

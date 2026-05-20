@@ -44,6 +44,8 @@ export interface Grow {
   name: string;
   category: PlantCategory;
   location: string;
+  /** Structured location category — Window / Tent / Shower / DIY */
+  locationKey?: string;
   startDate: number;
   endDate?: number;
   fixture?: string;
@@ -127,6 +129,10 @@ export interface VarietyPreset {
   daysToHarvest?: [number, number];
   notes?: string;
   isBuiltIn: boolean;
+  motherSpecies?: string;
+  color?: string;
+  suitableLocations?: string[];
+  matureHeightCm?: number;
 }
 
 export interface AppMeta {

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { ChevronRight, Plus, Search, Sparkles } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Pill } from '@/components/ui/Pill';
@@ -123,7 +123,8 @@ function MobileHome({ active, plants, archivedCount }: ViewProps) {
         </div>
 
         {active.length > 0 && (
-          <div
+          <Link
+            to={`/grow/${active[0].id}`}
             style={{
               marginTop: 14,
               padding: '12px 14px',
@@ -133,6 +134,7 @@ function MobileHome({ active, plants, archivedCount }: ViewProps) {
               display: 'flex',
               alignItems: 'center',
               gap: 10,
+              textDecoration: 'none',
             }}
           >
             <div
@@ -151,7 +153,7 @@ function MobileHome({ active, plants, archivedCount }: ViewProps) {
               </span>
             </span>
             <ChevronRight size={16} color="var(--cream-300)" style={{ marginLeft: 'auto' }} />
-          </div>
+          </Link>
         )}
       </div>
 
@@ -264,7 +266,8 @@ function GrowGlassCard({ grow, plants }: { grow: DerivedGrow; plants: Plant[] })
       : null;
 
   return (
-    <div
+    <Link
+      to={`/grow/${grow.id}`}
       style={{
         position: 'relative',
         borderRadius: 22,
@@ -276,6 +279,9 @@ function GrowGlassCard({ grow, plants }: { grow: DerivedGrow; plants: Plant[] })
           '0 1px 0 rgba(253,251,246,.04) inset, 0 8px 24px rgba(0,0,0,.18)',
         padding: 16,
         paddingRight: 104,
+        textDecoration: 'none',
+        color: 'inherit',
+        display: 'block',
       }}
     >
       <div
@@ -335,7 +341,7 @@ function GrowGlassCard({ grow, plants }: { grow: DerivedGrow; plants: Plant[] })
           {Math.round(grow.progress * 100)}%
         </span>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -435,7 +441,7 @@ function DesktopHome({ active, plants, archivedCount }: ViewProps) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/varieties')}>
             <Search size={14} />
             Leita
           </Button>
@@ -643,7 +649,8 @@ function DesktopGrowRow({ grow, plants }: { grow: DerivedGrow; plants: Plant[] }
   const chili: ChiliVariety = chiliForVarietyName(heroVariety);
   const startDate = new Date(grow.startDate);
   return (
-    <div
+    <Link
+      to={`/grow/${grow.id}`}
       style={{
         position: 'relative',
         borderRadius: 16,
@@ -657,6 +664,8 @@ function DesktopGrowRow({ grow, plants }: { grow: DerivedGrow; plants: Plant[] }
         alignItems: 'center',
         gap: 14,
         minHeight: 0,
+        textDecoration: 'none',
+        color: 'inherit',
       }}
     >
       <div
@@ -729,7 +738,7 @@ function DesktopGrowRow({ grow, plants }: { grow: DerivedGrow; plants: Plant[] }
         </div>
       </div>
       <ChevronRight size={16} color="rgba(231,217,168,.4)" />
-    </div>
+    </Link>
   );
 }
 

@@ -4,17 +4,47 @@ export type ChiliVariety =
   | 'bell_red'
   | 'bell_yellow'
   | 'bell_green'
+  | 'bell_orange'
+  | 'bell_purple'
+  | 'bell_chocolate'
   | 'jalapeno'
+  | 'jalapeno_red'
+  | 'jalapeno_purple'
   | 'serrano'
   | 'cayenne'
+  | 'cayenne_golden'
   | 'scotch_bonnet'
+  | 'scotch_bonnet_red'
+  | 'scotch_bonnet_chocolate'
   | 'habanero_orange'
+  | 'habanero_red'
+  | 'habanero_chocolate'
+  | 'habanero_mustard'
+  | 'habanero_peach'
+  | 'habanero_white'
   | 'habanero_helios'
   | 'ghost'
   | 'ghost_chocolate'
+  | 'ghost_peach'
+  | 'ghost_yellow'
+  | 'ghost_white'
   | 'primo'
+  | 'primo_yellow'
   | 'reaper'
-  | 'thai';
+  | 'reaper_yellow'
+  | 'reaper_chocolate'
+  | 'scorpion'
+  | 'scorpion_yellow'
+  | 'scorpion_chocolate'
+  | 'douglah'
+  | 'aji_amarillo'
+  | 'aji_limon'
+  | 'aji_charapita'
+  | 'poblano'
+  | 'shishito'
+  | 'padron'
+  | 'thai'
+  | 'thai_yellow';
 
 type Shape = 'bell' | 'classic' | 'long' | 'lantern' | 'wrinkled' | 'tailed' | 'tiny';
 type Tail = 'curl' | 'long';
@@ -33,17 +63,47 @@ const PRESETS: Record<ChiliVariety, Preset> = {
   bell_red: { label: 'Bell', shape: 'bell', body: '#d4391f', shadow: '#9a230f', highlight: '#f48b6a' },
   bell_yellow: { label: 'Bell', shape: 'bell', body: '#f0bf3a', shadow: '#b88a18', highlight: '#ffe89c' },
   bell_green: { label: 'Græn paprika', shape: 'bell', body: '#5a8c2f', shadow: '#345418', highlight: '#a3c768' },
+  bell_orange: { label: 'Bell Orange', shape: 'bell', body: '#ef9a3a', shadow: '#a55e0d', highlight: '#ffc679' },
+  bell_purple: { label: 'Bell Purple', shape: 'bell', body: '#5a3a6a', shadow: '#2e1a37', highlight: '#9c70b3' },
+  bell_chocolate: { label: 'Bell Chocolate', shape: 'bell', body: '#6b4530', shadow: '#3a2418', highlight: '#a47556' },
   jalapeno: { label: 'Jalapeño', shape: 'classic', body: '#3d7a36', shadow: '#234a1f', highlight: '#7fb16a' },
+  jalapeno_red: { label: 'Jalapeño Red', shape: 'classic', body: '#c93220', shadow: '#7a160a', highlight: '#ef6448' },
+  jalapeno_purple: { label: 'Jalapeño Purple', shape: 'classic', body: '#523060', shadow: '#28132e', highlight: '#8e63a3' },
   serrano: { label: 'Serrano', shape: 'long', body: '#3f8534', shadow: '#234a1f', highlight: '#82b770' },
   cayenne: { label: 'Cayenne', shape: 'long', body: '#d23924', shadow: '#8e1f0e', highlight: '#f57d65' },
+  cayenne_golden: { label: 'Cayenne Golden', shape: 'long', body: '#e8b22a', shadow: '#a07408', highlight: '#ffdc7a' },
   scotch_bonnet: { label: 'Scotch Bonnet', shape: 'lantern', body: '#f0a02c', shadow: '#a85f0d', highlight: '#ffd084', wrinkles: 2 },
+  scotch_bonnet_red: { label: 'Scotch Bonnet Red', shape: 'lantern', body: '#d63520', shadow: '#8a1908', highlight: '#f57e6a', wrinkles: 2 },
+  scotch_bonnet_chocolate: { label: 'Scotch Bonnet Chocolate', shape: 'lantern', body: '#5e3a26', shadow: '#321b0e', highlight: '#9a6a4a', wrinkles: 2 },
   habanero_orange: { label: 'Habanero Orange', shape: 'lantern', body: '#ef7a2c', shadow: '#9f3e0a', highlight: '#ffb069', wrinkles: 3 },
+  habanero_red: { label: 'Habanero Red', shape: 'lantern', body: '#d23320', shadow: '#831a0a', highlight: '#f4685a', wrinkles: 3 },
+  habanero_chocolate: { label: 'Habanero Chocolate', shape: 'lantern', body: '#5e3a26', shadow: '#321b0e', highlight: '#9a6a4a', wrinkles: 3 },
+  habanero_mustard: { label: 'Habanero Mustard', shape: 'lantern', body: '#c89938', shadow: '#7a5a14', highlight: '#ebc26b', wrinkles: 3 },
+  habanero_peach: { label: 'Habanero Peach', shape: 'lantern', body: '#f4ad8b', shadow: '#a06549', highlight: '#fcd1ba', wrinkles: 3 },
+  habanero_white: { label: 'Habanero White', shape: 'lantern', body: '#f4ecd1', shadow: '#a89876', highlight: '#fdfaf1', wrinkles: 3 },
   habanero_helios: { label: 'Habanero Helios', shape: 'lantern', body: '#e95f1e', shadow: '#923208', highlight: '#ff9a5e', wrinkles: 3 },
   ghost: { label: 'Bhut Jolokia', shape: 'wrinkled', body: '#d63520', shadow: '#8a1908', highlight: '#f57e6a', wrinkles: 5 },
   ghost_chocolate: { label: 'Bhut Chocolate', shape: 'wrinkled', body: '#5e3a26', shadow: '#321b0e', highlight: '#9a6a4a', wrinkles: 5 },
+  ghost_peach: { label: 'Bhut Peach', shape: 'wrinkled', body: '#f4ad8b', shadow: '#a06549', highlight: '#fcd1ba', wrinkles: 5 },
+  ghost_yellow: { label: 'Bhut Yellow', shape: 'wrinkled', body: '#ebc046', shadow: '#a07a0d', highlight: '#ffdb7c', wrinkles: 5 },
+  ghost_white: { label: 'Bhut White', shape: 'wrinkled', body: '#f4ecd1', shadow: '#a89876', highlight: '#fdfaf1', wrinkles: 5 },
   primo: { label: '7 Pot Primo', shape: 'tailed', body: '#c92a16', shadow: '#7a1407', highlight: '#f06548', wrinkles: 4, tail: 'long' },
+  primo_yellow: { label: '7 Pot Primo Yellow', shape: 'tailed', body: '#e8b32a', shadow: '#9a7a0a', highlight: '#ffd965', wrinkles: 4, tail: 'long' },
   reaper: { label: 'Carolina Reaper', shape: 'tailed', body: '#c12414', shadow: '#771307', highlight: '#ef5b3c', wrinkles: 6, tail: 'curl' },
+  reaper_yellow: { label: 'Reaper Yellow', shape: 'tailed', body: '#e8b32a', shadow: '#9a7a0a', highlight: '#ffd965', wrinkles: 6, tail: 'curl' },
+  reaper_chocolate: { label: 'Reaper Chocolate', shape: 'tailed', body: '#5e3a26', shadow: '#321b0e', highlight: '#9a6a4a', wrinkles: 6, tail: 'curl' },
+  scorpion: { label: 'Trinidad Scorpion', shape: 'tailed', body: '#d4361f', shadow: '#831a0a', highlight: '#f47b5a', wrinkles: 5, tail: 'long' },
+  scorpion_yellow: { label: 'Scorpion Yellow', shape: 'tailed', body: '#e8b32a', shadow: '#9a7a0a', highlight: '#ffd965', wrinkles: 5, tail: 'long' },
+  scorpion_chocolate: { label: 'Scorpion Chocolate', shape: 'tailed', body: '#5e3a26', shadow: '#321b0e', highlight: '#9a6a4a', wrinkles: 5, tail: 'long' },
+  douglah: { label: '7 Pot Douglah', shape: 'wrinkled', body: '#4a2a18', shadow: '#26140a', highlight: '#7a5238', wrinkles: 6 },
+  aji_amarillo: { label: 'Ají Amarillo', shape: 'long', body: '#ec9624', shadow: '#9c5a08', highlight: '#ffbc6a' },
+  aji_limon: { label: 'Ají Limón', shape: 'long', body: '#e2c63a', shadow: '#967e10', highlight: '#fce97a' },
+  aji_charapita: { label: 'Ají Charapita', shape: 'tiny', body: '#f1c92e', shadow: '#a07810', highlight: '#ffe87a' },
+  poblano: { label: 'Poblano', shape: 'classic', body: '#34541f', shadow: '#1c2f10', highlight: '#6f9a4f' },
+  shishito: { label: 'Shishito', shape: 'long', body: '#5d913e', shadow: '#345418', highlight: '#9bc476' },
+  padron: { label: 'Padrón', shape: 'long', body: '#4a7e30', shadow: '#2b4818', highlight: '#83b066' },
   thai: { label: 'Thai', shape: 'tiny', body: '#d83a23', shadow: '#8e1f0e', highlight: '#f47766' },
+  thai_yellow: { label: 'Thai Yellow', shape: 'tiny', body: '#ebc046', shadow: '#a07a0d', highlight: '#ffdb7c' },
 };
 
 const SHAPE_BODY: Record<Shape, string> = {
