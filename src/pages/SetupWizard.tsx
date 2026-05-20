@@ -195,7 +195,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         </motion.div>
       </div>
 
-      <div className="flex flex-col px-5 sm:px-8 py-6 lg:py-12 min-h-screen">
+      <div className="flex flex-col px-5 sm:px-8 pb-6 lg:pb-12 min-h-screen pt-safe-wizard">
         <div className="flex items-center justify-between mb-8">
           <button
             onClick={() => (step === 0 ? navigate('/') : setStep(step - 1))}
