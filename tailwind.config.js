@@ -52,6 +52,7 @@ export default {
       fontFamily: {
         display: ['"Fraunces"', 'Georgia', 'serif'],
         sans: ['"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       keyframes: {
         sway: {
