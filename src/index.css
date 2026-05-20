@@ -44,7 +44,13 @@
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100%;
+}
+
+html {
+  /* Prevent iOS text auto-resize on orientation change */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -53,6 +59,21 @@ body {
   background: #121f14;
   color: var(--cream-100);
   -webkit-font-smoothing: antialiased;
+  /* Prevent horizontal overflow on iOS */
+  overflow-x: hidden;
+  /* Disable iOS pull-to-refresh / overscroll bounce on background */
+  overscroll-behavior-y: none;
+}
+
+/* iOS Safari treats 100vh as the largest viewport (with address bar hidden),
+   which causes content to overflow when the bar is shown. Use dvh where supported. */
+@supports (height: 100dvh) {
+  .min-h-screen {
+    min-height: 100dvh;
+  }
+  .h-screen {
+    height: 100dvh;
+  }
 }
 
 ::-webkit-scrollbar {
@@ -144,8 +165,32 @@ body {
   animation: sp-pulse 1.8s ease-in-out infinite;
 }
 
-@supports (padding: max(0px)) {
-  .pb-safe {
-    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+@layer utilities {
+  @supports (padding: max(0px)) {
+    .pb-safe {
+      padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+    .pt-safe {
+      padding-top: max(0px, env(safe-area-inset-top));
+    }
+    .pl-safe {
+      padding-left: max(0px, env(safe-area-inset-left));
+    }
+    .pr-safe {
+      padding-right: max(0px, env(safe-area-inset-right));
+    }
+    /* Clearance below mobile content for fixed bottom nav + home indicator */
+    .pb-nav-safe {
+      padding-bottom: calc(88px + env(safe-area-inset-bottom));
+    }
+    /* Adds Dynamic Island / notch clearance on top of existing top padding */
+    .pt-safe-wizard {
+      padding-top: calc(env(safe-area-inset-top) + 24px);
+    }
+  }
+  @media (min-width: 1024px) {
+    .pt-safe-wizard {
+      padding-top: 48px;
+    }
   }
 }

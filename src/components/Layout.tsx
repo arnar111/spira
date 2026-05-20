@@ -97,8 +97,12 @@ export function Layout() {
       </aside>
 
       <header
-        className="md:hidden sticky top-0 z-30 px-5 py-3 flex items-center gap-3 glass-strong"
-        style={{ borderBottom: '1px solid rgba(64,104,67,.4)' }}
+        className="md:hidden sticky top-0 z-30 px-5 flex items-center gap-3 glass-strong"
+        style={{
+          borderBottom: '1px solid rgba(64,104,67,.4)',
+          paddingTop: 'max(12px, env(safe-area-inset-top))',
+          paddingBottom: 12,
+        }}
       >
         <Logo size={22} animated />
         <span
@@ -114,17 +118,21 @@ export function Layout() {
         </span>
       </header>
 
-      <main className="flex-1 min-w-0 pb-24 md:pb-0">
+      <main className="flex-1 min-w-0 pb-nav-safe md:pb-0">
         <Outlet />
       </main>
 
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-30 pb-safe"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-30"
         style={{
-          padding: '10px 16px 30px',
+          paddingTop: 10,
+          paddingLeft: 16,
+          paddingRight: 16,
+          paddingBottom: 'max(16px, calc(env(safe-area-inset-bottom) + 8px))',
           background:
             'linear-gradient(to top, rgba(18,31,20,.95), rgba(18,31,20,.7) 70%, transparent)',
           backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
         }}
       >
         <div className="flex justify-between items-end">

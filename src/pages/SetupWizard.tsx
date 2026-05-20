@@ -143,7 +143,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       </div>
 
       {/* Center content */}
-      <div className="flex flex-col px-5 sm:px-8 py-6 lg:py-12 min-h-screen">
+      <div className="flex flex-col px-5 sm:px-8 pb-6 lg:pb-12 min-h-screen pt-safe-wizard">
         {/* Progress + back */}
         <div className="flex items-center justify-between mb-8">
           <button
