@@ -4,7 +4,6 @@ import {
   Cloud,
   CloudAlert,
   CloudUpload,
-  FlaskConical,
   History,
   Home,
   Layers,
@@ -21,21 +20,20 @@ import { clearLocalData, syncManager, type SyncStatus } from '@/lib/sync';
 
 const navItems = [
   { to: '/home', label: 'Heim', icon: Home, available: true },
-  { to: '/grows', label: 'Ræktanir', icon: Layers, available: false },
-  { to: '/plants', label: 'Plöntur', icon: Sprout, available: false },
-  { to: '/environment', label: 'Umhverfi', icon: Thermometer, available: false },
-  { to: '/harvest', label: 'Uppskera', icon: Scale, available: false },
-  { to: '/sauces', label: 'Sósur', icon: FlaskConical, available: false },
-  { to: '/varieties', label: 'Afbrigði', icon: Leaf, available: false },
-  { to: '/history', label: 'Safn', icon: History, available: false },
+  { to: '/grows', label: 'Ræktanir', icon: Layers, available: true },
+  { to: '/plants', label: 'Plöntur', icon: Sprout, available: true },
+  { to: '/environment', label: 'Umhverfi', icon: Thermometer, available: true },
+  { to: '/harvest', label: 'Uppskera', icon: Scale, available: true },
+  { to: '/varieties', label: 'Afbrigði', icon: Leaf, available: true },
+  { to: '/history', label: 'Safn', icon: History, available: true },
 ];
 
 const mobileNav = [
   { to: '/home', label: 'Heim', icon: Home, available: true },
-  { to: '/plants', label: 'Plöntur', icon: Sprout, available: false },
-  { to: '/grows', label: 'Ræktanir', icon: Layers, available: false },
-  { to: '/sauces', label: 'Sósur', icon: FlaskConical, available: false },
-  { to: '/more', label: 'Meira', icon: Scale, available: false },
+  { to: '/plants', label: 'Plöntur', icon: Sprout, available: true },
+  { to: '/grows', label: 'Ræktanir', icon: Layers, available: true },
+  { to: '/varieties', label: 'Afbrigði', icon: Leaf, available: true },
+  { to: '/harvest', label: 'Uppskera', icon: Scale, available: true },
 ];
 
 interface LayoutProps {

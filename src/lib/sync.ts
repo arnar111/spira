@@ -119,8 +119,13 @@ class SyncManager {
     this.setStatus('idle', null);
   }
 
+  private isDemo(): boolean {
+    return this.code === '123';
+  }
+
   schedule(): void {
     if (!this.code) return;
+    if (this.isDemo()) return;
     if (this.timer) clearTimeout(this.timer);
     this.setStatus('pending', this.lastSyncedAt);
     this.timer = setTimeout(() => {
@@ -131,6 +136,7 @@ class SyncManager {
 
   async flush(): Promise<void> {
     if (!this.code) return;
+    if (this.isDemo()) return;
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;

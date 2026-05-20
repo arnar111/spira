@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  Filter,
   Flame,
   Leaf,
   Lightbulb,
@@ -13,6 +14,7 @@ import {
   Thermometer,
 } from 'lucide-react';
 import { GrowingPlant } from '@/components/GrowingPlant';
+import { Chili } from '@/components/Chili';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { cn } from '@/lib/cn';
@@ -21,9 +23,19 @@ import {
   newId,
   setOnboardingComplete,
   type GrowPhase,
-  type PlantCategory,
 } from '@/lib/db';
-import { BUILT_IN_VARIETIES } from '@/lib/varieties';
+import {
+  BUILT_IN_VARIETIES,
+  COLOR_HEX,
+  COLOR_LABEL,
+  MOTHER_SPECIES,
+  formatShu,
+  suggestForLocation,
+  type MotherSpecies,
+  type PepperColor,
+  type VarietyWithChili,
+} from '@/lib/varieties';
+import { LOCATIONS, type LocationCategory, type LocationKey } from '@/lib/locations';
 import { syncManager } from '@/lib/sync';
 
 interface SetupWizardProps {
@@ -31,7 +43,7 @@ interface SetupWizardProps {
 }
 
 interface WizardState {
-  category: PlantCategory;
+  locationKey: LocationKey;
   growName: string;
   location: string;
   spaceWidthCm: string;
@@ -40,30 +52,68 @@ interface WizardState {
   targetTempC: string;
   fixture: string;
   varietyIds: string[];
+  filterMother: MotherSpecies | 'all';
+  filterColor: PepperColor | 'all';
+  shuTier: ShuTier;
 }
 
+type ShuTier = 'all' | 'mild' | 'medium' | 'hot' | 'super';
+
 const TOTAL_STEPS = 4;
+
+const SHU_TIERS: { id: ShuTier; label: string; min: number; max: number }[] = [
+  { id: 'all', label: 'Allir', min: 0, max: Infinity },
+  { id: 'mild', label: '< 5k SHU', min: 0, max: 4999 },
+  { id: 'medium', label: '5k–100k', min: 5000, max: 99999 },
+  { id: 'hot', label: '100k–500k', min: 100000, max: 499999 },
+  { id: 'super', label: '500k+', min: 500000, max: Infinity },
+];
 
 export function SetupWizard({ onComplete }: SetupWizardProps) {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [state, setState] = useState<WizardState>({
-    category: 'pepper',
-    growName: 'Sturtu-piparar',
-    location: 'Sturtuklefi',
-    spaceWidthCm: '80',
-    spaceDepthCm: '80',
-    spaceHeightCm: '190',
-    targetTempC: '19',
-    fixture: 'Lumii SwitchBlade 150W',
-    varietyIds: [],
+  const [state, setState] = useState<WizardState>(() => {
+    const defaults = LOCATIONS.find((l) => l.key === 'shower')!.defaults;
+    return {
+      locationKey: 'shower',
+      growName: defaults.growName,
+      location: 'Sturtuklefi',
+      spaceWidthCm: String(defaults.spaceWidthCm),
+      spaceDepthCm: String(defaults.spaceDepthCm),
+      spaceHeightCm: String(defaults.spaceHeightCm),
+      targetTempC: String(defaults.targetTempC),
+      fixture: defaults.fixture,
+      varietyIds: [],
+      filterMother: 'all',
+      filterColor: 'all',
+      shuTier: 'all',
+    };
   });
 
-  const set = (patch: Partial<WizardState>) => setState((s) => ({ ...s, ...patch }));
+  const set = (patch: Partial<WizardState>) =>
+    setState((s) => ({ ...s, ...patch }));
+
+  function pickLocation(key: LocationKey) {
+    const cat = LOCATIONS.find((l) => l.key === key)!;
+    const d = cat.defaults;
+    setState((s) => ({
+      ...s,
+      locationKey: key,
+      growName: d.growName,
+      location: cat.label,
+      spaceWidthCm: String(d.spaceWidthCm),
+      spaceDepthCm: String(d.spaceDepthCm),
+      spaceHeightCm: String(d.spaceHeightCm),
+      targetTempC: String(d.targetTempC),
+      fixture: d.fixture,
+      // Reset variety selection if location changed so suggestions are fresh
+      varietyIds: [],
+    }));
+  }
 
   const canAdvance = useMemo(() => {
-    if (step === 0) return !!state.category;
+    if (step === 0) return !!state.locationKey;
     if (step === 1) return state.growName.trim().length > 0 && state.location.trim().length > 0;
     if (step === 2) return true;
     if (step === 3) return state.varietyIds.length > 0;
@@ -78,8 +128,9 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       await db.grows.add({
         id: growId,
         name: state.growName.trim(),
-        category: state.category,
+        category: 'pepper',
         location: state.location.trim(),
+        locationKey: state.locationKey,
         startDate: now,
         fixture: state.fixture.trim() || undefined,
         spaceWidthCm: parseNum(state.spaceWidthCm),
@@ -102,6 +153,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
           variety: variety.commonName,
           category: variety.category,
           startedFrom: 'seed',
+          sowDate: now,
           currentPhase: 'planning' as GrowPhase,
           archived: false,
           createdAt: now,
@@ -118,7 +170,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     }
   }
 
-  const stage: 0 | 1 | 2 | 3 = (Math.min(step, 3) as 0 | 1 | 2 | 3);
+  const stage: 0 | 1 | 2 | 3 = Math.min(step, 3) as 0 | 1 | 2 | 3;
 
   return (
     <motion.div
@@ -126,9 +178,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="min-h-screen flex flex-col lg:grid lg:grid-cols-[1fr_minmax(0,520px)_1fr]"
+      className="min-h-screen flex flex-col lg:grid lg:grid-cols-[1fr_minmax(0,560px)_1fr]"
     >
-      {/* Left visual column (desktop only) */}
       <div className="hidden lg:flex items-center justify-end pr-8 relative">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/2 right-0 -translate-y-1/2 w-[400px] h-[400px] rounded-full bg-moss-500/15 blur-3xl" />
@@ -144,9 +195,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         </motion.div>
       </div>
 
-      {/* Center content */}
       <div className="flex flex-col px-5 sm:px-8 py-6 lg:py-12 min-h-screen">
-        {/* Progress + back */}
         <div className="flex items-center justify-between mb-8">
           <button
             onClick={() => (step === 0 ? navigate('/') : setStep(step - 1))}
@@ -175,7 +224,6 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
           </div>
         </div>
 
-        {/* Mobile plant preview */}
         <div className="flex lg:hidden justify-center mb-2">
           <motion.div
             key={`plant-mobile-${stage}`}
@@ -183,51 +231,31 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5 }}
           >
-            <GrowingPlant size={180} stage={stage} />
+            <GrowingPlant size={160} stage={stage} />
           </motion.div>
         </div>
 
-        {/* Steps */}
         <div className="flex-1 flex flex-col justify-center max-w-xl mx-auto w-full">
           <AnimatePresence mode="wait">
             {step === 0 && (
-              <StepCategory
+              <StepLocation
                 key="step-0"
-                value={state.category}
-                onChange={(category) => set({ category })}
+                value={state.locationKey}
+                onChange={pickLocation}
               />
             )}
-            {step === 1 && (
-              <StepSpace
-                key="step-1"
-                state={state}
-                set={set}
-              />
-            )}
-            {step === 2 && (
-              <StepLight
-                key="step-2"
-                state={state}
-                set={set}
-              />
-            )}
+            {step === 1 && <StepSpace key="step-1" state={state} set={set} />}
+            {step === 2 && <StepLight key="step-2" state={state} set={set} />}
             {step === 3 && (
               <StepVarieties
                 key="step-3"
-                selected={state.varietyIds}
-                onToggle={(id) =>
-                  set({
-                    varietyIds: state.varietyIds.includes(id)
-                      ? state.varietyIds.filter((v) => v !== id)
-                      : [...state.varietyIds, id],
-                  })
-                }
+                state={state}
+                set={set}
               />
             )}
           </AnimatePresence>
         </div>
 
-        {/* Footer */}
         <div className="mt-8 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
           <p className="text-xs text-cream-400/60">
             Skref {step + 1} af {TOTAL_STEPS}
@@ -255,7 +283,6 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         </div>
       </div>
 
-      {/* Right spacer for grid balance */}
       <div className="hidden lg:block" />
     </motion.div>
   );
@@ -290,95 +317,75 @@ function StepHeader({ eyebrow, title, hint }: { eyebrow: string; title: string; 
   );
 }
 
-function StepCategory({
+function StepLocation({
   value,
   onChange,
 }: {
-  value: PlantCategory;
-  onChange: (c: PlantCategory) => void;
+  value: LocationKey;
+  onChange: (k: LocationKey) => void;
 }) {
-  const options: {
-    id: PlantCategory;
-    label: string;
-    icon: typeof Flame;
-    desc: string;
-    available: boolean;
-  }[] = [
-    {
-      id: 'pepper',
-      label: 'Pipur',
-      icon: Flame,
-      desc: 'Habanero, Reaper, 7 Pot, Bhut Jolokia og fleira',
-      available: true,
-    },
-    {
-      id: 'tomato',
-      label: 'Tómatar',
-      icon: Sprout,
-      desc: 'Microdwarf og dvergafbrigði fyrir innipláss',
-      available: false,
-    },
-    {
-      id: 'herb',
-      label: 'Krydd',
-      icon: Leaf,
-      desc: 'Basilika, mynta, kóríander og fleiri',
-      available: false,
-    },
-  ];
-
   return (
     <StepWrap>
       <StepHeader
         eyebrow="Velkomin/n"
-        title="Hvað viltu rækta?"
-        hint="Spíra er stillt fyrir piparræktun núna. Fleiri flokkar bætast við."
+        title="Hvar viltu rækta?"
+        hint="Spíra leggur til pipra sem henta þeirri staðsetningu."
       />
-      <div className="space-y-3">
-        {options.map((opt) => (
-          <button
-            key={opt.id}
-            type="button"
-            disabled={!opt.available}
-            onClick={() => onChange(opt.id)}
-            className={cn(
-              'w-full text-left flex items-center gap-4 rounded-2xl p-4 transition-all',
-              'border',
-              opt.available
-                ? value === opt.id
-                  ? 'bg-moss-800/60 border-moss-400 shadow-lg shadow-moss-900/30'
-                  : 'bg-moss-900/40 border-moss-800/40 hover:border-moss-600 hover:bg-moss-900/60'
-                : 'bg-moss-900/20 border-moss-900/40 opacity-50 cursor-not-allowed',
-            )}
-          >
-            <div
-              className={cn(
-                'shrink-0 rounded-xl p-3 transition-colors',
-                value === opt.id && opt.available
-                  ? 'bg-moss-500 text-cream-50'
-                  : 'bg-moss-800/60 text-moss-300',
-              )}
-            >
-              <opt.icon size={22} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="heading text-lg font-semibold text-cream-50">{opt.label}</span>
-                {!opt.available && (
-                  <span className="text-[10px] uppercase tracking-wider text-terracotta-300 bg-terracotta-900/40 px-2 py-0.5 rounded-full">
-                    brátt
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-cream-300/70 mt-0.5">{opt.desc}</p>
-            </div>
-            {value === opt.id && opt.available && (
-              <Check className="text-moss-300" size={20} />
-            )}
-          </button>
+      <div className="grid gap-3">
+        {LOCATIONS.map((loc) => (
+          <LocationCard
+            key={loc.key}
+            loc={loc}
+            selected={value === loc.key}
+            onClick={() => onChange(loc.key)}
+          />
         ))}
       </div>
     </StepWrap>
+  );
+}
+
+function LocationCard({
+  loc,
+  selected,
+  onClick,
+}: {
+  loc: LocationCategory;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const Icon = loc.icon;
+  const count = suggestForLocation(loc.key).length;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'w-full text-left flex items-center gap-4 rounded-2xl p-4 transition-all border',
+        selected
+          ? 'bg-moss-800/60 border-moss-400 shadow-lg shadow-moss-900/30'
+          : 'bg-moss-900/40 border-moss-800/40 hover:border-moss-600 hover:bg-moss-900/60',
+      )}
+    >
+      <div
+        className={cn(
+          'shrink-0 rounded-xl p-3 transition-colors',
+          selected ? 'bg-moss-500 text-cream-50' : 'bg-moss-800/60 text-moss-300',
+        )}
+      >
+        <Icon size={22} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="heading text-lg font-semibold text-cream-50">{loc.label}</span>
+          <span className="text-[10px] uppercase tracking-wider text-moss-300 bg-moss-800/50 px-2 py-0.5 rounded-full">
+            {count} afbrigði
+          </span>
+        </div>
+        <p className="text-sm text-cream-300/70 mt-0.5">{loc.description}</p>
+      </div>
+      {selected && <Check className="text-moss-300" size={20} />}
+    </button>
   );
 }
 
@@ -393,8 +400,8 @@ function StepSpace({
     <StepWrap>
       <StepHeader
         eyebrow="Rýmið þitt"
-        title="Hvar ræktarðu?"
-        hint="Þetta hjálpar Spíru að áætla loftrás, ljós og fjölda plantna."
+        title="Smáatriðin"
+        hint="Stillingarnar fylgdu úr staðsetningu — breyttu því sem á við."
       />
       <Card className="space-y-5">
         <Field label="Heiti ræktunar" icon={Sprout}>
@@ -460,7 +467,7 @@ function StepLight({
       <StepHeader
         eyebrow="Ljós"
         title="Hvaða lampa ertu með?"
-        hint="Þetta er valkvætt — þú getur skilið eftir tómt og bætt við síðar."
+        hint="Valkvætt — þú getur bætt við síðar."
       />
       <Card className="space-y-5">
         <Field label="Lampi" icon={Lightbulb}>
@@ -494,6 +501,7 @@ function StepLight({
 }
 
 const LIGHT_PRESETS = [
+  'Dagsbirta + plöntuljós',
   'Lumii SwitchBlade 150W',
   'Mars Hydro TSW2000 300W',
   'Lumatek Attis Pro 200W',
@@ -501,72 +509,256 @@ const LIGHT_PRESETS = [
 ];
 
 function StepVarieties({
-  selected,
-  onToggle,
+  state,
+  set,
 }: {
-  selected: string[];
-  onToggle: (id: string) => void;
+  state: WizardState;
+  set: (patch: Partial<WizardState>) => void;
 }) {
-  const peppers = BUILT_IN_VARIETIES.filter((v) => v.category === 'pepper');
+  const loc = LOCATIONS.find((l) => l.key === state.locationKey)!;
+  const suggested = useMemo(() => suggestForLocation(state.locationKey), [state.locationKey]);
+
+  const filtered = useMemo(() => {
+    return suggested.filter((v) => {
+      if (state.filterMother !== 'all' && v.motherSpecies !== state.filterMother) return false;
+      if (state.filterColor !== 'all' && v.color !== state.filterColor) return false;
+      const tier = SHU_TIERS.find((t) => t.id === state.shuTier)!;
+      if (!(v.shu! >= tier.min && v.shu! <= tier.max)) return false;
+      return true;
+    });
+  }, [suggested, state.filterMother, state.filterColor, state.shuTier]);
+
+  const availableMothers = useMemo(
+    () => Array.from(new Set(suggested.map((v) => v.motherSpecies))),
+    [suggested],
+  );
+  const availableColors = useMemo(
+    () => Array.from(new Set(suggested.map((v) => v.color))),
+    [suggested],
+  );
+
+  function toggle(id: string) {
+    set({
+      varietyIds: state.varietyIds.includes(id)
+        ? state.varietyIds.filter((v) => v !== id)
+        : [...state.varietyIds, id],
+    });
+  }
+
   return (
     <StepWrap>
       <StepHeader
         eyebrow="Plöntur"
         title="Veldu afbrigði"
-        hint="Veldu eitt eða fleiri — þú getur bætt við og breytt síðar."
+        hint={`Spíra mælir með ${suggested.length} piprum fyrir ${loc.label.toLowerCase()}.`}
       />
-      <div className="space-y-2.5">
-        {peppers.map((v) => {
-          const isSelected = selected.includes(v.id);
-          return (
-            <button
-              key={v.id}
-              type="button"
-              onClick={() => onToggle(v.id)}
-              className={cn(
-                'w-full text-left flex items-start gap-4 rounded-2xl p-4 transition-all border',
-                isSelected
-                  ? 'bg-moss-800/60 border-moss-400 shadow-lg shadow-moss-900/30'
-                  : 'bg-moss-900/40 border-moss-800/40 hover:border-moss-600 hover:bg-moss-900/60',
-              )}
+
+      <div className="space-y-3">
+        <FilterRow label="Móðurtegund" icon={Filter}>
+          <Chip
+            active={state.filterMother === 'all'}
+            onClick={() => set({ filterMother: 'all' })}
+          >
+            Allar
+          </Chip>
+          {MOTHER_SPECIES.filter((m) => availableMothers.includes(m)).map((m) => (
+            <Chip
+              key={m}
+              active={state.filterMother === m}
+              onClick={() => set({ filterMother: m })}
             >
-              <div
-                className={cn(
-                  'shrink-0 mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors',
-                  isSelected
-                    ? 'bg-moss-400 border-moss-400'
-                    : 'border-moss-600 bg-transparent',
-                )}
+              {m}
+            </Chip>
+          ))}
+        </FilterRow>
+        <FilterRow label="Litur">
+          <Chip
+            active={state.filterColor === 'all'}
+            onClick={() => set({ filterColor: 'all' })}
+          >
+            Allir
+          </Chip>
+          {(Object.keys(COLOR_LABEL) as PepperColor[])
+            .filter((c) => availableColors.includes(c))
+            .map((c) => (
+              <Chip
+                key={c}
+                active={state.filterColor === c}
+                onClick={() => set({ filterColor: c })}
+                swatch={COLOR_HEX[c]}
               >
-                {isSelected && <Check size={14} className="text-moss-950" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="heading text-base font-semibold text-cream-50">
-                    {v.commonName}
-                  </span>
-                  {v.shu && (
-                    <span className="text-[10px] uppercase tracking-wider text-capsicum-400 bg-capsicum-600/20 px-2 py-0.5 rounded-full">
-                      {formatShu(v.shu)} SHU
-                    </span>
-                  )}
-                </div>
-                {v.flavor && (
-                  <p className="text-sm text-cream-300/70 mt-1">{v.flavor}</p>
-                )}
-              </div>
-            </button>
-          );
-        })}
+                {COLOR_LABEL[c]}
+              </Chip>
+            ))}
+        </FilterRow>
+        <FilterRow label="SHU">
+          {SHU_TIERS.map((t) => (
+            <Chip
+              key={t.id}
+              active={state.shuTier === t.id}
+              onClick={() => set({ shuTier: t.id })}
+            >
+              {t.label}
+            </Chip>
+          ))}
+        </FilterRow>
+      </div>
+
+      <div className="space-y-2.5">
+        {filtered.length === 0 && (
+          <div className="text-sm text-cream-300/60 text-center py-6 border border-dashed border-moss-800/40 rounded-2xl">
+            Engin afbrigði passa við þessar síur. Slakaðu á smá.
+          </div>
+        )}
+        {filtered.map((v) => (
+          <VarietyRow
+            key={v.id}
+            v={v}
+            selected={state.varietyIds.includes(v.id)}
+            onClick={() => toggle(v.id)}
+          />
+        ))}
       </div>
     </StepWrap>
   );
 }
 
-function formatShu(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace('.0', '')}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(0)}k`;
-  return `${n}`;
+function VarietyRow({
+  v,
+  selected,
+  onClick,
+}: {
+  v: VarietyWithChili;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'w-full text-left flex items-center gap-3 rounded-2xl p-3.5 transition-all border',
+        selected
+          ? 'bg-moss-800/60 border-moss-400 shadow-lg shadow-moss-900/30'
+          : 'bg-moss-900/40 border-moss-800/40 hover:border-moss-600 hover:bg-moss-900/60',
+      )}
+    >
+      <div
+        className={cn(
+          'shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors',
+          selected ? 'bg-moss-400 border-moss-400' : 'border-moss-600 bg-transparent',
+        )}
+      >
+        {selected && <Check size={14} className="text-moss-950" />}
+      </div>
+      <div className="shrink-0">
+        <Chili variety={v.chili} size={42} tilt={-4} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="heading text-base font-semibold text-cream-50">
+            {v.commonName}
+          </span>
+          <span
+            className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full"
+            style={{
+              background: 'rgba(231,217,168,.12)',
+              color: 'var(--cream-300)',
+              border: '1px solid rgba(231,217,168,.18)',
+            }}
+          >
+            {v.motherSpecies}
+          </span>
+          <span
+            className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full"
+            style={{
+              background: 'rgba(18,31,20,.55)',
+              border: '1px solid rgba(64,104,67,.5)',
+              color: 'var(--cream-100)',
+            }}
+          >
+            <span
+              style={{
+                display: 'inline-block',
+                width: 8,
+                height: 8,
+                borderRadius: 999,
+                background: COLOR_HEX[v.color],
+              }}
+            />
+            {COLOR_LABEL[v.color]}
+          </span>
+          {v.shu! > 0 && (
+            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-capsicum-400 bg-capsicum-600/20 px-2 py-0.5 rounded-full">
+              <Flame size={10} />
+              {formatShu(v.shu!)} SHU
+            </span>
+          )}
+        </div>
+        {v.flavor && (
+          <p className="text-xs text-cream-300/70 mt-1 truncate">{v.flavor}</p>
+        )}
+      </div>
+    </button>
+  );
+}
+
+function FilterRow({
+  label,
+  icon: Icon,
+  children,
+}: {
+  label: string;
+  icon?: typeof Leaf;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] text-cream-400/70 mb-1.5">
+        {Icon && <Icon size={11} />}
+        {label}
+      </div>
+      <div className="flex flex-wrap gap-1.5">{children}</div>
+    </div>
+  );
+}
+
+function Chip({
+  active,
+  onClick,
+  children,
+  swatch,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  swatch?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-colors',
+        active
+          ? 'bg-moss-500 border-moss-400 text-cream-50'
+          : 'bg-moss-900/40 border-moss-800/40 text-cream-300 hover:border-moss-600',
+      )}
+    >
+      {swatch && (
+        <span
+          style={{
+            width: 9,
+            height: 9,
+            borderRadius: 999,
+            background: swatch,
+            border: '1px solid rgba(255,255,255,.18)',
+          }}
+        />
+      )}
+      {children}
+    </button>
+  );
 }
 
 function Field({

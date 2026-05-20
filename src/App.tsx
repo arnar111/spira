@@ -6,6 +6,13 @@ import { SetupWizard } from './pages/SetupWizard';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { Layout } from './components/Layout';
+import { Grows } from './pages/Grows';
+import { GrowDetail } from './pages/GrowDetail';
+import { Plants } from './pages/Plants';
+import { Varieties } from './pages/Varieties';
+import { Environment } from './pages/Environment';
+import { Harvest } from './pages/Harvest';
+import { History } from './pages/History';
 import { db, getOnboardingComplete } from './lib/db';
 import { BUILT_IN_VARIETIES } from './lib/varieties';
 import { getCurrentAccount, type Account } from './lib/account';
@@ -96,6 +103,13 @@ export default function App() {
         />
         <Route element={<Layout account={account} onSignOut={handleSignOut} />}>
           <Route path="/home" element={<Home />} />
+          <Route path="/grows" element={<Grows />} />
+          <Route path="/grow/:id" element={<GrowDetail />} />
+          <Route path="/plants" element={<Plants />} />
+          <Route path="/varieties" element={<Varieties />} />
+          <Route path="/environment" element={<Environment />} />
+          <Route path="/harvest" element={<Harvest />} />
+          <Route path="/history" element={<History />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
