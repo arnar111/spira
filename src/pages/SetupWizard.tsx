@@ -24,6 +24,7 @@ import {
   type PlantCategory,
 } from '@/lib/db';
 import { BUILT_IN_VARIETIES } from '@/lib/varieties';
+import { syncManager } from '@/lib/sync';
 
 interface SetupWizardProps {
   onComplete: () => void;
@@ -109,6 +110,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       }
 
       await setOnboardingComplete(true);
+      await syncManager.flush();
       onComplete();
       navigate('/home', { replace: true });
     } finally {
