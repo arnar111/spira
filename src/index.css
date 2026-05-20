@@ -4,6 +4,41 @@
 
 :root {
   color-scheme: dark;
+  /* Mirror design tokens — kept in CSS vars so animations and inline styles can use them */
+  --moss-50: #f3f7f3;
+  --moss-100: #e3ede2;
+  --moss-200: #c7dac6;
+  --moss-300: #9fbf9d;
+  --moss-400: #739f73;
+  --moss-500: #548255;
+  --moss-600: #406843;
+  --moss-700: #345337;
+  --moss-800: #2b432e;
+  --moss-900: #243827;
+  --moss-950: #121f14;
+  --terra-50: #fbf5f2;
+  --terra-100: #f6e8e1;
+  --terra-200: #ecd0c1;
+  --terra-300: #dfae96;
+  --terra-400: #cf846a;
+  --terra-500: #c26a4d;
+  --terra-600: #b25340;
+  --terra-700: #943f36;
+  --terra-800: #783630;
+  --terra-900: #62302b;
+  --cream-50: #fdfbf6;
+  --cream-100: #faf5e8;
+  --cream-200: #f3e9cd;
+  --cream-300: #ebd9a8;
+  --cream-400: #e0c279;
+  --cream-500: #d4a957;
+  --cream-600: #c2924a;
+  --cap-400: #ef5a3c;
+  --cap-500: #e23e1d;
+  --cap-600: #c92f17;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
 html,
@@ -13,14 +48,13 @@ body,
 }
 
 body {
-  @apply bg-moss-950 text-cream-100 font-sans antialiased;
-  background-image:
-    radial-gradient(circle at 20% 10%, rgba(84, 130, 85, 0.12), transparent 45%),
-    radial-gradient(circle at 80% 80%, rgba(194, 106, 77, 0.08), transparent 45%);
-  background-attachment: fixed;
+  margin: 0;
+  font-family: var(--font-sans);
+  background: #121f14;
+  color: var(--cream-100);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -36,7 +70,6 @@ body {
   background: rgba(84, 130, 85, 0.5);
 }
 
-/* Hide scrollbar on overflow but keep functionality */
 .scrollbar-none {
   scrollbar-width: none;
 }
@@ -45,18 +78,72 @@ body {
 }
 
 @layer components {
+  .sp-bg {
+    background:
+      radial-gradient(60% 50% at 20% 10%, rgba(84, 130, 85, 0.16), transparent 60%),
+      radial-gradient(50% 50% at 80% 90%, rgba(194, 106, 77, 0.1), transparent 60%),
+      #121f14;
+    box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.35);
+  }
+  .sp-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+  .sp-italic {
+    font-style: italic;
+  }
+  .sp-mono {
+    font-family: var(--font-mono);
+  }
   .glass {
-    @apply bg-moss-900/60 backdrop-blur-xl border border-moss-700/40;
+    background: rgba(36, 56, 39, 0.55);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(64, 104, 67, 0.5);
   }
   .glass-strong {
-    @apply bg-moss-900/80 backdrop-blur-xl border border-moss-700/60;
+    background: rgba(36, 56, 39, 0.78);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(64, 104, 67, 0.55);
   }
-  .heading {
-    @apply font-display tracking-tight;
+  .glass-cream {
+    background: rgba(253, 251, 246, 0.95);
+    border: 1px solid rgba(36, 56, 39, 0.08);
+    color: #29261b;
+  }
+  .sp-chili-shadow {
+    filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.45))
+      drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+  }
+  .sp-divider {
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(231, 217, 168, 0.18),
+      transparent
+    );
+  }
+  .sp-dots {
+    background-image: radial-gradient(rgba(231, 217, 168, 0.18) 1px, transparent 1px);
+    background-size: 14px 14px;
   }
 }
 
-/* Safe area for mobile */
+@keyframes sp-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.sp-pulse {
+  animation: sp-pulse 1.8s ease-in-out infinite;
+}
+
 @supports (padding: max(0px)) {
   .pb-safe {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));

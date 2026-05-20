@@ -1,81 +1,172 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { Home, BookOpen, Sprout, LineChart } from 'lucide-react';
-import { Logo } from './Logo';
+import {
+  History,
+  Home,
+  Layers,
+  Leaf,
+  Scale,
+  Sprout,
+  Thermometer,
+  FlaskConical,
+} from 'lucide-react';
+import { Logo, Wordmark } from './Logo';
+import { Eyebrow } from './ui/Eyebrow';
 import { cn } from '@/lib/cn';
 
 const navItems = [
-  { to: '/home', label: 'Heim', icon: Home },
-  { to: '/grows', label: 'Ræktanir', icon: Sprout, disabled: true },
-  { to: '/library', label: 'Afbrigði', icon: BookOpen, disabled: true },
-  { to: '/insights', label: 'Innsýn', icon: LineChart, disabled: true },
+  { to: '/home', label: 'Heim', icon: Home, available: true },
+  { to: '/grows', label: 'Ræktanir', icon: Layers, available: false },
+  { to: '/plants', label: 'Plöntur', icon: Sprout, available: false },
+  { to: '/environment', label: 'Umhverfi', icon: Thermometer, available: false },
+  { to: '/harvest', label: 'Uppskera', icon: Scale, available: false },
+  { to: '/sauces', label: 'Sósur', icon: FlaskConical, available: false },
+  { to: '/varieties', label: 'Afbrigði', icon: Leaf, available: false },
+  { to: '/history', label: 'Safn', icon: History, available: false },
+];
+
+const mobileNav = [
+  { to: '/home', label: 'Heim', icon: Home, available: true },
+  { to: '/plants', label: 'Plöntur', icon: Sprout, available: false },
+  { to: '/grows', label: 'Ræktanir', icon: Layers, available: false },
+  { to: '/sauces', label: 'Sósur', icon: FlaskConical, available: false },
+  { to: '/more', label: 'Meira', icon: Scale, available: false },
 ];
 
 export function Layout() {
   return (
-    <div className="min-h-screen md:flex">
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:flex-col md:w-64 md:shrink-0 md:border-r md:border-moss-800/40 md:bg-moss-950/60 md:backdrop-blur-xl">
-        <div className="flex items-center gap-3 px-6 py-7">
-          <Logo size={28} animated />
-          <span className="heading text-2xl font-semibold text-cream-50">Spíra</span>
+    <div className="sp-bg min-h-screen md:flex">
+      <aside
+        className="hidden md:flex md:flex-col md:w-[220px] md:shrink-0 md:border-r"
+        style={{ borderColor: 'rgba(64,104,67,.3)' }}
+      >
+        <div className="px-[18px] pt-6 pb-1">
+          <Wordmark size={22} />
         </div>
-        <nav className="flex-1 px-3 py-2 space-y-1">
+        <nav className="flex-1 px-[18px] py-5 flex flex-col gap-1">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+                  'flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-[13px] font-medium transition-colors',
                   isActive
-                    ? 'bg-moss-800/60 text-cream-50'
-                    : 'text-cream-300 hover:bg-moss-900/40 hover:text-cream-100',
-                  item.disabled && 'opacity-40 pointer-events-none',
+                    ? 'text-[var(--cream-50)]'
+                    : 'text-[rgba(231,217,168,.7)] hover:bg-[rgba(84,130,85,.12)]',
+                  !item.available && 'opacity-50 pointer-events-none',
                 )
               }
+              style={({ isActive }) =>
+                isActive ? { background: 'rgba(84,130,85,.18)' } : undefined
+              }
             >
-              <item.icon size={18} />
-              <span>{item.label}</span>
-              {item.disabled && (
-                <span className="ml-auto text-[10px] uppercase tracking-wider text-moss-400">
-                  brátt
-                </span>
+              {({ isActive }) => (
+                <>
+                  <item.icon
+                    size={16}
+                    color={isActive ? 'var(--moss-300)' : 'rgba(231,217,168,.5)'}
+                  />
+                  <span>{item.label}</span>
+                </>
               )}
             </NavLink>
           ))}
         </nav>
-        <div className="px-6 py-4 text-xs text-cream-400/50">
-          Fasi 1 · grunnur
+        <div
+          className="mx-[18px] mb-5 p-3 rounded-xl"
+          style={{
+            background: 'rgba(36,56,39,.6)',
+            border: '1px solid rgba(64,104,67,.4)',
+          }}
+        >
+          <Eyebrow color="var(--cream-400)">Húsið</Eyebrow>
+          <div
+            className="sp-display"
+            style={{
+              fontSize: 14,
+              color: 'var(--cream-50)',
+              marginTop: 4,
+            }}
+          >
+            Garðabær · 21°C
+          </div>
+          <div style={{ fontSize: 11, color: 'rgba(231,217,168,.55)' }}>
+            Sólarlag 22:48 · Sólris 03:51
+          </div>
         </div>
       </aside>
 
-      {/* Mobile top bar */}
-      <header className="md:hidden sticky top-0 z-30 glass-strong border-b border-moss-800/40 px-5 py-3 flex items-center gap-3">
-        <Logo size={24} animated />
-        <span className="heading text-xl font-semibold text-cream-50">Spíra</span>
+      <header
+        className="md:hidden sticky top-0 z-30 px-5 py-3 flex items-center gap-3 glass-strong"
+        style={{ borderBottom: '1px solid rgba(64,104,67,.4)' }}
+      >
+        <Logo size={22} animated />
+        <span
+          className="sp-display"
+          style={{
+            fontSize: 20,
+            fontWeight: 500,
+            color: 'var(--cream-50)',
+            letterSpacing: '-0.02em',
+          }}
+        >
+          Spíra
+        </span>
       </header>
 
       <main className="flex-1 min-w-0 pb-24 md:pb-0">
         <Outlet />
       </main>
 
-      {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 glass-strong border-t border-moss-800/40 pb-safe">
-        <div className="flex">
-          {navItems.map((item) => (
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-30 pb-safe"
+        style={{
+          padding: '10px 16px 30px',
+          background:
+            'linear-gradient(to top, rgba(18,31,20,.95), rgba(18,31,20,.7) 70%, transparent)',
+          backdropFilter: 'blur(20px)',
+        }}
+      >
+        <div className="flex justify-between items-end">
+          {mobileNav.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  'flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-colors',
-                  isActive ? 'text-moss-300' : 'text-cream-400',
-                  item.disabled && 'opacity-40 pointer-events-none',
+                  'flex flex-col items-center gap-0.5 transition-colors',
+                  isActive ? 'text-[var(--cream-50)]' : 'text-[rgba(231,217,168,.45)]',
+                  !item.available && 'opacity-60 pointer-events-none',
                 )
               }
             >
-              <item.icon size={20} />
-              <span>{item.label}</span>
+              {({ isActive }) => (
+                <>
+                  <div
+                    className="flex items-center justify-center"
+                    style={{
+                      width: 48,
+                      height: 32,
+                      borderRadius: 999,
+                      background: isActive ? 'rgba(84,130,85,.35)' : 'transparent',
+                      border: isActive
+                        ? '1px solid rgba(159,191,157,.4)'
+                        : '1px solid transparent',
+                    }}
+                  >
+                    <item.icon size={20} />
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 9.5,
+                      fontWeight: 500,
+                      letterSpacing: '0.02em',
+                    }}
+                  >
+                    {item.label}
+                  </span>
+                </>
+              )}
             </NavLink>
           ))}
         </div>
