@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-moss-950 text-cream-100 font-sans antialiased;
+  background-image:
+    radial-gradient(circle at 20% 10%, rgba(84, 130, 85, 0.12), transparent 45%),
+    radial-gradient(circle at 80% 80%, rgba(194, 106, 77, 0.08), transparent 45%);
+  background-attachment: fixed;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(84, 130, 85, 0.3);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(84, 130, 85, 0.5);
+}
+
+/* Hide scrollbar on overflow but keep functionality */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+@layer components {
+  .glass {
+    @apply bg-moss-900/60 backdrop-blur-xl border border-moss-700/40;
+  }
+  .glass-strong {
+    @apply bg-moss-900/80 backdrop-blur-xl border border-moss-700/60;
+  }
+  .heading {
+    @apply font-display tracking-tight;
+  }
+}
+
+/* Safe area for mobile */
+@supports (padding: max(0px)) {
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
