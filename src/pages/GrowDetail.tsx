@@ -20,7 +20,7 @@ import { Eyebrow } from '@/components/ui/Eyebrow';
 import { PhaseBar } from '@/components/ui/PhaseBar';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Chili } from '@/components/Chili';
+import { PlantGlyph } from '@/components/PlantGlyph';
 import {
   db,
   newId,
@@ -38,8 +38,9 @@ import {
 import {
   COLOR_HEX,
   COLOR_LABEL,
-  chiliForVarietyName,
   formatShu,
+  isPepper,
+  isTomato,
   varietyByName,
 } from '@/lib/varieties';
 import { LOCATIONS } from '@/lib/locations';
@@ -128,7 +129,7 @@ export function GrowDetail() {
         }}
       >
         <div style={{ position: 'absolute', right: -8, top: -4 }}>
-          <Chili variety={chiliForVarietyName(heroVariety)} size={130} tilt={8} />
+          <PlantGlyph name={heroVariety} size={130} tilt={8} />
         </div>
         <div className="flex gap-1.5 mb-2">
           {loc && <Pill tone="moss" size="sm">{loc.label}</Pill>}
@@ -255,15 +256,20 @@ function PlantRow({ plant, day }: { plant: Plant; day: number }) {
     });
   }
 
+  const swatch = isPepper(variety)
+    ? variety.color
+    : isTomato(variety)
+      ? variety.fruitColor
+      : undefined;
   return (
     <div className="flex items-center gap-3 rounded-2xl p-3 border bg-moss-900/40 border-moss-800/40">
-      <Chili variety={variety?.chili ?? 'jalapeno'} size={44} tilt={-4} />
+      <PlantGlyph variety={variety} name={plant.variety} size={44} tilt={-4} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-cream-50 font-medium text-sm">
             {plant.nickname || plant.variety}
           </span>
-          {variety && (
+          {swatch && (
             <span
               className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-full"
               style={{
@@ -277,15 +283,20 @@ function PlantRow({ plant, day }: { plant: Plant; day: number }) {
                   width: 7,
                   height: 7,
                   borderRadius: 999,
-                  background: COLOR_HEX[variety.color],
+                  background: COLOR_HEX[swatch],
                 }}
               />
-              {COLOR_LABEL[variety.color]}
+              {COLOR_LABEL[swatch]}
             </span>
           )}
-          {variety && variety.shu! > 0 && (
+          {isPepper(variety) && variety.shu > 0 && (
             <span className="text-[9px] uppercase tracking-wider text-capsicum-400">
-              {formatShu(variety.shu!)} SHU
+              {formatShu(variety.shu)} SHU
+            </span>
+          )}
+          {isTomato(variety) && (
+            <span className="text-[9px] uppercase tracking-wider text-terra-300">
+              {variety.fruitWeightG}g · {variety.fruitShape.toLowerCase()}
             </span>
           )}
         </div>

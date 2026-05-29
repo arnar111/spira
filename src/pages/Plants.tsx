@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { Filter } from 'lucide-react';
 import { Pill } from '@/components/ui/Pill';
 import { Eyebrow } from '@/components/ui/Eyebrow';
-import { Chili } from '@/components/Chili';
+import { PlantGlyph } from '@/components/PlantGlyph';
 import { db, type Plant } from '@/lib/db';
 import { PHASES, daysSince, getPhaseForDay } from '@/lib/phases';
 import {
@@ -13,9 +13,12 @@ import {
   COLOR_LABEL,
   MOTHER_SPECIES,
   formatShu,
+  isPepper,
+  isTomato,
   varietyByName,
   type MotherSpecies,
   type PepperColor,
+  type Variety,
 } from '@/lib/varieties';
 import { cn } from '@/lib/cn';
 
@@ -24,6 +27,7 @@ export function Plants() {
   const plants = useLiveQuery(() => db.plants.toArray());
   const grows = useLiveQuery(() => db.grows.toArray());
 
+  const [typeFilter, setTypeFilter] = useState<'all' | 'pepper' | 'tomato'>('all');
   const [filterMother, setFilterMother] = useState<MotherSpecies | 'all'>('all');
   const [filterColor, setFilterColor] = useState<PepperColor | 'all'>('all');
   const [phaseFilter, setPhaseFilter] = useState<string>('all');
@@ -40,18 +44,27 @@ export function Plants() {
         return { plant: p, grow, variety, day };
       })
       .filter((r) => {
-        if (filterMother !== 'all' && r.variety?.motherSpecies !== filterMother) return false;
-        if (filterColor !== 'all' && r.variety?.color !== filterColor) return false;
+        const cat = r.variety?.category ?? r.plant.category;
+        if (typeFilter !== 'all' && cat !== typeFilter) return false;
+        if (filterMother !== 'all' && !(isPepper(r.variety) && r.variety.motherSpecies === filterMother))
+          return false;
+        if (filterColor !== 'all' && !(isPepper(r.variety) && r.variety.color === filterColor))
+          return false;
         if (phaseFilter !== 'all' && r.plant.currentPhase !== phaseFilter) return false;
         return true;
       });
-  }, [plants, grows, filterMother, filterColor, phaseFilter]);
+  }, [plants, grows, typeFilter, filterMother, filterColor, phaseFilter]);
+
+  const hasTomatoes = useMemo(
+    () => !!plants?.some((p) => (varietyByName(p.variety)?.category ?? p.category) === 'tomato'),
+    [plants],
+  );
 
   const availableMothers = useMemo(() => {
     const set = new Set<MotherSpecies>();
     plants?.forEach((p) => {
       const v = varietyByName(p.variety);
-      if (v) set.add(v.motherSpecies);
+      if (isPepper(v)) set.add(v.motherSpecies);
     });
     return set;
   }, [plants]);
@@ -60,7 +73,7 @@ export function Plants() {
     const set = new Set<PepperColor>();
     plants?.forEach((p) => {
       const v = varietyByName(p.variety);
-      if (v) set.add(v.color);
+      if (isPepper(v)) set.add(v.color);
     });
     return set;
   }, [plants]);
@@ -90,7 +103,20 @@ export function Plants() {
         </h1>
       </header>
 
-      <FilterRow icon={<Filter size={11} />} label="Móðurtegund">
+      {hasTomatoes && (
+        <FilterRow icon={<Filter size={11} />} label="Tegund">
+          <Chip active={typeFilter === 'all'} onClick={() => setTypeFilter('all')}>
+            Allar
+          </Chip>
+          <Chip active={typeFilter === 'pepper'} onClick={() => setTypeFilter('pepper')}>
+            Pipar
+          </Chip>
+          <Chip active={typeFilter === 'tomato'} onClick={() => setTypeFilter('tomato')}>
+            Tómatar
+          </Chip>
+        </FilterRow>
+      )}
+      <FilterRow icon={hasTomatoes ? undefined : <Filter size={11} />} label="Móðurtegund">
         <Chip active={filterMother === 'all'} onClick={() => setFilterMother('all')}>
           Allar
         </Chip>
@@ -169,17 +195,22 @@ function PlantCard({
   plant: Plant;
   growName: string;
   day: number;
-  variety: ReturnType<typeof varietyByName>;
+  variety: Variety | undefined;
   onClick: () => void;
 }) {
   const phase = PHASES.find((p) => p.name === plant.currentPhase) ?? getPhaseForDay(day);
+  const swatch: PepperColor | undefined = isPepper(variety)
+    ? variety.color
+    : isTomato(variety)
+      ? variety.fruitColor
+      : undefined;
   return (
     <button
       type="button"
       onClick={onClick}
       className="text-left flex items-center gap-3 rounded-2xl p-3.5 transition-all border bg-moss-900/40 border-moss-800/40 hover:bg-moss-900/60 hover:border-moss-600"
     >
-      <Chili variety={variety?.chili ?? 'jalapeno'} size={48} tilt={-4} />
+      <PlantGlyph variety={variety} name={plant.variety} size={48} tilt={-4} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="heading text-base font-semibold text-cream-50">
@@ -194,32 +225,36 @@ function PlantCard({
         </div>
         {variety && (
           <div className="flex gap-1.5 mt-1.5 flex-wrap">
-            <span
-              className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full"
-              style={{
-                background: 'rgba(18,31,20,.55)',
-                border: '1px solid rgba(64,104,67,.5)',
-                color: 'var(--cream-100)',
-              }}
-            >
+            {swatch && (
               <span
+                className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full"
                 style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 999,
-                  background: COLOR_HEX[variety.color],
+                  background: 'rgba(18,31,20,.55)',
+                  border: '1px solid rgba(64,104,67,.5)',
+                  color: 'var(--cream-100)',
                 }}
-              />
-              {COLOR_LABEL[variety.color]}
-            </span>
-            <Pill tone="cream" size="sm">
-              {variety.motherSpecies}
-            </Pill>
-            {variety.shu && variety.shu > 0 && (
-              <Pill tone="cap" size="sm">
-                {formatShu(variety.shu)} SHU
-              </Pill>
+              >
+                <span
+                  style={{ width: 8, height: 8, borderRadius: 999, background: COLOR_HEX[swatch] }}
+                />
+                {COLOR_LABEL[swatch]}
+              </span>
             )}
+            {isPepper(variety) ? (
+              <>
+                <Pill tone="cream" size="sm">{variety.motherSpecies}</Pill>
+                {variety.shu > 0 && (
+                  <Pill tone="cap" size="sm">{formatShu(variety.shu)} SHU</Pill>
+                )}
+              </>
+            ) : isTomato(variety) ? (
+              <>
+                <Pill tone="terra" size="sm">Tómatur</Pill>
+                <Pill tone="moss" size="sm">
+                  {variety.fruitShape} {variety.fruitWeightG}g
+                </Pill>
+              </>
+            ) : null}
           </div>
         )}
       </div>

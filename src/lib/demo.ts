@@ -1,5 +1,5 @@
 import { db, newId } from './db';
-import { BUILT_IN_VARIETIES } from './varieties';
+import { BUILT_IN_VARIETIES, type Variety } from './varieties';
 import { clearLocalData } from './sync';
 
 export const DEMO_CODE = '123';
@@ -103,6 +103,22 @@ const GROWS: DemoGrow[] = [
       { varietyId: 'pepper-bhut-peach', daysAgoSown: 6, phase: 'germinating' },
     ],
   },
+  {
+    name: 'Steinunn í eldhúsglugga',
+    location: 'NV-gluggi, eldhús',
+    locationKey: 'window',
+    startedDaysAgo: 58,
+    spaceWidthCm: 120,
+    spaceDepthCm: 25,
+    spaceHeightCm: 120,
+    targetTempC: 21,
+    fixture: 'Dagsbirta (NV-gluggabanki)',
+    notes:
+      'Íslenskt dvergtómatyrki með hjartalaga aldin. Frjóvga með rafmagnstannbursta á 2–3 daga fresti.',
+    plants: [
+      { varietyId: 'tomato-steinunn', nickname: 'Steinunn', daysAgoSown: 58, phase: 'flowering' },
+    ],
+  },
 ];
 
 const LOG_NOTES = [
@@ -133,10 +149,17 @@ export async function seedDemoData(): Promise<void> {
   for (const g of GROWS) {
     const growId = newId();
     const startDate = now - g.startedDaysAgo * DAY_MS;
+    const growVarieties = g.plants
+      .map((p) => BUILT_IN_VARIETIES.find((v) => v.id === p.varietyId))
+      .filter((v): v is Variety => !!v);
+    const growCategory =
+      growVarieties.length > 0 && growVarieties.every((v) => v.category === 'tomato')
+        ? 'tomato'
+        : 'pepper';
     await db.grows.add({
       id: growId,
       name: g.name,
-      category: 'pepper',
+      category: growCategory,
       location: g.location,
       locationKey: g.locationKey,
       startDate,
@@ -177,8 +200,8 @@ export async function seedDemoData(): Promise<void> {
         varietyId: variety.id,
         variety: variety.commonName,
         nickname: p.nickname,
-        category: 'pepper',
-        startedFrom: 'seed',
+        category: variety.category,
+        startedFrom: variety.category === 'tomato' ? 'seedling' : 'seed',
         sowDate,
         germinatedDate,
         transplantDate,

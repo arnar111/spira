@@ -11,6 +11,16 @@ Webapp sem virkar bæði sem mobile PWA og desktop, með áherslu á:
 - **Local-first** — gögn í IndexedDB, virkar offline, engin login í MVP
 - **Ísland-stillt** — afbrigði fyrir norðlæg loftslag, íslenskt UI, verslunar-tilvísanir
 
+## Tegundir
+
+Spíra styður nú **tvo plöntuflokka**:
+
+- **Pipar** — yfir 40 afbrigði frá mildum papríkum að superhots, með SHU-styrk og litaflokkun.
+- **Tómatar** — _Steinunn_, íslenskt dvergyrki með hjartalaga aldin og hrukkótt blöð. Fylgir
+  ítarleg ræktunarleiðbeining (markgildi, vökvun, frjóvgun með rafmagnstannbursta, áburðaráætlun
+  og bilanaleit) ásamt **birtualmanaki fyrir Reykjavík** sem sýnir dagsbirtu mánaðarlega og segir
+  til um hvenær gróðurljós þarf.
+
 ## Fasi 1 — Grunnur (núverandi)
 
 - [x] Vite + React + TypeScript + Tailwind scaffold
