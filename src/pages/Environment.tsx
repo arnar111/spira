@@ -8,6 +8,7 @@ import { Stat } from '@/components/ui/Stat';
 import { Sparkline } from '@/components/ui/Sparkline';
 import { Button } from '@/components/ui/Button';
 import { DaylightCard } from '@/components/DaylightCard';
+import { LightPlanner } from '@/components/LightPlanner';
 import { db, newId } from '@/lib/db';
 import { cn } from '@/lib/cn';
 
@@ -27,7 +28,7 @@ export function Environment() {
       className="px-5 sm:px-7 py-6"
     >
       <header className="mb-5">
-        <Eyebrow color="var(--terra-300)">Umhverfis-skrá</Eyebrow>
+        <Eyebrow color="var(--terra-300)">Umhverfi & skipulag</Eyebrow>
         <h1
           className="sp-display"
           style={{
@@ -38,12 +39,13 @@ export function Environment() {
             marginTop: 6,
           }}
         >
-          Hiti & raki
+          Birta, ljós & hiti
         </h1>
       </header>
 
       <div className="flex flex-col gap-3">
         <DaylightCard />
+        <LightPlanner />
         {active.length === 0 && (
           <div className="text-sm text-cream-300/60 text-center py-8 border border-dashed border-moss-800/40 rounded-2xl">
             Engar virkar ræktanir.

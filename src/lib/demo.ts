@@ -78,8 +78,9 @@ const GROWS: DemoGrow[] = [
     spaceHeightCm: 80,
     targetTempC: 21,
     fixture: 'Dagsbirta + plöntuljós',
-    notes: 'Smáar afkastamiklar plöntur við glugga.',
+    notes: 'Smáar afkastamiklar plöntur við glugga — auk kuldaþolins Rocoto.',
     plants: [
+      { varietyId: 'pepper-rocoto-red', nickname: 'Rocoto', daysAgoSown: 28, phase: 'seedling' },
       { varietyId: 'pepper-aji-charapita', nickname: 'Charapita', daysAgoSown: 28, phase: 'seedling' },
       { varietyId: 'pepper-shishito', daysAgoSown: 28, phase: 'seedling' },
       { varietyId: 'pepper-thai', daysAgoSown: 24, phase: 'seedling' },

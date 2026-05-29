@@ -1,18 +1,20 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Flame, Search } from 'lucide-react';
+import { Flame, Search, Snowflake } from 'lucide-react';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { Pill } from '@/components/ui/Pill';
 import { PlantGlyph } from '@/components/PlantGlyph';
 import { CareGuide } from '@/components/CareGuide';
 import {
   BUILT_IN_VARIETIES,
+  COLD_TOLERANCE_LABEL,
   COLOR_HEX,
   COLOR_LABEL,
   MOTHER_SPECIES,
   formatShu,
   isPepper,
   isTomato,
+  speciesShort,
   type MotherSpecies,
   type PepperColor,
   type Variety,
@@ -27,6 +29,7 @@ function heatOf(v: Variety): number {
 export function Varieties() {
   const [q, setQ] = useState('');
   const [type, setType] = useState<'all' | 'pepper' | 'tomato'>('all');
+  const [coldOnly, setColdOnly] = useState(false);
   const [mother, setMother] = useState<MotherSpecies | 'all'>('all');
   const [color, setColor] = useState<PepperColor | 'all'>('all');
 
@@ -34,6 +37,8 @@ export function Varieties() {
     const needle = q.toLowerCase().trim();
     return BUILT_IN_VARIETIES.filter((v) => {
       if (type !== 'all' && v.category !== type) return false;
+      // "Fyrir Ísland": cold-hardy peppers (moderate/excellent) + the cold-hardy Steinunn.
+      if (coldOnly && isPepper(v) && v.coldTolerance === 'poor') return false;
       if (isPepper(v)) {
         if (mother !== 'all' && v.motherSpecies !== mother) return false;
         if (color !== 'all' && v.color !== color) return false;
@@ -49,7 +54,7 @@ export function Varieties() {
       }
       return true;
     }).sort((a, b) => heatOf(a) - heatOf(b));
-  }, [q, type, mother, color]);
+  }, [q, type, coldOnly, mother, color]);
 
   return (
     <motion.div
@@ -96,6 +101,9 @@ export function Varieties() {
         </Chip>
         <Chip active={type === 'tomato'} onClick={() => setType('tomato')}>
           Tómatar
+        </Chip>
+        <Chip active={coldOnly} onClick={() => setColdOnly((c) => !c)}>
+          <Snowflake size={11} /> Fyrir Ísland
         </Chip>
       </FilterRow>
       <FilterRow label="Móðurtegund">
@@ -183,6 +191,12 @@ function VarietyCard({ v }: { v: Variety }) {
                 {v.growthHabit === 'determinate' ? 'Ákveðinn' : 'Óákveðinn'}
               </Pill>
             )}
+            {isPepper(v) && v.coldTolerance !== 'poor' && (
+              <Pill tone={v.coldTolerance === 'excellent' ? 'moss' : 'cream'} size="sm">
+                <Snowflake size={9} />
+                {v.coldTolerance === 'excellent' ? 'Mjög kuldaþolið' : 'Kuldaþolið'}
+              </Pill>
+            )}
           </div>
           <div className="text-[11px] text-cream-300/60 mt-1">
             {v.flavor} · {v.matureHeightCm}cm
@@ -192,6 +206,10 @@ function VarietyCard({ v }: { v: Variety }) {
       </div>
       {open && (
         <div className="mt-3 sm:pl-[60px] text-[12px] text-cream-300/80 leading-relaxed">
+          <div className="mb-1.5">
+            <span className="text-cream-400/70">Tegund:</span> {speciesShort(v.scientificName)}
+            {isPepper(v) && <> · {COLD_TOLERANCE_LABEL[v.coldTolerance]}</>}
+          </div>
           <div className="mb-1.5">
             <span className="text-cream-400/70">Uppruni:</span> {v.origin}
           </div>

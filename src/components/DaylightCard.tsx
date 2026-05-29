@@ -1,4 +1,4 @@
-import { Sun, Lightbulb } from 'lucide-react';
+import { Sun, Lightbulb, CalendarDays, Sprout } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { Pill } from '@/components/ui/Pill';
@@ -6,6 +6,7 @@ import {
   REYKJAVIK_DAYLIGHT,
   currentDaylight,
   daylightStatus,
+  monthPlan,
   needsGrowLight,
 } from '@/lib/daylight';
 
@@ -28,6 +29,7 @@ export function DaylightCard() {
   const status = daylightStatus(month);
   const tone = STATUS_TONE[status.tone];
   const growLight = needsGrowLight(month);
+  const plan = monthPlan(month);
 
   return (
     <Card tone="strong" radius={18} padding={16}>
@@ -105,6 +107,22 @@ export function DaylightCard() {
           <span style={{ width: 8, height: 8, borderRadius: 2, background: 'rgba(239,90,60,.28)' }} />
           &lt; 10 klst — LED þörf
         </span>
+      </div>
+
+      {/* This month's grow plan (guide Table 18) */}
+      <div className="mt-4 pt-3" style={{ borderTop: '1px solid rgba(64,104,67,.25)' }}>
+        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] text-moss-300 mb-1.5">
+          <CalendarDays size={12} /> Á döfinni í {today.name.toLowerCase()}
+        </div>
+        <p className="text-[11.5px] text-cream-300/80 leading-snug">{plan.activities}</p>
+        {plan.startVarieties && (
+          <div className="flex items-start gap-1.5 mt-2 text-[11px] text-cream-300/70">
+            <Sprout size={12} className="mt-0.5 shrink-0" style={{ color: 'var(--moss-300)' }} />
+            <span>
+              <span className="text-cream-400/70">Sá núna:</span> {plan.startVarieties}
+            </span>
+          </div>
+        )}
       </div>
     </Card>
   );

@@ -40,6 +40,34 @@ export function daylightForMonth(month: number): DaylightMonth {
   return REYKJAVIK_DAYLIGHT[m];
 }
 
+/** Month-by-month grow plan for Iceland (guide Table 18). */
+export interface MonthPlan {
+  /** What to do this month. */
+  activities: string;
+  /** Suggested varieties to start this month ('' if none). */
+  startVarieties: string;
+}
+
+const MONTH_PLANS: Record<number, MonthPlan> = {
+  1: { activities: 'Sáðu ofur-sterkum fræjum (C. chinense); haltu yfirvetruðum plöntum.', startVarieties: 'Carolina Reaper, Bhut Jolokia, 7 Pot' },
+  2: { activities: 'Sáðu C. baccatum og C. pubescens; byrjaðu að vekja yfirvetraðar plöntur.', startVarieties: 'Aji Amarillo, Lemon Drop, Rocoto' },
+  3: { activities: 'Sáðu aðaluppskeru (C. annuum); auktu vökvun yfirvetraðra plantna.', startVarieties: 'Jalapeño, Cayenne, Serrano, Thai' },
+  4: { activities: 'Sáðu hraðvaxandi yrkjum; toppaðu ungar plöntur; byrjaðu áburðargjöf.', startVarieties: 'Shishito, Padrón, Jalapeño' },
+  5: { activities: 'Allar plöntur í vexti; haltu áfram að toppa og þjálfa; auktu næringu.', startVarieties: 'Það sem eftir er' },
+  6: { activities: 'Skiptu í blómaáburð; fyrstu blóm á snemmyrkjum; handfrjóvgaðu.', startVarieties: 'Lokasáning' },
+  7: { activities: 'Hámarks blómgun; haltu frjóvgun gangandi; fyrsta uppskera snemmyrkja.', startVarieties: '' },
+  8: { activities: 'Hámarks uppskera flestra yrkja; tíndu samfellt; þurrkaðu umfram.', startVarieties: '' },
+  9: { activities: 'Haltu uppskeru áfram; veldu plöntur til yfirvetrunar; safnaðu fræjum.', startVarieties: '' },
+  10: { activities: 'Lokauppskera; klipptu fyrir yfirvetrun; minnkaðu vökvun og áburð.', startVarieties: '' },
+  11: { activities: 'Plöntur í dvala; lágmarks umhirða; skipuleggðu næsta ár.', startVarieties: '' },
+  12: { activities: 'Haltu dvala plöntum; pantaðu fræ; undirbúðu búnað fyrir vorið.', startVarieties: '' },
+};
+
+export function monthPlan(month: number): MonthPlan {
+  const m = ((month - 1) % 12 + 12) % 12;
+  return MONTH_PLANS[m + 1];
+}
+
 export function currentDaylight(date: Date = new Date()): DaylightMonth {
   return daylightForMonth(date.getMonth() + 1);
 }

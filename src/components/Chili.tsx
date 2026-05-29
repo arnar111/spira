@@ -44,7 +44,11 @@ export type ChiliVariety =
   | 'shishito'
   | 'padron'
   | 'thai'
-  | 'thai_yellow';
+  | 'thai_yellow'
+  | 'lemon_drop'
+  | 'tabasco'
+  | 'piri_piri'
+  | 'rocoto';
 
 type Shape = 'bell' | 'classic' | 'long' | 'lantern' | 'wrinkled' | 'tailed' | 'tiny';
 type Tail = 'curl' | 'long';
@@ -104,6 +108,10 @@ const PRESETS: Record<ChiliVariety, Preset> = {
   padron: { label: 'Padrón', shape: 'long', body: '#4a7e30', shadow: '#2b4818', highlight: '#83b066' },
   thai: { label: 'Thai', shape: 'tiny', body: '#d83a23', shadow: '#8e1f0e', highlight: '#f47766' },
   thai_yellow: { label: 'Thai Yellow', shape: 'tiny', body: '#ebc046', shadow: '#a07a0d', highlight: '#ffdb7c' },
+  lemon_drop: { label: 'Lemon Drop', shape: 'long', body: '#e8c52a', shadow: '#9a7a0a', highlight: '#ffe87a' },
+  tabasco: { label: 'Tabasco', shape: 'tiny', body: '#e0481f', shadow: '#922c0c', highlight: '#f6845f' },
+  piri_piri: { label: 'Piri Piri', shape: 'long', body: '#d4361f', shadow: '#831a0a', highlight: '#f47b5a' },
+  rocoto: { label: 'Rocoto', shape: 'lantern', body: '#cf2e1c', shadow: '#7e1409', highlight: '#ef5f48', wrinkles: 1 },
 };
 
 const SHAPE_BODY: Record<Shape, string> = {

@@ -58,8 +58,38 @@ export const MOTHER_SPECIES = [
   'Carolina Reaper',
   'Trinidad Scorpion',
   'Ají',
+  'Lemon Drop',
+  'Tabasco',
+  'Piri Piri',
+  'Rocoto',
 ] as const;
 export type MotherSpecies = (typeof MOTHER_SPECIES)[number];
+
+/**
+ * How well a variety copes with the cool conditions typical of Icelandic homes.
+ * Driven mostly by Capsicum species (pubescens is exceptionally cold-hardy).
+ */
+export type ColdTolerance = 'poor' | 'moderate' | 'excellent';
+
+export const COLD_TOLERANCE_LABEL: Record<ColdTolerance, string> = {
+  poor: 'Lítið kuldaþol',
+  moderate: 'Nokkurt kuldaþol',
+  excellent: 'Mikið kuldaþol',
+};
+
+/** Default cold tolerance inferred from the Latin species. */
+export function coldToleranceForSpecies(scientificName: string): ColdTolerance {
+  if (scientificName.includes('pubescens')) return 'excellent';
+  if (scientificName.includes('baccatum') || scientificName.includes('frutescens'))
+    return 'moderate';
+  return 'poor';
+}
+
+/** Short Latin label, e.g. "C. annuum". */
+export function speciesShort(scientificName?: string): string {
+  if (!scientificName) return '';
+  return scientificName.replace(/^Capsicum\s+/, 'C. ').replace(/^Solanum\s+/, 'S. ');
+}
 
 /** Shared fields across every plant the variety library knows about. */
 interface VarietyCommon extends VarietyPreset {
@@ -80,6 +110,7 @@ export interface PepperVariety extends VarietyCommon {
   motherSpecies: MotherSpecies;
   color: PepperColor;
   shu: number;
+  coldTolerance: ColdTolerance;
 }
 
 /** A stage in the feeding schedule (low-N / high-PK for fruiting tomatoes). */
@@ -155,18 +186,22 @@ interface VInput {
   matureHeightCm: number;
   suitableLocations: LocationKey[];
   scientificName?: string;
+  /** Override the species-derived default. */
+  coldTolerance?: ColdTolerance;
 }
 
 function v(input: VInput): PepperVariety {
+  const scientificName = input.scientificName ?? 'Capsicum chinense';
   return {
     id: input.id,
     commonName: input.commonName,
-    scientificName: input.scientificName ?? 'Capsicum chinense',
+    scientificName,
     category: 'pepper',
     chili: input.chili,
     motherSpecies: input.motherSpecies,
     color: input.color,
     shu: input.shu,
+    coldTolerance: input.coldTolerance ?? coldToleranceForSpecies(scientificName),
     flavor: input.flavor,
     origin: input.origin,
     daysToGerminate: input.daysToGerminate,
@@ -872,6 +907,77 @@ const PEPPERS: PepperVariety[] = [
     notes:
       'Smáir ávextir — gríðarleg framleiðsla. „Móðir allra pipra" í Perú.',
     matureHeightCm: 90,
+    suitableLocations: ['window', 'tent', 'shower', 'diy'],
+  }),
+
+  // C. baccatum — prolific, citrusy, moderately cold-tolerant.
+  v({
+    id: 'pepper-lemon-drop',
+    commonName: 'Lemon Drop',
+    scientificName: 'Capsicum baccatum',
+    chili: 'lemon_drop',
+    motherSpecies: 'Lemon Drop',
+    color: 'yellow',
+    shu: 22000,
+    flavor: 'Skær sítrónu-tónn, ávaxtaríkt',
+    origin: 'Perú',
+    daysToGerminate: [14, 21],
+    daysToHarvest: [90, 110],
+    notes: 'Há, sprotamikil planta — þarf stuðning. Frábær í fisk og léttar sósur.',
+    matureHeightCm: 120,
+    suitableLocations: ['tent', 'shower', 'diy'],
+  }),
+
+  // C. frutescens — compact, continuous fruiting, moderately cold-tolerant.
+  v({
+    id: 'pepper-tabasco',
+    commonName: 'Tabasco',
+    scientificName: 'Capsicum frutescens',
+    chili: 'tabasco',
+    motherSpecies: 'Tabasco',
+    color: 'red',
+    shu: 40000,
+    flavor: 'Skarpt, súr-beitt — klassísk sósa',
+    origin: 'Mexíkó / Louisiana',
+    daysToGerminate: [14, 21],
+    daysToHarvest: [80, 100],
+    notes: 'Aldin vaxa upprétt; afkastamikil og frjósöm yfir langan tíma.',
+    matureHeightCm: 90,
+    suitableLocations: ['window', 'tent', 'shower', 'diy'],
+  }),
+  v({
+    id: 'pepper-piri-piri',
+    commonName: 'Piri Piri',
+    scientificName: 'Capsicum frutescens',
+    chili: 'piri_piri',
+    motherSpecies: 'Piri Piri',
+    color: 'red',
+    shu: 100000,
+    flavor: 'Beitt, sítrus — afrísk/portúgölsk klassík',
+    origin: 'Afríka / Portúgal',
+    daysToGerminate: [14, 21],
+    daysToHarvest: [80, 100],
+    notes: 'Þétt og runnavaxin, fruktar samfellt. Þekkt fyrir kjúklingarétti.',
+    matureHeightCm: 75,
+    suitableLocations: ['window', 'tent', 'shower', 'diy'],
+  }),
+
+  // C. pubescens — Andean, exceptionally cold-tolerant: the guide's pick for Iceland.
+  v({
+    id: 'pepper-rocoto-red',
+    commonName: 'Rocoto',
+    scientificName: 'Capsicum pubescens',
+    chili: 'rocoto',
+    motherSpecies: 'Rocoto',
+    color: 'red',
+    shu: 75000,
+    flavor: 'Safaríkt, ávaxtaríkt — þykkir veggir',
+    origin: 'Andesfjöll (Perú/Bólivía)',
+    daysToGerminate: [14, 28],
+    daysToHarvest: [120, 150],
+    notes:
+      'Þolir niður í 5°C og jafnvel létt frost — eina tegundin sem kýs íslenskan stofuhita. Fjólublá blóm, svört fræ, fjölær. Besti kostur fyrir Ísland.',
+    matureHeightCm: 130,
     suitableLocations: ['window', 'tent', 'shower', 'diy'],
   }),
 ];

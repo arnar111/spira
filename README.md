@@ -15,11 +15,20 @@ Webapp sem virkar bæði sem mobile PWA og desktop, með áherslu á:
 
 Spíra styður nú **tvo plöntuflokka**:
 
-- **Pipar** — yfir 40 afbrigði frá mildum papríkum að superhots, með SHU-styrk og litaflokkun.
+- **Pipar** — afbrigði úr öllum fimm _Capsicum_-tegundunum (annuum, chinense, baccatum,
+  frutescens, pubescens), frá mildum papríkum að superhots, með SHU-styrk, litaflokkun og
+  **kuldaþoli**. Sía „Fyrir Ísland" sýnir kuldaþolin yrki — t.d. _Rocoto_ (C. pubescens) sem
+  þolir niður í 5°C og hentar íslenskum stofuhita.
 - **Tómatar** — _Steinunn_, íslenskt dvergyrki með hjartalaga aldin og hrukkótt blöð. Fylgir
   ítarleg ræktunarleiðbeining (markgildi, vökvun, frjóvgun með rafmagnstannbursta, áburðaráætlun
-  og bilanaleit) ásamt **birtualmanaki fyrir Reykjavík** sem sýnir dagsbirtu mánaðarlega og segir
-  til um hvenær gróðurljós þarf.
+  og bilanaleit).
+
+## Skipulagsverkfæri (Umhverfi)
+
+- **Birtualmanak fyrir Reykjavík** — mánaðarleg dagsbirta, hvort gróðurljós þarf, og
+  „á döfinni þennan mánuð" (hvað á að sá/gera) byggt á íslensku ræktunardagatali.
+- **Ljósareiknir (DLI)** — reiknar daglegt ljósmagn út frá ljósstyrk (PPFD) og ljóstíma og
+  segir hvort plantan fái nóg fyrir hvern vaxtarfasa.
 
 ## Fasi 1 — Grunnur (núverandi)
 
