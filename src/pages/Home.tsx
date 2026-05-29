@@ -10,7 +10,7 @@ import { Sparkline } from '@/components/ui/Sparkline';
 import { PhaseBar } from '@/components/ui/PhaseBar';
 import { Tabs } from '@/components/ui/Tabs';
 import { Eyebrow } from '@/components/ui/Eyebrow';
-import { Chili, type ChiliVariety } from '@/components/Chili';
+import { PlantGlyph } from '@/components/PlantGlyph';
 import { Button } from '@/components/ui/Button';
 import { db, type Grow, type Plant } from '@/lib/db';
 import {
@@ -20,7 +20,6 @@ import {
   daysSince,
   getPhaseForDay,
 } from '@/lib/phases';
-import { chiliForVarietyName } from '@/lib/varieties';
 
 interface DerivedGrow extends Grow {
   day: number;
@@ -259,7 +258,6 @@ function QuickStat({
 function GrowGlassCard({ grow, plants }: { grow: DerivedGrow; plants: Plant[] }) {
   const heroVariety =
     plants[0]?.variety ?? (grow.category === 'pepper' ? 'Habanero Helios' : '');
-  const chili: ChiliVariety = chiliForVarietyName(heroVariety);
   const dim =
     grow.spaceWidthCm && grow.spaceDepthCm
       ? `${grow.spaceWidthCm}×${grow.spaceDepthCm}${grow.spaceHeightCm ? `×${grow.spaceHeightCm}` : ''} cm`
@@ -288,7 +286,7 @@ function GrowGlassCard({ grow, plants }: { grow: DerivedGrow; plants: Plant[] })
         className="sp-chili-shadow"
         style={{ position: 'absolute', right: -8, top: -4 }}
       >
-        <Chili variety={chili} size={110} tilt={8} />
+        <PlantGlyph name={heroVariety} size={110} tilt={8} />
       </div>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
@@ -646,7 +644,6 @@ function KPICard({
 function DesktopGrowRow({ grow, plants }: { grow: DerivedGrow; plants: Plant[] }) {
   const heroVariety =
     plants[0]?.variety ?? (grow.category === 'pepper' ? 'Habanero Helios' : '');
-  const chili: ChiliVariety = chiliForVarietyName(heroVariety);
   const startDate = new Date(grow.startDate);
   return (
     <Link
@@ -672,7 +669,7 @@ function DesktopGrowRow({ grow, plants }: { grow: DerivedGrow; plants: Plant[] }
         className="sp-chili-shadow"
         style={{ flexShrink: 0, marginLeft: -4 }}
       >
-        <Chili variety={chili} size={68} tilt={-6} />
+        <PlantGlyph name={heroVariety} size={68} tilt={-6} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>

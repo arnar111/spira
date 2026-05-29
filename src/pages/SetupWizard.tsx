@@ -14,7 +14,7 @@ import {
   Thermometer,
 } from 'lucide-react';
 import { GrowingPlant } from '@/components/GrowingPlant';
-import { Chili } from '@/components/Chili';
+import { PlantGlyph } from '@/components/PlantGlyph';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { cn } from '@/lib/cn';
@@ -23,6 +23,7 @@ import {
   newId,
   setOnboardingComplete,
   type GrowPhase,
+  type PlantCategory,
 } from '@/lib/db';
 import {
   BUILT_IN_VARIETIES,
@@ -30,10 +31,11 @@ import {
   COLOR_LABEL,
   MOTHER_SPECIES,
   formatShu,
+  isPepper,
   suggestForLocation,
   type MotherSpecies,
   type PepperColor,
-  type VarietyWithChili,
+  type Variety,
 } from '@/lib/varieties';
 import { LOCATIONS, type LocationCategory, type LocationKey } from '@/lib/locations';
 import { syncManager } from '@/lib/sync';
@@ -125,10 +127,17 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     try {
       const now = Date.now();
       const growId = newId();
+      const selected = state.varietyIds
+        .map((id) => BUILT_IN_VARIETIES.find((v) => v.id === id))
+        .filter((v): v is Variety => !!v);
+      const growCategory: PlantCategory =
+        selected.length > 0 && selected.every((v) => v.category === 'tomato')
+          ? 'tomato'
+          : 'pepper';
       await db.grows.add({
         id: growId,
         name: state.growName.trim(),
-        category: 'pepper',
+        category: growCategory,
         location: state.location.trim(),
         locationKey: state.locationKey,
         startDate: now,
@@ -519,21 +528,24 @@ function StepVarieties({
   const suggested = useMemo(() => suggestForLocation(state.locationKey), [state.locationKey]);
 
   const filtered = useMemo(() => {
+    const noPepperFilter =
+      state.filterMother === 'all' && state.filterColor === 'all' && state.shuTier === 'all';
     return suggested.filter((v) => {
+      if (!isPepper(v)) return noPepperFilter;
       if (state.filterMother !== 'all' && v.motherSpecies !== state.filterMother) return false;
       if (state.filterColor !== 'all' && v.color !== state.filterColor) return false;
       const tier = SHU_TIERS.find((t) => t.id === state.shuTier)!;
-      if (!(v.shu! >= tier.min && v.shu! <= tier.max)) return false;
+      if (!(v.shu >= tier.min && v.shu <= tier.max)) return false;
       return true;
     });
   }, [suggested, state.filterMother, state.filterColor, state.shuTier]);
 
   const availableMothers = useMemo(
-    () => Array.from(new Set(suggested.map((v) => v.motherSpecies))),
+    () => Array.from(new Set(suggested.filter(isPepper).map((v) => v.motherSpecies))),
     [suggested],
   );
   const availableColors = useMemo(
-    () => Array.from(new Set(suggested.map((v) => v.color))),
+    () => Array.from(new Set(suggested.filter(isPepper).map((v) => v.color))),
     [suggested],
   );
 
@@ -628,10 +640,11 @@ function VarietyRow({
   selected,
   onClick,
 }: {
-  v: VarietyWithChili;
+  v: Variety;
   selected: boolean;
   onClick: () => void;
 }) {
+  const swatch: PepperColor = isPepper(v) ? v.color : v.fruitColor;
   return (
     <button
       type="button"
@@ -652,7 +665,7 @@ function VarietyRow({
         {selected && <Check size={14} className="text-moss-950" />}
       </div>
       <div className="shrink-0">
-        <Chili variety={v.chili} size={42} tilt={-4} />
+        <PlantGlyph variety={v} size={42} tilt={-4} />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
@@ -667,7 +680,7 @@ function VarietyRow({
               border: '1px solid rgba(231,217,168,.18)',
             }}
           >
-            {v.motherSpecies}
+            {isPepper(v) ? v.motherSpecies : 'Tómatur'}
           </span>
           <span
             className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full"
@@ -683,15 +696,28 @@ function VarietyRow({
                 width: 8,
                 height: 8,
                 borderRadius: 999,
-                background: COLOR_HEX[v.color],
+                background: COLOR_HEX[swatch],
               }}
             />
-            {COLOR_LABEL[v.color]}
+            {COLOR_LABEL[swatch]}
           </span>
-          {v.shu! > 0 && (
-            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-capsicum-400 bg-capsicum-600/20 px-2 py-0.5 rounded-full">
-              <Flame size={10} />
-              {formatShu(v.shu!)} SHU
+          {isPepper(v) ? (
+            v.shu > 0 && (
+              <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-capsicum-400 bg-capsicum-600/20 px-2 py-0.5 rounded-full">
+                <Flame size={10} />
+                {formatShu(v.shu)} SHU
+              </span>
+            )
+          ) : (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full"
+              style={{
+                background: 'rgba(84,130,85,.18)',
+                color: 'var(--moss-300)',
+                border: '1px solid rgba(84,130,85,.4)',
+              }}
+            >
+              {v.growthHabit === 'determinate' ? 'Ákveðinn' : 'Óákveðinn'}
             </span>
           )}
         </div>

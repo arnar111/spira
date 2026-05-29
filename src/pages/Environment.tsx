@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Stat } from '@/components/ui/Stat';
 import { Sparkline } from '@/components/ui/Sparkline';
 import { Button } from '@/components/ui/Button';
+import { DaylightCard } from '@/components/DaylightCard';
 import { db, newId } from '@/lib/db';
 import { cn } from '@/lib/cn';
 
@@ -42,6 +43,7 @@ export function Environment() {
       </header>
 
       <div className="flex flex-col gap-3">
+        <DaylightCard />
         {active.length === 0 && (
           <div className="text-sm text-cream-300/60 text-center py-8 border border-dashed border-moss-800/40 rounded-2xl">
             Engar virkar ræktanir.

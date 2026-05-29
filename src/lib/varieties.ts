@@ -1,4 +1,5 @@
 import type { ChiliVariety } from '@/components/Chili';
+import type { TomatoGlyph } from '@/components/Tomato';
 import type { VarietyPreset } from './db';
 import type { LocationKey } from './locations';
 
@@ -60,14 +61,83 @@ export const MOTHER_SPECIES = [
 ] as const;
 export type MotherSpecies = (typeof MOTHER_SPECIES)[number];
 
-export interface VarietyWithChili extends VarietyPreset {
-  chili: ChiliVariety;
-  motherSpecies: MotherSpecies;
-  color: PepperColor;
+/** Shared fields across every plant the variety library knows about. */
+interface VarietyCommon extends VarietyPreset {
+  flavor: string;
+  origin: string;
+  daysToGerminate: [number, number];
+  daysToHarvest: [number, number];
+  notes: string;
   /** Locations the app recommends this variety for */
   suitableLocations: LocationKey[];
   /** Mature plant height in cm — used to filter by location ceiling */
   matureHeightCm: number;
+}
+
+export interface PepperVariety extends VarietyCommon {
+  category: 'pepper';
+  chili: ChiliVariety;
+  motherSpecies: MotherSpecies;
+  color: PepperColor;
+  shu: number;
+}
+
+/** A stage in the feeding schedule (low-N / high-PK for fruiting tomatoes). */
+export interface FertStage {
+  stage: string;
+  npk: string;
+  freq: string;
+  note: string;
+}
+
+/** A single troubleshooting entry: symptom → likely cause → fix. */
+export interface TroubleItem {
+  problem: string;
+  cause: string;
+  fix: string;
+}
+
+/** Care target row (light / heat / humidity / pH / pot / water / feed). */
+export interface CareTarget {
+  label: string;
+  value: string;
+  hint?: string;
+}
+
+/** Structured grow guide distilled from the variety's care sheet. */
+export interface TomatoCare {
+  summary: string;
+  targets: CareTarget[];
+  watering: string[];
+  pollination: string[];
+  fertilizer: FertStage[];
+  troubleshooting: TroubleItem[];
+  normal: string[];
+  concern: string[];
+}
+
+export interface TomatoVariety extends VarietyCommon {
+  category: 'tomato';
+  glyph: TomatoGlyph;
+  /** Reuses the shared colour palette for the swatch dot. */
+  fruitColor: PepperColor;
+  growthHabit: 'determinate' | 'indeterminate';
+  fruitWeightG: number;
+  fruitShape: string;
+  care: TomatoCare;
+}
+
+export type Variety = PepperVariety | TomatoVariety;
+
+/** Back-compat alias — most of the app was written before tomatoes existed. */
+export type VarietyWithChili = PepperVariety;
+
+export function isPepper(v?: Variety): v is PepperVariety {
+  return v?.category === 'pepper';
+}
+
+export function isTomato(v?: Variety): v is TomatoVariety {
+  return v?.category === 'tomato';
 }
 
 interface VInput {
@@ -87,7 +157,7 @@ interface VInput {
   scientificName?: string;
 }
 
-function v(input: VInput): VarietyWithChili {
+function v(input: VInput): PepperVariety {
   return {
     id: input.id,
     commonName: input.commonName,
@@ -108,7 +178,7 @@ function v(input: VInput): VarietyWithChili {
   };
 }
 
-export const BUILT_IN_VARIETIES: VarietyWithChili[] = [
+const PEPPERS: PepperVariety[] = [
   v({
     id: 'pepper-bell-red',
     commonName: 'Bell Red',
@@ -806,24 +876,102 @@ export const BUILT_IN_VARIETIES: VarietyWithChili[] = [
   }),
 ];
 
+/**
+ * Steinunn — Icelandic heritage dwarf tomato. The whole care guide below is
+ * distilled from "Growing Steinunn — Iceland Summer Edition".
+ */
+const STEINUNN: TomatoVariety = {
+  id: 'tomato-steinunn',
+  commonName: 'Steinunn',
+  scientificName: 'Solanum lycopersicum',
+  category: 'tomato',
+  isBuiltIn: true,
+  glyph: 'steinunn',
+  fruitColor: 'red',
+  growthHabit: 'determinate',
+  fruitWeightG: 50,
+  fruitShape: 'Hjartalaga',
+  flavor: 'Sæt, hjartalaga aldin — frábær í salöt',
+  origin: 'Íslenskt erfðayrki (heritage)',
+  daysToGerminate: [6, 12],
+  daysToHarvest: [60, 85],
+  matureHeightCm: 45,
+  suitableLocations: ['window', 'tent', 'diy'],
+  notes:
+    'Íslenskt dvergyrki með hjartalaga aldin og hrukkótt (rugose) blöð. Kuldaþolið og þrífst í NV-glugga undir íslenskri sumarbirtu — engin gróðurljós þörf maí–ágúst.',
+  care: {
+    summary:
+      'Ákveðinn (determinate) dvergvöxtur, 30–60 cm. Hjartalaga 50 g aldin, hrukkótt blöð og kuldaþol. Hannað fyrir NV-glugga í íslensku sumri.',
+    targets: [
+      { label: 'Ljós (sumar)', value: 'Dagsbirta 16–21 klst', hint: 'NV-gluggi fær kvöldsól jún–ágú' },
+      { label: 'Ljós (vetur)', value: 'LED 14–16 klst', hint: 'Nóv/des: aðeins 4–6 klst dagsbirta' },
+      { label: 'Hiti', value: 'Dagur 18–24°C · Nótt 15–21°C', hint: 'Íslensk gen þola kaldar nætur' },
+      { label: 'Lágmarkshiti', value: '10°C', hint: 'Þolir betur en flestir tómatar' },
+      { label: 'Raki', value: '40–70%', hint: 'Kemur í veg fyrir að blóm detti' },
+      { label: 'Pottur', value: '5–7 L', hint: 'Núverandi pottur dugar í bili' },
+      { label: 'Sýrustig (pH)', value: '6,2–6,8', hint: 'Létt súrt — betri næringarupptaka' },
+      { label: 'Áburður', value: 'Lágt N, hátt P-K', hint: 'NPK ~5-10-10 á blóma/aldinfasa' },
+    ],
+    watering: [
+      'Fingurpróf á hverjum morgni: stingdu fingri 2–3 cm í moldina. Sé hún þurr, vökvaðu þar til rennur úr botni.',
+      'Vökvaðu að morgni svo blöðin þorni yfir daginn.',
+      'Vatn beint á moldina — forðastu að bleyta blöðin.',
+      'Jöfn vökvun er lykilatriði — óregla veldur kálbotnsfúa (blossom end rot) og sprungum.',
+      '5–7 L pottur: vökva á 2–3 daga fresti. Lítill uppeldispottur: daglega (stundum tvisvar í hita).',
+    ],
+    pollination: [
+      'Engar býflugur innandyra — þú ert frjóvgarinn. Sleppir þú þessu detta blómin án þess að mynda aldin.',
+      'Rafmagnstannbursti: snertu blaðstöngul eða bakhlið blóms í 2–3 sek. Hermir eftir suði býflugu (buzz pollination).',
+      'Frjóvgaðu kl. 10–16 þegar blómin eru opin, á 2–3 daga fresti.',
+      'Opnaðu botngluggann í 10–15 mín á lygnum, hlýjum dögum (12°C+) — gusturinn hristir frjókorn líkt og hunangsfluga.',
+      'Merki um árangur: blómið visnar og lítil græn kúla (aldinvísir) myndast við blómbotninn.',
+    ],
+    fertilizer: [
+      { stage: 'Blómgun (núna)', npk: '5-10-10 eða 4-6-8', freq: 'Á 10–14 daga fresti', note: 'Lágt köfnunarefni, hátt fosfór og kalí' },
+      { stage: 'Aldinþroski', npk: '5-10-10 / tómata-áburður', freq: 'Á 10–14 daga fresti', note: 'Haltu áfram þar til fyrstu aldin þroskast' },
+      { stage: 'Fullþroski', npk: '3-6-9 eða þangþykkni', freq: 'Á 14 daga fresti', note: 'Minnka — plantan einbeitir sér að þroska' },
+    ],
+    troubleshooting: [
+      { problem: 'Gulnandi neðri blöð', cause: 'Ofvökvun eða næringarskortur', fix: 'Athugaðu frárennsli, minnka vökvun, gefa áburð' },
+      { problem: 'Blóm detta án aldins', cause: 'Léleg frjóvgun', fix: 'Frjóvgaðu daglega með rafmagnstannbursta' },
+      { problem: 'Svört dæld á botni aldins', cause: 'Kálbotnsfúi (óregluleg vökvun)', fix: 'Vökvaðu jafnt — haltu stöðugum raka' },
+      { problem: 'Blöð krullast upp', cause: 'Hitastreita eða undirvökvun', fix: 'Athugaðu hita, auktu vökvun' },
+      { problem: 'Aldin springa', cause: 'Skyndileg vatnsupptaka', fix: 'Vökvaðu jafnt, tíndu örlítið fyrr' },
+      { problem: 'Litlar svartar flugur í mold', cause: 'Sveppamý (ofvökvun)', fix: 'Láttu moldina þorna milli vökvana' },
+    ],
+    normal: [
+      'Hrukkótt (rugose) blöð — eðlileg áferð yrkisins, ekki sjúkdómur.',
+      'Létt slapp síðdegis sem jafnar sig um kvöld — hitasvörun.',
+      'Neðstu blöð gulna með aldri — fjarlægðu þau einfaldlega.',
+    ],
+    concern: [
+      'Öll blöð gulna samtímis — líklega ofvökvun eða næringarskortur.',
+      'Blóm detta án aldins — frjóvgunarvandi, bregðast þarf hratt við.',
+      'Brúnir eða svartir blettir á blöðum — mögulegur sveppasjúkdómur.',
+    ],
+  },
+};
+
+export const BUILT_IN_VARIETIES: Variety[] = [...PEPPERS, STEINUNN];
+
 export function chiliForVarietyId(id?: string): ChiliVariety {
   if (!id) return 'jalapeno';
   const found = BUILT_IN_VARIETIES.find((x) => x.id === id);
-  return found?.chili ?? 'jalapeno';
+  return isPepper(found) ? found.chili : 'jalapeno';
 }
 
 export function chiliForVarietyName(name?: string): ChiliVariety {
   if (!name) return 'jalapeno';
   const found = BUILT_IN_VARIETIES.find((x) => x.commonName === name);
-  return found?.chili ?? 'jalapeno';
+  return isPepper(found) ? found.chili : 'jalapeno';
 }
 
-export function varietyById(id?: string): VarietyWithChili | undefined {
+export function varietyById(id?: string): Variety | undefined {
   if (!id) return undefined;
   return BUILT_IN_VARIETIES.find((x) => x.id === id);
 }
 
-export function varietyByName(name?: string): VarietyWithChili | undefined {
+export function varietyByName(name?: string): Variety | undefined {
   if (!name) return undefined;
   return BUILT_IN_VARIETIES.find((x) => x.commonName === name);
 }
@@ -839,7 +987,7 @@ export function formatShu(n: number): string {
 export function suggestForLocation(
   loc: LocationKey,
   maxHeightCm?: number,
-): VarietyWithChili[] {
+): Variety[] {
   const list = BUILT_IN_VARIETIES.filter((v) => v.suitableLocations.includes(loc));
   const filtered =
     maxHeightCm != null

@@ -3,39 +3,53 @@ import { motion } from 'framer-motion';
 import { Flame, Search } from 'lucide-react';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { Pill } from '@/components/ui/Pill';
-import { Chili } from '@/components/Chili';
+import { PlantGlyph } from '@/components/PlantGlyph';
+import { CareGuide } from '@/components/CareGuide';
 import {
   BUILT_IN_VARIETIES,
   COLOR_HEX,
   COLOR_LABEL,
   MOTHER_SPECIES,
   formatShu,
+  isPepper,
+  isTomato,
   type MotherSpecies,
   type PepperColor,
-  type VarietyWithChili,
+  type Variety,
 } from '@/lib/varieties';
 import { cn } from '@/lib/cn';
 
+/** Sort key: tomatoes first, then peppers by ascending heat. */
+function heatOf(v: Variety): number {
+  return isPepper(v) ? v.shu : -1;
+}
+
 export function Varieties() {
   const [q, setQ] = useState('');
+  const [type, setType] = useState<'all' | 'pepper' | 'tomato'>('all');
   const [mother, setMother] = useState<MotherSpecies | 'all'>('all');
   const [color, setColor] = useState<PepperColor | 'all'>('all');
 
   const list = useMemo(() => {
     const needle = q.toLowerCase().trim();
     return BUILT_IN_VARIETIES.filter((v) => {
-      if (mother !== 'all' && v.motherSpecies !== mother) return false;
-      if (color !== 'all' && v.color !== color) return false;
-      if (
-        needle &&
-        !v.commonName.toLowerCase().includes(needle) &&
-        !v.motherSpecies.toLowerCase().includes(needle) &&
-        !(v.flavor ?? '').toLowerCase().includes(needle)
-      )
+      if (type !== 'all' && v.category !== type) return false;
+      if (isPepper(v)) {
+        if (mother !== 'all' && v.motherSpecies !== mother) return false;
+        if (color !== 'all' && v.color !== color) return false;
+      } else if (mother !== 'all' || color !== 'all') {
+        // Pepper-specific filters exclude tomatoes
         return false;
+      }
+      if (needle) {
+        const hay = [v.commonName, isPepper(v) ? v.motherSpecies : 'tómatur', v.flavor]
+          .join(' ')
+          .toLowerCase();
+        if (!hay.includes(needle)) return false;
+      }
       return true;
-    }).sort((a, b) => (a.shu ?? 0) - (b.shu ?? 0));
-  }, [q, mother, color]);
+    }).sort((a, b) => heatOf(a) - heatOf(b));
+  }, [q, type, mother, color]);
 
   return (
     <motion.div
@@ -73,6 +87,17 @@ export function Varieties() {
         />
       </div>
 
+      <FilterRow label="Tegund">
+        <Chip active={type === 'all'} onClick={() => setType('all')}>
+          Allar
+        </Chip>
+        <Chip active={type === 'pepper'} onClick={() => setType('pepper')}>
+          Pipar
+        </Chip>
+        <Chip active={type === 'tomato'} onClick={() => setType('tomato')}>
+          Tómatar
+        </Chip>
+      </FilterRow>
       <FilterRow label="Móðurtegund">
         <Chip active={mother === 'all'} onClick={() => setMother('all')}>
           Allar
@@ -113,22 +138,27 @@ export function Varieties() {
   );
 }
 
-function VarietyCard({ v }: { v: VarietyWithChili }) {
+function VarietyCard({ v }: { v: Variety }) {
   const [open, setOpen] = useState(false);
+  const swatch: PepperColor = isPepper(v) ? v.color : v.fruitColor;
   return (
     <button
       type="button"
       onClick={() => setOpen((o) => !o)}
-      className="text-left rounded-2xl p-3.5 border bg-moss-900/40 border-moss-800/40 hover:bg-moss-900/60 hover:border-moss-600 transition-all"
+      className="text-left rounded-2xl p-3.5 border bg-moss-900/40 border-moss-800/40 hover:bg-moss-900/60 hover:border-moss-600 transition-all w-full"
     >
       <div className="flex items-center gap-3">
-        <Chili variety={v.chili} size={48} tilt={-4} />
+        <PlantGlyph variety={v} size={48} tilt={-4} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="heading text-base font-semibold text-cream-50">
               {v.commonName}
             </span>
-            <Pill tone="cream" size="sm">{v.motherSpecies}</Pill>
+            {isPepper(v) ? (
+              <Pill tone="cream" size="sm">{v.motherSpecies}</Pill>
+            ) : (
+              <Pill tone="terra" size="sm">Tómatur</Pill>
+            )}
             <span
               className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full"
               style={{
@@ -138,38 +168,40 @@ function VarietyCard({ v }: { v: VarietyWithChili }) {
               }}
             >
               <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 999,
-                  background: COLOR_HEX[v.color],
-                }}
+                style={{ width: 8, height: 8, borderRadius: 999, background: COLOR_HEX[swatch] }}
               />
-              {COLOR_LABEL[v.color]}
+              {COLOR_LABEL[swatch]}
             </span>
-            {v.shu! > 0 && (
-              <Pill tone="cap" size="sm">
-                <Flame size={9} /> {formatShu(v.shu!)} SHU
+            {isPepper(v) ? (
+              v.shu > 0 && (
+                <Pill tone="cap" size="sm">
+                  <Flame size={9} /> {formatShu(v.shu)} SHU
+                </Pill>
+              )
+            ) : (
+              <Pill tone="moss" size="sm">
+                {v.growthHabit === 'determinate' ? 'Ákveðinn' : 'Óákveðinn'}
               </Pill>
             )}
           </div>
           <div className="text-[11px] text-cream-300/60 mt-1">
-            {v.flavor} · {v.matureHeightCm}cm fullorðin
+            {v.flavor} · {v.matureHeightCm}cm
+            {isTomato(v) ? ` · ${v.fruitShape.toLowerCase()} ${v.fruitWeightG}g` : ' fullorðin'}
           </div>
         </div>
       </div>
       {open && (
-        <div className="mt-3 pl-[60px] text-[12px] text-cream-300/80 leading-relaxed">
+        <div className="mt-3 sm:pl-[60px] text-[12px] text-cream-300/80 leading-relaxed">
           <div className="mb-1.5">
             <span className="text-cream-400/70">Uppruni:</span> {v.origin}
           </div>
-          <div className="mb-1.5">
+          <div className={isTomato(v) ? 'mb-3' : 'mb-1.5'}>
             <span className="text-cream-400/70">Spírar á:</span>{' '}
-            {v.daysToGerminate?.[0]}–{v.daysToGerminate?.[1]}d ·{' '}
+            {v.daysToGerminate[0]}–{v.daysToGerminate[1]}d ·{' '}
             <span className="text-cream-400/70">tilbúin á:</span>{' '}
-            {v.daysToHarvest?.[0]}–{v.daysToHarvest?.[1]}d
+            {v.daysToHarvest[0]}–{v.daysToHarvest[1]}d
           </div>
-          <div>{v.notes}</div>
+          {isTomato(v) ? <CareGuide variety={v} /> : <div>{v.notes}</div>}
         </div>
       )}
     </button>

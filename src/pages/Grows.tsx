@@ -6,7 +6,7 @@ import { ChevronRight, Plus } from 'lucide-react';
 import { Pill } from '@/components/ui/Pill';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { PhaseBar } from '@/components/ui/PhaseBar';
-import { Chili } from '@/components/Chili';
+import { PlantGlyph } from '@/components/PlantGlyph';
 import { Button } from '@/components/ui/Button';
 import { db } from '@/lib/db';
 import {
@@ -15,7 +15,6 @@ import {
   daysSince,
   getPhaseForDay,
 } from '@/lib/phases';
-import { chiliForVarietyName } from '@/lib/varieties';
 import { LOCATIONS } from '@/lib/locations';
 
 export function Grows() {
@@ -97,7 +96,7 @@ export function Grows() {
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(36,56,39,.55)')}
               >
                 <div style={{ position: 'absolute', right: -4, top: 0 }}>
-                  <Chili variety={chiliForVarietyName(variety)} size={88} tilt={8} />
+                  <PlantGlyph name={variety} size={88} tilt={8} />
                 </div>
                 <div className="flex gap-1.5 mb-1.5">
                   {loc && <Pill tone="moss" size="sm">{loc.label}</Pill>}
