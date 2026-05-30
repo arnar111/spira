@@ -140,6 +140,16 @@ export interface AppMeta {
   value: unknown;
 }
 
+export interface RosMessage {
+  id: string;
+  growId: string;
+  role: 'user' | 'ros';
+  content: string;
+  timestamp: number;
+  photoIds?: string[]; // local photo ids attached to a chat turn (vision)
+  pending?: boolean; // optimistic UI flag
+}
+
 class SpiraDB extends Dexie {
   grows!: Table<Grow, string>;
   plants!: Table<Plant, string>;
@@ -149,6 +159,7 @@ class SpiraDB extends Dexie {
   harvests!: Table<HarvestEntry, string>;
   varieties!: Table<VarietyPreset, string>;
   meta!: Table<AppMeta, string>;
+  rosMessages!: Table<RosMessage, string>;
 
   constructor() {
     super('spira');
@@ -161,6 +172,9 @@ class SpiraDB extends Dexie {
       harvests: 'id, growId, plantId, timestamp',
       varieties: 'id, commonName, category, isBuiltIn',
       meta: 'key',
+    });
+    this.version(2).stores({
+      rosMessages: 'id, growId, timestamp',
     });
   }
 }
