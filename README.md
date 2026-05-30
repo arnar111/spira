@@ -39,7 +39,7 @@ Spíra styður nú **tvo plöntuflokka**:
 
 ## Fasi 2 — Grow journal core
 
-- [ ] Bæta við plöntum eftir setup
+- [x] Bæta við plöntum eftir setup
 - [x] Daglegt log (vökva/næra/nóta/mynd)
 - [ ] Fasa-tracker með sjálfvirkum dagsetningum
 - [ ] Mynda-tímalína per plöntu
