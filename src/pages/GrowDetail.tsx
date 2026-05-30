@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -26,8 +26,13 @@ import {
   LogDataChips,
   LogThumbnail,
 } from '@/components/LogComposer';
-import { RosWindow } from '@/components/ros/RosWindow';
 import { RosAvatar } from '@/components/ros/RosAvatar';
+
+// Rós-glugginn dregur inn markdown-vélina (react-markdown) — hlöðum hann
+// aðeins þegar notandi opnar Rós, svo aðalbúntið haldist létt.
+const RosWindow = lazy(() =>
+  import('@/components/ros/RosWindow').then((m) => ({ default: m.RosWindow })),
+);
 import {
   db,
   newId,
@@ -93,6 +98,7 @@ export function GrowDetail() {
 
   const [openLog, setOpenLog] = useState(false);
   const [rosOpen, setRosOpen] = useState(false);
+  const [rosEverOpened, setRosEverOpened] = useState(false);
 
   if (!grow || !plants || !logs) return null;
 
@@ -175,7 +181,10 @@ export function GrowDetail() {
         </div>
         <button
           type="button"
-          onClick={() => setRosOpen(true)}
+          onClick={() => {
+            setRosEverOpened(true);
+            setRosOpen(true);
+          }}
           className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium text-cream-50 transition-colors"
           style={{
             background: 'rgba(194,106,77,.22)',
@@ -245,14 +254,18 @@ export function GrowDetail() {
         onClose={() => setOpenLog(false)}
       />
 
-      <RosWindow
-        grow={grow}
-        plants={plants}
-        logs={logs ?? []}
-        harvests={harvests ?? []}
-        open={rosOpen}
-        onClose={() => setRosOpen(false)}
-      />
+      {rosEverOpened && (
+        <Suspense fallback={null}>
+          <RosWindow
+            grow={grow}
+            plants={plants}
+            logs={logs ?? []}
+            harvests={harvests ?? []}
+            open={rosOpen}
+            onClose={() => setRosOpen(false)}
+          />
+        </Suspense>
+      )}
     </motion.div>
   );
 }
