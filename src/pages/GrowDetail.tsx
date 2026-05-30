@@ -26,6 +26,7 @@ import {
   LogDataChips,
   LogThumbnail,
 } from '@/components/LogComposer';
+import { AddPlantDialog } from '@/components/AddPlantDialog';
 import { RosAvatar } from '@/components/ros/RosAvatar';
 
 // Rós-glugginn dregur inn markdown-vélina (react-markdown) — hlöðum hann
@@ -99,6 +100,7 @@ export function GrowDetail() {
   const [openLog, setOpenLog] = useState(false);
   const [rosOpen, setRosOpen] = useState(false);
   const [rosEverOpened, setRosEverOpened] = useState(false);
+  const [openAddPlant, setOpenAddPlant] = useState(false);
 
   if (!grow || !plants || !logs) return null;
 
@@ -207,12 +209,19 @@ export function GrowDetail() {
           <h2 className="sp-display text-cream-50" style={{ fontSize: 20, fontWeight: 500 }}>
             Plöntur
           </h2>
-          <span className="text-[11px] text-cream-400/70">{plants.length} alls</span>
+          <Button size="sm" variant="primary" onClick={() => setOpenAddPlant(true)}>
+            <Plus size={14} /> Bæta við
+          </Button>
         </div>
         <div className="flex flex-col gap-2">
           {plants.map((p) => (
             <PlantRow key={p.id} plant={p} day={day} />
           ))}
+          {plants.length === 0 && (
+            <div className="text-sm text-cream-300/60 border border-dashed border-moss-800/40 rounded-2xl p-5 text-center">
+              Engar plöntur í þessari ræktun enn. Smelltu „Bæta við".
+            </div>
+          )}
         </div>
       </section>
 
@@ -252,6 +261,12 @@ export function GrowDetail() {
         plants={plants}
         open={openLog}
         onClose={() => setOpenLog(false)}
+      />
+
+      <AddPlantDialog
+        grow={grow}
+        open={openAddPlant}
+        onClose={() => setOpenAddPlant(false)}
       />
 
       {rosEverOpened && (
