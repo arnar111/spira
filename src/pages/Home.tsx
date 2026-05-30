@@ -19,21 +19,26 @@ import {
   cycleProgress,
   daysSince,
   getPhaseForDay,
+  growStageDay,
 } from '@/lib/phases';
 
 interface DerivedGrow extends Grow {
   day: number;
+  stageDay: number;
   progress: number;
   phaseObj: (typeof PHASES)[number];
 }
 
-function deriveGrow(g: Grow): DerivedGrow {
+function deriveGrow(g: Grow, plants: Plant[]): DerivedGrow {
   const day = daysSince(g.startDate);
+  const gp = plants.filter((p) => p.growId === g.id);
+  const stageDay = growStageDay(g.startDate, gp);
   return {
     ...g,
     day,
-    progress: cycleProgress(day),
-    phaseObj: getPhaseForDay(day),
+    stageDay,
+    progress: cycleProgress(stageDay),
+    phaseObj: getPhaseForDay(stageDay),
   };
 }
 
@@ -43,7 +48,7 @@ export function Home() {
 
   if (grows === undefined || plants === undefined) return null;
 
-  const active = grows.filter((g) => !g.archived).map(deriveGrow);
+  const active = grows.filter((g) => !g.archived).map((g) => deriveGrow(g, plants));
   const archivedCount = grows.filter((g) => g.archived).length;
 
   return (
@@ -314,7 +319,7 @@ function GrowGlassCard({ grow, plants }: { grow: DerivedGrow; plants: Plant[] })
         {grow.location} · {plants.length} plöntur{dim ? ` · ${dim}` : ''}
       </div>
 
-      <PhaseBar phases={PHASES} currentDay={grow.day} totalDays={TOTAL_CYCLE_DAYS} showLabels={false} />
+      <PhaseBar phases={PHASES} currentDay={grow.stageDay} totalDays={TOTAL_CYCLE_DAYS} showLabels={false} />
 
       <div
         style={{
@@ -707,7 +712,7 @@ function DesktopGrowRow({ grow, plants }: { grow: DerivedGrow; plants: Plant[] }
       >
         <PhaseBar
           phases={PHASES}
-          currentDay={grow.day}
+          currentDay={grow.stageDay}
           totalDays={TOTAL_CYCLE_DAYS}
         />
       </div>
