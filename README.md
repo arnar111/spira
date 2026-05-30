@@ -30,10 +30,17 @@ Spíra styður nú **tvo plöntuflokka**:
 - [x] Welcome screen með Framer Motion animations
 - [x] Home screen með grow cards og empty state
 
-## Fasi 2 — Grow journal core (næst)
+## v1.1.0 — Interactive log + Rós (núverandi)
+
+- [x] **Gagnvirkt log** — skipti út „minnisblaðs"-skráningu fyrir týpur með reitum (vökva → ml/EC/pH, næring, umhverfi o.fl.) sem vistast í `LogEntry.data`
+- [x] **Myndir í skráningum** — taka/hlaða inn mynd beint í log; geymt local í IndexedDB (`db.photos`), birt sem smámynd
+- [x] **Rós — AI ræktunarhjálp** — sérstakur gluggi í hverri ræktun. Tvíþætt: (1) reglubundin vél (offline) sem reiknar áminningar um vökvun, næringu, klippingu, frjóvgun, gróðurljós og hvenær aldin eru tilbúin út frá dagbók + fasa + afbrigði; (2) spjall við Rós (Google Gemini gegnum Netlify function, með myndgreiningu)
+- [x] **Scroll-lás** — gluggar læsa nú skrun á síðunni á bak við (lagar riðl í iOS/PWA)
+
+## Fasi 2 — Grow journal core
 
 - [ ] Bæta við plöntum eftir setup
-- [ ] Daglegt log (vökva/næra/nóta/photo)
+- [x] Daglegt log (vökva/næra/nóta/mynd)
 - [ ] Fasa-tracker með sjálfvirkum dagsetningum
 - [ ] Mynda-tímalína per plöntu
 - [ ] Plant detail page

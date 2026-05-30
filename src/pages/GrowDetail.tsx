@@ -5,7 +5,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Archive,
-  ChevronRight,
   Droplet,
   Flame,
   Leaf,
@@ -20,7 +19,15 @@ import { Eyebrow } from '@/components/ui/Eyebrow';
 import { PhaseBar } from '@/components/ui/PhaseBar';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
 import { PlantGlyph } from '@/components/PlantGlyph';
+import {
+  LogComposer,
+  LogDataChips,
+  LogThumbnail,
+} from '@/components/LogComposer';
+import { RosWindow } from '@/components/ros/RosWindow';
+import { RosAvatar } from '@/components/ros/RosAvatar';
 import {
   db,
   newId,
@@ -29,6 +36,7 @@ import {
   type LogType,
   type Plant,
 } from '@/lib/db';
+import { usePhotoUrl } from '@/lib/photos';
 import {
   PHASES,
   TOTAL_CYCLE_DAYS,
@@ -44,7 +52,6 @@ import {
   varietyByName,
 } from '@/lib/varieties';
 import { LOCATIONS } from '@/lib/locations';
-import { cn } from '@/lib/cn';
 
 const PHASE_OPTIONS: { id: GrowPhase; label: string }[] = [
   { id: 'planning', label: 'Áætlun' },
@@ -85,6 +92,7 @@ export function GrowDetail() {
   );
 
   const [openLog, setOpenLog] = useState(false);
+  const [rosOpen, setRosOpen] = useState(false);
 
   if (!grow || !plants || !logs) return null;
 
@@ -165,6 +173,18 @@ export function GrowDetail() {
             ? ` · ${grow.spaceWidthCm}×${grow.spaceDepthCm} CM`
             : ''}
         </div>
+        <button
+          type="button"
+          onClick={() => setRosOpen(true)}
+          className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium text-cream-50 transition-colors"
+          style={{
+            background: 'rgba(194,106,77,.22)',
+            border: '1px solid rgba(194,106,77,.5)',
+          }}
+        >
+          <RosAvatar size={18} />
+          Spyrja Rós
+        </button>
       </div>
 
       <div className="grid grid-cols-3 gap-2 mt-4">
@@ -218,13 +238,21 @@ export function GrowDetail() {
         </button>
       )}
 
-      {openLog && grow && (
-        <LogDialog
-          growId={grow.id}
-          plants={plants}
-          onClose={() => setOpenLog(false)}
-        />
-      )}
+      <LogComposer
+        growId={grow.id}
+        plants={plants}
+        open={openLog}
+        onClose={() => setOpenLog(false)}
+      />
+
+      <RosWindow
+        grow={grow}
+        plants={plants}
+        logs={logs ?? []}
+        harvests={harvests ?? []}
+        open={rosOpen}
+        onClose={() => setRosOpen(false)}
+      />
     </motion.div>
   );
 }
@@ -327,6 +355,7 @@ function LogRow({ log, plants }: { log: LogEntry; plants: Plant[] }) {
   const Icon = meta?.icon ?? StickyNote;
   const plant = plants.find((p) => p.id === log.plantId);
   const date = new Date(log.timestamp);
+  const [viewerOpen, setViewerOpen] = useState(false);
   return (
     <div className="flex items-start gap-3 rounded-xl p-2.5 border bg-moss-900/30 border-moss-800/30">
       <div
@@ -349,123 +378,46 @@ function LogRow({ log, plants }: { log: LogEntry; plants: Plant[] }) {
             {date.toLocaleDateString('is-IS', { day: 'numeric', month: 'short' })}
           </span>
         </div>
+        <LogDataChips
+          type={log.type}
+          data={log.data as Record<string, unknown> | undefined}
+        />
         {log.note && <div className="text-[12px] text-cream-300/75 mt-0.5">{log.note}</div>}
+        {log.photoId && (
+          <>
+            <LogThumbnail photoId={log.photoId} onOpen={() => setViewerOpen(true)} />
+            <PhotoViewer
+              photoId={log.photoId}
+              open={viewerOpen}
+              onClose={() => setViewerOpen(false)}
+            />
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-function LogDialog({
-  growId,
-  plants,
+function PhotoViewer({
+  photoId,
+  open,
   onClose,
 }: {
-  growId: string;
-  plants: Plant[];
+  photoId: string;
+  open: boolean;
   onClose: () => void;
 }) {
-  const [type, setType] = useState<LogType>('water');
-  const [note, setNote] = useState('');
-  const [plantId, setPlantId] = useState<string>('all');
-  const [busy, setBusy] = useState(false);
-
-  async function submit() {
-    setBusy(true);
-    await db.logs.add({
-      id: newId(),
-      growId,
-      plantId: plantId === 'all' ? undefined : plantId,
-      timestamp: Date.now(),
-      type,
-      note: note.trim() || undefined,
-    });
-    setBusy(false);
-    onClose();
-  }
-
+  const url = usePhotoUrl(open ? photoId : undefined);
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3"
-      style={{ background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(4px)' }}
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-2xl p-5"
-        style={{
-          background: 'rgba(36,56,39,.96)',
-          border: '1px solid rgba(64,104,67,.55)',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <Eyebrow>Ný skráning</Eyebrow>
-        <h3
-          className="sp-display"
-          style={{
-            fontSize: 22,
-            color: 'var(--cream-50)',
-            fontWeight: 500,
-            marginTop: 4,
-            marginBottom: 14,
-          }}
-        >
-          Skrá viðburð
-        </h3>
-
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          {LOG_TYPES.map((t) => {
-            const Icon = t.icon;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setType(t.id)}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors',
-                  type === t.id
-                    ? 'bg-moss-500 border-moss-400 text-cream-50'
-                    : 'bg-moss-900/40 border-moss-800/40 text-cream-300 hover:border-moss-600',
-                )}
-              >
-                <Icon size={12} />
-                {t.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <label className="text-xs text-cream-300/80 mb-1.5 block">Planta</label>
-        <select
-          value={plantId}
-          onChange={(e) => setPlantId(e.target.value)}
-          className="w-full mb-3 rounded-xl bg-moss-950/60 border border-moss-800 px-3 py-2.5 text-sm text-cream-100 outline-none focus:border-moss-400"
-        >
-          <option value="all">Öll ræktunin</option>
-          {plants.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.nickname || p.variety}
-            </option>
-          ))}
-        </select>
-
-        <label className="text-xs text-cream-300/80 mb-1.5 block">Athugasemd</label>
-        <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          rows={3}
-          placeholder="t.d. 200ml vatn, EC 1.4, blöð heilbrigð"
-          className="w-full rounded-xl bg-moss-950/60 border border-moss-800 px-3 py-2 text-sm text-cream-100 outline-none focus:border-moss-400"
-        />
-
-        <div className="mt-5 flex gap-2 justify-end">
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            Hætta við
-          </Button>
-          <Button size="sm" disabled={busy} onClick={submit}>
-            Vista
-            <ChevronRight size={14} />
-          </Button>
-        </div>
+    <Modal open={open} onClose={onClose}>
+      <div className="rounded-xl overflow-hidden bg-moss-950/60 border border-moss-800/50">
+        {url ? (
+          <img src={url} alt="Skráð mynd" className="w-full h-auto object-contain" />
+        ) : (
+          <div className="aspect-square w-full" />
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }
+
