@@ -40,7 +40,7 @@ export default async (req: Request, _context: Context) => {
     return json({ error: 'invalid_json', message: 'Ógild beiðni.' }, 400);
   }
 
-  const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
   const KEY = process.env.GEMINI_API_KEY;
   if (!KEY) {
     return json({ error: 'no_key', message: 'Rós er ekki uppsett (GEMINI_API_KEY vantar).' }, 500);
