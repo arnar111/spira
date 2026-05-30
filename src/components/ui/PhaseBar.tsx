@@ -23,6 +23,12 @@ export function PhaseBar({
   showLabels = true,
 }: PhaseBarProps) {
   const clampedDay = Math.max(0, Math.min(currentDay, totalDays));
+  const progress = totalDays > 0 ? clampedDay / totalDays : 0;
+  // Active phase = the last phase whose startDay we've reached.
+  const activeIndex = phases.reduce(
+    (acc, p, i) => (clampedDay >= p.startDay ? i : acc),
+    0,
+  );
   return (
     <div style={{ position: 'relative', ...style }}>
       <div
@@ -39,6 +45,8 @@ export function PhaseBar({
           const next = phases[i + 1]?.startDay ?? totalDays;
           const left = (p.startDay / totalDays) * 100;
           const w = ((next - p.startDay) / totalDays) * 100;
+          const isActive = i === activeIndex;
+          const isPast = i < activeIndex;
           return (
             <div
               key={p.name}
@@ -49,26 +57,44 @@ export function PhaseBar({
                 top: 0,
                 bottom: 0,
                 background: p.color,
-                opacity: 0.55,
+                // Past + active phases read brighter; upcoming phases stay muted.
+                opacity: isActive ? 0.95 : isPast ? 0.7 : 0.28,
                 borderRight:
                   i < phases.length - 1 ? '1px solid rgba(18,31,20,.6)' : 'none',
               }}
             />
           );
         })}
+        {/* Progress fill: advances proportionally to currentDay / totalDays. */}
         <div
           style={{
             position: 'absolute',
-            left: `${(clampedDay / totalDays) * 100}%`,
-            top: -4,
-            bottom: -4,
-            width: 3,
-            background: 'var(--cream-50)',
-            borderRadius: 2,
-            boxShadow: '0 0 8px rgba(253,251,246,.5)',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: `${progress * 100}%`,
+            background:
+              'linear-gradient(90deg, rgba(253,251,246,.12), rgba(253,251,246,.28))',
+            borderRight: '1px solid rgba(253,251,246,.35)',
+            transition: 'width .35s ease',
           }}
         />
       </div>
+      {/* Marker sits above the (clipped) track so its glow stays visible. */}
+      <div
+        style={{
+          position: 'absolute',
+          left: `${progress * 100}%`,
+          top: -2,
+          height: 12,
+          width: 3,
+          marginLeft: -1.5,
+          background: 'var(--cream-50)',
+          borderRadius: 2,
+          boxShadow: '0 0 8px rgba(253,251,246,.5)',
+          transition: 'left .35s ease',
+        }}
+      />
       {showLabels && (
         <div
           style={{
