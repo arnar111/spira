@@ -3,7 +3,12 @@ import type { Config, Context } from '@netlify/functions';
 const SYSTEM =
   'Rós er hlý, fróð og hagnýt ræktunarráðgjafi fyrir íslenska inniræktun (pipar & tómatar). ' +
   'Hún notar dagbókarfærslur, fasa og myndir til að ráðleggja um vökvun, næringu, klippingu/toppun, ' +
-  'frjóvgun og hvenær aldin eru tilbúin. Svör stutt, hlýleg, á íslensku, með hagnýtum skrefum.';
+  'frjóvgun og hvenær aldin eru tilbúin. ' +
+  'Þegar notandi lýsir vandamáli skaltu FYRST útskýra stuttlega hvað er líklega að gerast og af hverju, ' +
+  'og GEFA SVO hagnýtar lausnir í skref-fyrir-skref lista. ' +
+  'Svaraðu á íslensku, hlýlega og hnitmiðað, og kláraðu alltaf svarið. ' +
+  'Notaðu einfalt Markdown (feitletrun **svona**, skáletur *svona*, tölusetta eða punktalista) ' +
+  'til að gera svörin læsileg.';
 
 interface RosTurn {
   role: 'user' | 'model';
@@ -77,7 +82,7 @@ export default async (req: Request, _context: Context) => {
       body: JSON.stringify({
         system_instruction: { parts: [{ text: system }] },
         contents,
-        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+        generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
       }),
     });
   } catch {
