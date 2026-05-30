@@ -50,9 +50,6 @@ import remarkGfm from 'remark-gfm';
 
 interface RosWindowProps {
   grow: Grow;
-  plants: Plant[];
-  logs: LogEntry[];
-  harvests: HarvestEntry[];
   open: boolean;
   onClose: () => void;
 }
@@ -104,15 +101,21 @@ function dueLabel(dueInDays?: number | null): string | null {
   return 'komið yfir tíma';
 }
 
-export function RosWindow({
-  grow,
-  plants,
-  logs,
-  harvests,
-  open,
-  onClose,
-}: RosWindowProps): JSX.Element {
+export function RosWindow({ grow, open, onClose }: RosWindowProps): JSX.Element {
   const [tab, setTab] = useState(0);
+
+  // Lifandi gögn beint úr gagnagrunni — „Ráð" (og samhengi spjallsins) uppfærast
+  // um leið og log er skráð. RosWindow helst tengdur þótt glugginn sé lokaður,
+  // svo Dexie-áskriftin er alltaf virk og engin endurhleðsla þarf.
+  const plants =
+    useLiveQuery(() => db.plants.where('growId').equals(grow.id).toArray(), [grow.id]) ?? [];
+  const logs =
+    useLiveQuery(
+      () => db.logs.where('growId').equals(grow.id).reverse().sortBy('timestamp'),
+      [grow.id],
+    ) ?? [];
+  const harvests =
+    useLiveQuery(() => db.harvests.where('growId').equals(grow.id).toArray(), [grow.id]) ?? [];
 
   return (
     <Modal open={open} onClose={onClose} fullHeight size="lg">

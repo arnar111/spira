@@ -271,14 +271,7 @@ export function GrowDetail() {
 
       {rosEverOpened && (
         <Suspense fallback={null}>
-          <RosWindow
-            grow={grow}
-            plants={plants}
-            logs={logs ?? []}
-            harvests={harvests ?? []}
-            open={rosOpen}
-            onClose={() => setRosOpen(false)}
-          />
+          <RosWindow grow={grow} open={rosOpen} onClose={() => setRosOpen(false)} />
         </Suspense>
       )}
     </motion.div>
