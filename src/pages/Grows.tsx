@@ -14,6 +14,7 @@ import {
   TOTAL_CYCLE_DAYS,
   daysSince,
   getPhaseForDay,
+  growStageDay,
 } from '@/lib/phases';
 import { LOCATIONS } from '@/lib/locations';
 
@@ -69,7 +70,8 @@ export function Grows() {
         {sorted.map((g) => {
           const gp = plants.filter((p) => p.growId === g.id);
           const day = daysSince(g.startDate);
-          const phase = getPhaseForDay(day);
+          const stageDay = growStageDay(g.startDate, gp);
+          const phase = getPhaseForDay(stageDay);
           const variety = gp[0]?.variety ?? '';
           const loc = LOCATIONS.find((l) => l.key === g.locationKey);
           return (
@@ -114,7 +116,7 @@ export function Grows() {
                 </div>
                 <PhaseBar
                   phases={PHASES}
-                  currentDay={day}
+                  currentDay={stageDay}
                   totalDays={TOTAL_CYCLE_DAYS}
                   showLabels={false}
                 />
