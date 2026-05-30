@@ -65,6 +65,27 @@ function lastLogTs(
   return latest;
 }
 
+/**
+ * Nýjasti log-tímastimpill af tiltekinni gerð sem á við TILTEKNA plöntu:
+ * annaðhvort skráð á plöntuna sjálfa eða á ræktunina í heild (plantId óskilgreint).
+ * Aðgerðir eru oft skráðar fyrir „Öll ræktunin", svo plöntustigs-áminningar
+ * (frjóvgun, toppun) verða að telja slíkar skráningar með.
+ */
+function lastLogForPlant(
+  logs: LogEntry[],
+  type: LogEntry['type'],
+  plantId: string,
+): number | undefined {
+  let latest: number | undefined;
+  for (const l of logs) {
+    if (l.type !== type) continue;
+    // Skráning á ræktunina (engin plantId) gildir fyrir allar plöntur hennar.
+    if (l.plantId !== undefined && l.plantId !== plantId) continue;
+    if (latest === undefined || l.timestamp > latest) latest = l.timestamp;
+  }
+  return latest;
+}
+
 /** Er einhver virk planta í þessu grow í tilteknum fasa? */
 function plantsInPhase(plants: Plant[], phase: GrowPhase): Plant[] {
   return plants.filter((p) => !p.archived && p.currentPhase === phase);
@@ -235,7 +256,7 @@ export function computeInsights(input: EngineInput): RosInsight[] {
       if (p.category !== 'pepper') continue; // Tómatur/dvergur: sleppa toppun.
       const variety = plantVariety(p);
       if (variety && isTomato(variety)) continue;
-      const alreadyTopped = lastLogTs(logs, 'top', p.id) !== undefined;
+      const alreadyTopped = lastLogForPlant(logs, 'top', p.id) !== undefined;
       if (alreadyTopped) continue;
       const ageDays = daysSince(now, plantStartTs(p));
       // Skynsamlegur gluggi: nógu gömul til að þola toppun en ekki of langt í veg.
@@ -254,12 +275,34 @@ export function computeInsights(input: EngineInput): RosInsight[] {
   }
 
   // — FRJÓVGUN —
-  // Plöntur í blómgun innandyra þurfa handfrjóvgun (engar býflugur).
+  // Plöntur í blómgun innandyra þurfa handfrjóvgun (engar býflugur). Hafi nýlega
+  // verið frjóvgað (innan tíðni) -> upplýsing í stað áminningar.
   {
     const flowering = plantsInPhase(activePlants, 'flowering');
     for (const p of flowering) {
       const variety = plantVariety(p);
       const tomato = variety ? isTomato(variety) : p.category === 'tomato';
+      // Handfrjóvgun: tómatur ~3 daga fresti, paprika ~2 (vægur hristingur).
+      const cadence = tomato ? 3 : 2;
+      const last = lastLogForPlant(logs, 'pollinate', p.id);
+      const since = last !== undefined ? daysSince(now, last) : undefined;
+
+      if (since !== undefined && since < cadence) {
+        // Nýlega frjóvgað — Rós veit það, engin „gerðu þetta núna" áminning.
+        const left = cadence - since;
+        insights.push({
+          id: `pollinate-${p.id}`,
+          kind: 'pollinate',
+          severity: 'info',
+          title: `${plantLabel(p)} nýlega frjóvguð`,
+          detail: `Síðast frjóvgað ${since === 0 ? 'í dag' : `fyrir ${since} ${dayWord(since)}`}. Næsta handfrjóvgun eftir ~${left} ${dayWord(left)}.`,
+          dueInDays: left,
+          plantId: p.id,
+        });
+        continue;
+      }
+
+      const dueInDays = since !== undefined ? cadence - since : 0;
       if (tomato) {
         // Tómatur: buzz-pollination. Steinunn-leiðbeiningar nefna rafmagnstannbursta.
         const steinunn = (p.varietyId ?? '') === 'tomato-steinunn';
@@ -271,6 +314,7 @@ export function computeInsights(input: EngineInput): RosInsight[] {
           detail: steinunn
             ? 'Steinunn í blómgun: frjóvga með rafmagnstannbursta á 2–3 daga fresti (snertu blaðstöngul/bakhlið blóms í 2–3 sek). Annars detta blómin án aldins.'
             : 'Tómatur í blómgun innandyra: frjóvga með rafmagnstannbursta eða mildum hristingi á 2–3 daga fresti. Annars detta blómin án aldins.',
+          dueInDays,
           plantId: p.id,
         });
       } else {
@@ -282,6 +326,7 @@ export function computeInsights(input: EngineInput): RosInsight[] {
           title: `Hjálpaðu ${plantLabel(p)} að frjóvgast`,
           detail:
             'Paprika er að mestu sjálffrjóvgandi, en mildur gustur eða létt hristing á plöntunni daglega bætir aldinsetningu innandyra.',
+          dueInDays,
           plantId: p.id,
         });
       }
