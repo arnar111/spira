@@ -675,12 +675,12 @@ function dayWord(n: number): string {
 }
 
 /** Stutt merki fyrir plöntu — gælunafn ef til, annars afbrigðisnafn. */
-function plantLabel(p: Plant): string {
+export function plantLabel(p: Plant): string {
   return p.nickname?.trim() || p.variety;
 }
 
 /** Íslenskt heiti fasa fyrir samhengistexta. */
-function phaseLabel(phase: GrowPhase): string {
+export function phaseLabel(phase: GrowPhase): string {
   const map: Record<GrowPhase, string> = {
     planning: 'skipulag',
     germinating: 'spírun',
