@@ -55,6 +55,7 @@ import {
   COLOR_LABEL,
   formatShu,
   isPepper,
+  isStrawberry,
   isTomato,
   varietyByName,
 } from '@/lib/varieties';
@@ -309,7 +310,7 @@ function PlantRow({ plant, day }: { plant: Plant; day: number }) {
 
   const swatch = isPepper(variety)
     ? variety.color
-    : isTomato(variety)
+    : isTomato(variety) || isStrawberry(variety)
       ? variety.fruitColor
       : undefined;
   return (
@@ -348,6 +349,11 @@ function PlantRow({ plant, day }: { plant: Plant; day: number }) {
           {isTomato(variety) && (
             <span className="text-[9px] uppercase tracking-wider text-terra-300">
               {variety.fruitWeightG}g · {variety.fruitShape.toLowerCase()}
+            </span>
+          )}
+          {isStrawberry(variety) && (
+            <span className="text-[9px] uppercase tracking-wider text-capsicum-400">
+              {variety.fruitWeightG}g ber
             </span>
           )}
         </div>

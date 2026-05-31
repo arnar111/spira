@@ -1,5 +1,6 @@
 import type { ChiliVariety } from '@/components/Chili';
 import type { TomatoGlyph } from '@/components/Tomato';
+import type { StrawberryGlyph } from '@/components/Strawberry';
 import type { VarietyPreset } from './db';
 import type { LocationKey } from './locations';
 
@@ -104,8 +105,11 @@ export interface CareTarget {
   hint?: string;
 }
 
-/** Structured grow guide distilled from the variety's care sheet. */
-export interface TomatoCare {
+/**
+ * Structured grow guide distilled from a variety's care sheet. Crop-agnostic —
+ * tomatoes, strawberries and (later) other fruiting crops all share this shape.
+ */
+export interface CropCare {
   summary: string;
   targets: CareTarget[];
   watering: string[];
@@ -116,6 +120,9 @@ export interface TomatoCare {
   concern: string[];
 }
 
+/** Back-compat alias — the care guide was tomato-only before strawberries. */
+export type TomatoCare = CropCare;
+
 export interface TomatoVariety extends VarietyCommon {
   category: 'tomato';
   glyph: TomatoGlyph;
@@ -124,10 +131,24 @@ export interface TomatoVariety extends VarietyCommon {
   growthHabit: 'determinate' | 'indeterminate';
   fruitWeightG: number;
   fruitShape: string;
-  care: TomatoCare;
+  care: CropCare;
 }
 
-export type Variety = PepperVariety | TomatoVariety;
+/** Flowering/fruiting rhythm — drives pollination + de-blossom advice. */
+export type StrawberryType = 'day-neutral' | 'everbearing' | 'june-bearing' | 'alpine';
+
+export interface StrawberryVariety extends VarietyCommon {
+  category: 'strawberry';
+  glyph: StrawberryGlyph;
+  /** Reuses the shared colour palette for the swatch dot. */
+  fruitColor: PepperColor;
+  berryType: StrawberryType;
+  /** Approx. ripe berry weight in grams (alpine berries are tiny). */
+  fruitWeightG: number;
+  care: CropCare;
+}
+
+export type Variety = PepperVariety | TomatoVariety | StrawberryVariety;
 
 /** Back-compat alias — most of the app was written before tomatoes existed. */
 export type VarietyWithChili = PepperVariety;
@@ -138,6 +159,15 @@ export function isPepper(v?: Variety): v is PepperVariety {
 
 export function isTomato(v?: Variety): v is TomatoVariety {
   return v?.category === 'tomato';
+}
+
+export function isStrawberry(v?: Variety): v is StrawberryVariety {
+  return v?.category === 'strawberry';
+}
+
+/** Any variety that carries a structured care guide (tomato or strawberry). */
+export function hasCare(v?: Variety): v is TomatoVariety | StrawberryVariety {
+  return isTomato(v) || isStrawberry(v);
 }
 
 interface VInput {
@@ -952,7 +982,221 @@ const STEINUNN: TomatoVariety = {
   },
 };
 
-export const BUILT_IN_VARIETIES: Variety[] = [...PEPPERS, STEINUNN];
+/**
+ * Day-neutral strawberry care — distilled from the Icelandic indoor-strawberry
+ * guide. Day-neutrals flower on a temperature cue (not photoperiod), so they
+ * fruit year-round indoors under LED, which is why they're the recommended type
+ * for Iceland. The summary is variety-specific; everything else is shared.
+ */
+function dayNeutralCare(summary: string): CropCare {
+  return {
+    summary,
+    targets: [
+      { label: 'Ljós (vöxtur)', value: 'LED 16–18 klst', hint: 'Dagshlutlaust yrki — ljóslota stýrir vexti, ekki blómgun' },
+      { label: 'Ljós (aldin)', value: 'LED 12–14 klst · PPFD 250–400', hint: 'Of mikið ljós (>500 PPFD) brennir blöðin' },
+      { label: 'Hiti', value: 'Dagur 18–24°C · Nótt 12–18°C', hint: 'Yfir 27°C fella blómin frjókorn' },
+      { label: 'Raki', value: '60–70% á aldinfasa', hint: 'Yfir 70% → grámygla (botrytis)' },
+      { label: 'Sýrustig (pH)', value: '5,8–6,2', hint: 'Næringarlæsing utan 5,5–6,5' },
+      { label: 'Leiðni (EC)', value: '1,4–2,0 mS/cm', hint: 'Veg 1,2–1,5 · aldin 1,5–2,0' },
+      { label: 'Áburður', value: 'Lágt N, hátt K', hint: 'NPK-hlutfall ~1-0,5-2 á aldinfasa' },
+      { label: 'Króna', value: 'Í yfirborði moldar', hint: 'Of djúpt → krónufúi; of grunnt → rætur þorna' },
+    ],
+    watering: [
+      'Vökvaðu þegar efsti 1 cm moldar er þurr — jarðarber þola hvorki þurrk né vatnselg.',
+      'Haltu jöfnum raka á aldinfasa; sveiflur gefa lítil, bragðdauf ber.',
+      'Vökvaðu beint á moldina, ekki á blöð eða ber — bleyta á aldinum kallar á grámyglu.',
+      'Í vatnsrækt: skiptu um næringarlausn á 1–2 vikna fresti og fylltu á daglega (~20–30% upptaka).',
+    ],
+    pollination: [
+      'Hvert blóm hefur 200–400 frævur — allar þurfa frjókorn, annars verður berið skakkt eða „kattarandlit".',
+      'Strjúktu blómhjartað mjúklega með pensli eða bómullarpinna á 1–2 daga fresti meðan blómin standa.',
+      'Láttu litla viftu blása yfir plönturnar á ljóstíma — stöðug hreyfing dreifir frjókornum.',
+      'Frjóvgaðu um miðjan dag þegar blómin eru full opin; best við 18–24°C og 60–70% raka.',
+    ],
+    fertilizer: [
+      { stage: 'Vöxtur (veg)', npk: '1-0,5-1,5 (t.d. 8-4-12)', freq: 'Á 1–2 vikna fresti', note: 'Hóflegt N meðan blöð byggjast upp' },
+      { stage: 'Blómgun', npk: '1-0,5-2', freq: 'Á 1–2 vikna fresti', note: 'Auka kalí (K) fyrir blóm og aldin' },
+      { stage: 'Aldinþroski', npk: 'Hátt K (~250–300 ppm K)', freq: 'Vikulega, þynnt', note: 'Kalí gefur sætari, þéttari ber' },
+    ],
+    troubleshooting: [
+      { problem: 'Lítil, skökk ber', cause: 'Ófullnægjandi frjóvgun', fix: 'Strjúktu blómin daglega með pensli og bættu loftflæði' },
+      { problem: 'Grá mygla á blómum eða berjum', cause: 'Raki yfir 70% og kyrrt loft', fix: 'Lækkaðu raka undir 70%, auktu loftflæði, fjarlægðu sýkt ber' },
+      { problem: 'Engin blóm', cause: 'Of mikið köfnunarefni eða of lítil birta', fix: 'Minnka N, auka ljós (PPFD 250+)' },
+      { problem: 'Bragðdauf eða súr ber', cause: 'Of lítil birta eða ofvökvun', fix: 'Haltu PPFD ≥250 á aldinfasa, leyfðu moldinni að þorna örlítið' },
+      { problem: 'Brúnir blaðjaðrar', cause: 'Lágur raki eða of há leiðni (EC)', fix: 'Auka raka, athuga EC' },
+      { problem: 'Köngulóarmítlar (fínn vefur undir blöðum)', cause: 'Hlýtt og þurrt (<60% raki)', fix: 'Haltu raka yfir 60%, úðaðu með neem' },
+    ],
+    normal: [
+      'Plantan rekur út renglur (rennur) — eðlilegt; klíptu þær af til að beina orku í ber.',
+      'Elstu blöðin gulna og deyja smám saman — fjarlægðu þau.',
+      'Fyrstu berin geta verið smá; uppskeran stækkar þegar plantan styrkist.',
+    ],
+    concern: [
+      'Króna verður mjúk og brún — krónufúi af ofvökvun eða lélegu frárennsli.',
+      'Blóm visna og detta í hita — yfir 27°C fellir frjókorn.',
+      'Hvít, duftkennd áfelling á blöðum — mjöldögg; bættu loftflæði.',
+    ],
+  };
+}
+
+/** Alpine (Fragaria vesca) care — tolerates lower light, makes no runners. */
+const ALPINE_CARE: CropCare = {
+  ...dayNeutralCare(
+    'Villt skógarjarðarber (Fragaria vesca). Smá, ákaflega bragðmikil ber í sífellu. Þolir minni birtu en stóru yrkin og myndar engar renglur — tilvalið á gluggakistu.',
+  ),
+  targets: [
+    { label: 'Ljós', value: 'LED 12–16 klst', hint: 'Þolir minni birtu en stór yrki — hentar gluggakistu' },
+    { label: 'Hiti', value: 'Dagur 18–24°C · Nótt 12–18°C', hint: 'Harðgert — þolir kaldari nætur' },
+    { label: 'Raki', value: '60–70%', hint: 'Yfir 70% → grámygla' },
+    { label: 'Sýrustig (pH)', value: '5,8–6,2', hint: 'Létt súrt' },
+    { label: 'Áburður', value: 'Vægt, hátt K', hint: 'Þarf minna en stóru yrkin' },
+    { label: 'Króna', value: 'Í yfirborði moldar', hint: 'Fjölgað með skiptingu krónu, ekki renglum' },
+  ],
+  normal: [
+    'Myndar engar renglur — fjölgað með því að skipta krónunni.',
+    'Berin eru smá (1–2 g) en sætari og ilmmeiri en stór yrki.',
+    'Elstu blöðin gulna með aldri — fjarlægðu þau.',
+  ],
+};
+
+interface SInput {
+  id: string;
+  commonName: string;
+  glyph: StrawberryGlyph;
+  berryType: StrawberryType;
+  fruitColor: PepperColor;
+  fruitWeightG: number;
+  flavor: string;
+  origin: string;
+  daysToGerminate: [number, number];
+  daysToHarvest: [number, number];
+  notes: string;
+  matureHeightCm: number;
+  suitableLocations: LocationKey[];
+  care: CropCare;
+  scientificName?: string;
+}
+
+function s(input: SInput): StrawberryVariety {
+  return {
+    id: input.id,
+    commonName: input.commonName,
+    scientificName: input.scientificName ?? 'Fragaria × ananassa',
+    category: 'strawberry',
+    glyph: input.glyph,
+    berryType: input.berryType,
+    fruitColor: input.fruitColor,
+    fruitWeightG: input.fruitWeightG,
+    flavor: input.flavor,
+    origin: input.origin,
+    daysToGerminate: input.daysToGerminate,
+    daysToHarvest: input.daysToHarvest,
+    notes: input.notes,
+    isBuiltIn: true,
+    matureHeightCm: input.matureHeightCm,
+    suitableLocations: input.suitableLocations,
+    care: input.care,
+  };
+}
+
+const STRAWBERRIES: StrawberryVariety[] = [
+  s({
+    id: 'strawberry-albion',
+    commonName: 'Albion',
+    glyph: 'classic',
+    berryType: 'day-neutral',
+    fruitColor: 'red',
+    fruitWeightG: 25,
+    flavor: 'Sætt, ríkt — viðmiðunaryrki í gróðurhúsum',
+    origin: 'Kalifornía (UC Davis)',
+    daysToGerminate: [14, 28],
+    daysToHarvest: [56, 84],
+    notes:
+      'Dagshlutlaust stóryrki sem ber stór, þétt ber nánast allt árið undir LED. Sjúkdómsþolið og afkastamikið — besta byrjunaryrkið innandyra.',
+    matureHeightCm: 30,
+    suitableLocations: ['window', 'tent', 'diy'],
+    care: dayNeutralCare(
+      'Dagshlutlaust (day-neutral) stóryrki. Stór, þétt og sæt ber í sífellu undir LED. Sjúkdómsþolið og áreiðanlegt — viðmiðunaryrki fyrir inniræktun á Íslandi.',
+    ),
+  }),
+  s({
+    id: 'strawberry-seascape',
+    commonName: 'Seascape',
+    glyph: 'classic',
+    berryType: 'day-neutral',
+    fruitColor: 'red',
+    fruitWeightG: 22,
+    flavor: 'Sætt og ilmandi',
+    origin: 'Kalifornía',
+    daysToGerminate: [14, 28],
+    daysToHarvest: [56, 84],
+    notes:
+      'Dagshlutlaust yrki, snemmbært og gjöfult. Myndar góðar renglur og hentar vel í vatnsrækt.',
+    matureHeightCm: 28,
+    suitableLocations: ['window', 'tent', 'diy'],
+    care: dayNeutralCare(
+      'Dagshlutlaust yrki — snemmbært, ilmandi og gjöfult. Gefur góðar renglur og þrífst vel í vatnsrækt jafnt sem mold.',
+    ),
+  }),
+  s({
+    id: 'strawberry-san-andreas',
+    commonName: 'San Andreas',
+    glyph: 'classic',
+    berryType: 'day-neutral',
+    fruitColor: 'red',
+    fruitWeightG: 28,
+    flavor: 'Frábært bragð, stór ber',
+    origin: 'Kalifornía',
+    daysToGerminate: [14, 28],
+    daysToHarvest: [56, 84],
+    notes:
+      'Arftaki Albion — stærri og enn þéttari ber. Mjög sjúkdómsþolið og gjöfult dagshlutlaust yrki.',
+    matureHeightCm: 30,
+    suitableLocations: ['window', 'tent', 'diy'],
+    care: dayNeutralCare(
+      'Dagshlutlaust yrki — arftaki Albion með stærri, mjög þétt ber og frábært bragð. Sjúkdómsþolið og afkastamikið.',
+    ),
+  }),
+  s({
+    id: 'strawberry-monterey',
+    commonName: 'Monterey',
+    glyph: 'classic',
+    berryType: 'day-neutral',
+    fruitColor: 'red',
+    fruitWeightG: 26,
+    flavor: 'Sætt með mildri sýru',
+    origin: 'Kalifornía',
+    daysToGerminate: [14, 28],
+    daysToHarvest: [56, 84],
+    notes:
+      'Dagshlutlaust yrki með langt geymsluþol og mikla uppskeru. Vinsælt í atvinnuræktun.',
+    matureHeightCm: 30,
+    suitableLocations: ['window', 'tent', 'diy'],
+    care: dayNeutralCare(
+      'Dagshlutlaust yrki — sætt með mildri sýru, langt geymsluþol og mikil uppskera. Vinsælt í atvinnuræktun.',
+    ),
+  }),
+  s({
+    id: 'strawberry-alexandria',
+    commonName: 'Alexandria',
+    scientificName: 'Fragaria vesca',
+    glyph: 'alpine',
+    berryType: 'alpine',
+    fruitColor: 'red',
+    fruitWeightG: 2,
+    flavor: 'Ákaflega ilmandi, sæt smá ber',
+    origin: 'Evrópa — alpa-/skógarjarðarber',
+    daysToGerminate: [14, 28],
+    daysToHarvest: [84, 120],
+    notes:
+      'Villt skógarjarðarber — smá en ákaflega bragðmikil ber í sífellu. Myndar engar renglur, þolir minni birtu og hentar fullkomlega á gluggakistu.',
+    matureHeightCm: 20,
+    suitableLocations: ['window', 'tent', 'diy'],
+    care: ALPINE_CARE,
+  }),
+];
+
+export const BUILT_IN_VARIETIES: Variety[] = [...PEPPERS, STEINUNN, ...STRAWBERRIES];
 
 export function chiliForVarietyId(id?: string): ChiliVariety {
   if (!id) return 'jalapeno';

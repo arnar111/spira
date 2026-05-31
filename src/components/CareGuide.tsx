@@ -8,13 +8,14 @@ import {
   Target,
   Wind,
 } from 'lucide-react';
-import type { TomatoVariety } from '@/lib/varieties';
+import type { StrawberryVariety, TomatoVariety } from '@/lib/varieties';
 
 /**
- * Renders a tomato variety's structured care guide — targets, watering,
+ * Renders a crop variety's structured care guide — targets, watering,
  * pollination, feeding schedule and troubleshooting — distilled from its sheet.
+ * Works for any variety that carries a `care` block (tomatoes, strawberries).
  */
-export function CareGuide({ variety }: { variety: TomatoVariety }) {
+export function CareGuide({ variety }: { variety: TomatoVariety | StrawberryVariety }) {
   const c = variety.care;
   return (
     <div className="flex flex-col gap-4">

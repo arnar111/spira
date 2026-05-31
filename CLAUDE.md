@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Spíra is a **local-first grow journal** for indoor growing (peppers and tomatoes), built as a React PWA that works on mobile and desktop. The UI and all content strings are in **Icelandic** — preserve that when editing text. It is built for the Icelandic climate (e.g. the Reykjavík daylight calendar that drives grow-light recommendations), but the data model is deliberately category-extensible (`PlantCategory` covers herbs, leafy, fruit, houseplants, etc.).
+Spíra is a **local-first grow journal** for indoor growing (peppers, tomatoes and strawberries), built as a React PWA that works on mobile and desktop. The UI and all content strings are in **Icelandic** — preserve that when editing text. It is built for the Icelandic climate (e.g. the Reykjavík daylight calendar that drives grow-light recommendations), but the data model is deliberately category-extensible (`PlantCategory` covers herbs, leafy, fruit, houseplants, etc.).
 
 ## Commands
 
@@ -77,7 +77,11 @@ Code `123` is special everywhere: `Login.tsx` seeds a rich ghost dataset (`seedD
 
 - `phases.ts` — the grow-cycle phase timeline (`PHASES`, `TOTAL_CYCLE_DAYS = 140`) and day/progress helpers. Note the phase *display* timeline here is pepper-tuned and distinct from the broader `GrowPhase` enum in `db.ts`.
 - `daylight.ts` — Reykjavík monthly daylight table; `needsGrowLight()` / `daylightStatus()` drive the "do you need an LED this month" feature. Central to the tomato (Steinunn) guide.
-- `varieties.ts` — `BUILT_IN_VARIETIES` catalog (pepper SHU/color + the Icelandic `tomato-steinunn` dwarf). `locations.ts`, `account.ts`, `sync.ts`, `demo.ts`, `cn.ts` round out the lib.
+- `varieties.ts` — `BUILT_IN_VARIETIES` catalog (pepper SHU/color, the Icelandic `tomato-steinunn` dwarf, and day-neutral/alpine `strawberry-*` varieties). Tomatoes and strawberries carry a structured **`CropCare`** block (`TomatoCare` is a back-compat alias) rendered by `CareGuide.tsx`; use `isTomato`/`isStrawberry`/`hasCare` guards rather than checking `category` strings. Add a fruit glyph in `components/` and wire it into `PlantGlyph.tsx` when adding a crop. `locations.ts`, `account.ts`, `sync.ts`, `demo.ts`, `cn.ts` round out the lib.
+
+### `research/` — source material, not shipped code
+
+`research/` holds the Icelandic grow-guide research (tomato/potato/strawberry, HTML + PDF) that domain content like `daylight.ts`, the Steinunn guide, and `varieties.ts` is derived from. It is reference/provenance for the data model and a pointer to planned categories — it is not bundled into the app.
 
 ### Conventions
 

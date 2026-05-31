@@ -3,6 +3,7 @@ import Dexie, { type Table } from 'dexie';
 export type PlantCategory =
   | 'pepper'
   | 'tomato'
+  | 'strawberry'
   | 'herb'
   | 'leafy'
   | 'fruit'

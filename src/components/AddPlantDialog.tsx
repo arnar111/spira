@@ -41,7 +41,7 @@ const STARTED_FROM: { id: StartedFrom; label: string }[] = [
   { id: 'purchased', label: 'Keypt' },
 ];
 
-type CatFilter = 'all' | 'pepper' | 'tomato';
+type CatFilter = 'all' | 'pepper' | 'tomato' | 'strawberry';
 
 export function AddPlantDialog({
   grow,
@@ -124,6 +124,7 @@ export function AddPlantDialog({
           { id: 'all', label: 'Allt' },
           { id: 'pepper', label: 'Pipar' },
           { id: 'tomato', label: 'Tómatar' },
+          { id: 'strawberry', label: 'Jarðarber' },
         ] as { id: CatFilter; label: string }[]).map((c) => (
           <button
             key={c.id}
