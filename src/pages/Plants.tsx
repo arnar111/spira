@@ -14,6 +14,7 @@ import {
   MOTHER_SPECIES,
   formatShu,
   isPepper,
+  isPotato,
   isStrawberry,
   isTomato,
   varietyByName,
@@ -204,7 +205,9 @@ function PlantCard({
     ? variety.color
     : isTomato(variety) || isStrawberry(variety)
       ? variety.fruitColor
-      : undefined;
+      : isPotato(variety)
+        ? variety.skinColor
+        : undefined;
   return (
     <button
       type="button"
@@ -259,6 +262,11 @@ function PlantCard({
               <>
                 <Pill tone="cap" size="sm">Jarðarber</Pill>
                 <Pill tone="moss" size="sm">{variety.fruitWeightG}g ber</Pill>
+              </>
+            ) : isPotato(variety) ? (
+              <>
+                <Pill tone="moss" size="sm">Kartafla</Pill>
+                <Pill tone="cream" size="sm">{variety.use}</Pill>
               </>
             ) : null}
           </div>

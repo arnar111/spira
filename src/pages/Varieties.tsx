@@ -13,6 +13,7 @@ import {
   formatShu,
   hasCare,
   isPepper,
+  isPotato,
   isStrawberry,
   isTomato,
   type MotherSpecies,
@@ -33,9 +34,15 @@ const BERRY_TYPE_LABEL: Record<'day-neutral' | 'everbearing' | 'june-bearing' | 
   alpine: 'Skógarjarðarber',
 };
 
+const POTATO_MATURITY_LABEL: Record<'early' | 'maincrop' | 'late', string> = {
+  early: 'Snemmyrki',
+  maincrop: 'Aðalyrki',
+  late: 'Síðyrki',
+};
+
 export function Varieties() {
   const [q, setQ] = useState('');
-  const [type, setType] = useState<'all' | 'pepper' | 'tomato' | 'strawberry'>('all');
+  const [type, setType] = useState<'all' | 'pepper' | 'tomato' | 'strawberry' | 'potato'>('all');
   const [mother, setMother] = useState<MotherSpecies | 'all'>('all');
   const [color, setColor] = useState<PepperColor | 'all'>('all');
 
@@ -51,7 +58,13 @@ export function Varieties() {
         return false;
       }
       if (needle) {
-        const catWord = isPepper(v) ? v.motherSpecies : isStrawberry(v) ? 'jarðarber' : 'tómatur';
+        const catWord = isPepper(v)
+          ? v.motherSpecies
+          : isStrawberry(v)
+            ? 'jarðarber'
+            : isPotato(v)
+              ? 'kartafla'
+              : 'tómatur';
         const hay = [v.commonName, catWord, v.flavor]
           .join(' ')
           .toLowerCase();
@@ -110,6 +123,9 @@ export function Varieties() {
         <Chip active={type === 'strawberry'} onClick={() => setType('strawberry')}>
           Jarðarber
         </Chip>
+        <Chip active={type === 'potato'} onClick={() => setType('potato')}>
+          Kartöflur
+        </Chip>
       </FilterRow>
       <FilterRow label="Móðurtegund">
         <Chip active={mother === 'all'} onClick={() => setMother('all')}>
@@ -153,7 +169,11 @@ export function Varieties() {
 
 function VarietyCard({ v }: { v: Variety }) {
   const [open, setOpen] = useState(false);
-  const swatch: PepperColor = isPepper(v) ? v.color : v.fruitColor;
+  const swatch: PepperColor = isPepper(v)
+    ? v.color
+    : isPotato(v)
+      ? v.skinColor
+      : v.fruitColor;
   return (
     <button
       type="button"
@@ -171,6 +191,8 @@ function VarietyCard({ v }: { v: Variety }) {
               <Pill tone="cream" size="sm">{v.motherSpecies}</Pill>
             ) : isStrawberry(v) ? (
               <Pill tone="cap" size="sm">Jarðarber</Pill>
+            ) : isPotato(v) ? (
+              <Pill tone="moss" size="sm">Kartafla</Pill>
             ) : (
               <Pill tone="terra" size="sm">Tómatur</Pill>
             )}
@@ -195,6 +217,8 @@ function VarietyCard({ v }: { v: Variety }) {
               )
             ) : isStrawberry(v) ? (
               <Pill tone="moss" size="sm">{BERRY_TYPE_LABEL[v.berryType]}</Pill>
+            ) : isPotato(v) ? (
+              <Pill tone="moss" size="sm">{POTATO_MATURITY_LABEL[v.maturity]}</Pill>
             ) : (
               <Pill tone="moss" size="sm">
                 {v.growthHabit === 'determinate' ? 'Ákveðinn' : 'Óákveðinn'}
@@ -207,7 +231,9 @@ function VarietyCard({ v }: { v: Variety }) {
               ? ` · ${v.fruitShape.toLowerCase()} ${v.fruitWeightG}g`
               : isStrawberry(v)
                 ? ` · ${v.fruitWeightG}g ber`
-                : ' fullorðin'}
+                : isPotato(v)
+                  ? ` · ${v.use.toLowerCase()}`
+                  : ' fullorðin'}
           </div>
         </div>
       </div>

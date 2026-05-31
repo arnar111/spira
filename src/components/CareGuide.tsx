@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import {
   AlertTriangle,
+  CalendarDays,
   CheckCircle2,
   Droplets,
   FlaskConical,
@@ -8,14 +9,15 @@ import {
   Target,
   Wind,
 } from 'lucide-react';
-import type { StrawberryVariety, TomatoVariety } from '@/lib/varieties';
+import type { CaredVariety } from '@/lib/varieties';
 
 /**
  * Renders a crop variety's structured care guide — targets, watering,
- * pollination, feeding schedule and troubleshooting — distilled from its sheet.
- * Works for any variety that carries a `care` block (tomatoes, strawberries).
+ * pollination/seasonal steps, feeding schedule and troubleshooting — distilled
+ * from its sheet. Works for any variety with a `care` block (tomato,
+ * strawberry, potato). Pollination and the seasonal checklist are optional.
  */
-export function CareGuide({ variety }: { variety: TomatoVariety | StrawberryVariety }) {
+export function CareGuide({ variety }: { variety: CaredVariety }) {
   const c = variety.care;
   return (
     <div className="flex flex-col gap-4">
@@ -45,9 +47,17 @@ export function CareGuide({ variety }: { variety: TomatoVariety | StrawberryVari
         <Bullets items={c.watering} />
       </Section>
 
-      <Section icon={<Wind size={13} />} title="Frjóvgun">
-        <Bullets items={c.pollination} />
-      </Section>
+      {c.pollination && c.pollination.length > 0 && (
+        <Section icon={<Wind size={13} />} title="Frjóvgun">
+          <Bullets items={c.pollination} />
+        </Section>
+      )}
+
+      {c.seasonal && c.seasonal.length > 0 && (
+        <Section icon={<CalendarDays size={13} />} title="Yfir tímabilið">
+          <Bullets items={c.seasonal} />
+        </Section>
+      )}
 
       <Section icon={<FlaskConical size={13} />} title="Áburðaráætlun">
         <div className="flex flex-col gap-1.5">

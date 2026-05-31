@@ -7,14 +7,17 @@ import {
 } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
+  CalendarDays,
   Droplet,
   Flower,
   Flower2,
   ImagePlus,
   Leaf,
   Lightbulb,
+  Mountain,
   Scissors,
   Send,
+  Snowflake,
   Sparkles,
   Sprout,
   Thermometer,
@@ -64,8 +67,12 @@ const KIND_ICON: Record<RosInsightKind, LucideIcon> = {
   pollinate: Flower,
   deblossom: Flower2,
   runner: Sprout,
+  hill: Mountain,
   harvest: Leaf,
   light: Lightbulb,
+  frost: Snowflake,
+  season: CalendarDays,
+  mulch: Leaf,
   env: Thermometer,
   info: Sparkles,
 };

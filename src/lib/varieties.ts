@@ -1,6 +1,7 @@
 import type { ChiliVariety } from '@/components/Chili';
 import type { TomatoGlyph } from '@/components/Tomato';
 import type { StrawberryGlyph } from '@/components/Strawberry';
+import type { PotatoGlyph } from '@/components/Potato';
 import type { VarietyPreset } from './db';
 import type { LocationKey } from './locations';
 
@@ -113,7 +114,10 @@ export interface CropCare {
   summary: string;
   targets: CareTarget[];
   watering: string[];
-  pollination: string[];
+  /** Hand-pollination guidance — omitted for crops that don't need it (potato). */
+  pollination?: string[];
+  /** Optional season-long checklist (chitting, hilling, frost) for outdoor crops. */
+  seasonal?: string[];
   fertilizer: FertStage[];
   troubleshooting: TroubleItem[];
   normal: string[];
@@ -148,7 +152,25 @@ export interface StrawberryVariety extends VarietyCommon {
   care: CropCare;
 }
 
-export type Variety = PepperVariety | TomatoVariety | StrawberryVariety;
+/** Maturity class — drives the harvest-window estimate. */
+export type PotatoMaturity = 'early' | 'maincrop' | 'late';
+
+export interface PotatoVariety extends VarietyCommon {
+  category: 'potato';
+  glyph: PotatoGlyph;
+  /** Reuses the shared colour palette for the skin swatch. */
+  skinColor: PepperColor;
+  maturity: PotatoMaturity;
+  /** Culinary use, e.g. "bökun", "salat", "almenn". */
+  use: string;
+  care: CropCare;
+}
+
+export type Variety =
+  | PepperVariety
+  | TomatoVariety
+  | StrawberryVariety
+  | PotatoVariety;
 
 /** Back-compat alias — most of the app was written before tomatoes existed. */
 export type VarietyWithChili = PepperVariety;
@@ -165,9 +187,15 @@ export function isStrawberry(v?: Variety): v is StrawberryVariety {
   return v?.category === 'strawberry';
 }
 
-/** Any variety that carries a structured care guide (tomato or strawberry). */
-export function hasCare(v?: Variety): v is TomatoVariety | StrawberryVariety {
-  return isTomato(v) || isStrawberry(v);
+export function isPotato(v?: Variety): v is PotatoVariety {
+  return v?.category === 'potato';
+}
+
+/** Any variety that carries a structured care guide. */
+export type CaredVariety = TomatoVariety | StrawberryVariety | PotatoVariety;
+
+export function hasCare(v?: Variety): v is CaredVariety {
+  return isTomato(v) || isStrawberry(v) || isPotato(v);
 }
 
 interface VInput {
@@ -1483,11 +1511,241 @@ const TOMATOES: TomatoVariety[] = [
   }),
 ];
 
+/**
+ * Outdoor potato care — distilled from the Icelandic outdoor-potato guide.
+ * No pollination section (potatoes are grown from seed tubers); instead a
+ * season-long checklist of chitting → planting → hilling → harvest.
+ */
+function potatoCare(summary: string): CropCare {
+  return {
+    summary,
+    targets: [
+      { label: 'Jarðvegshiti (niðursetning)', value: '7–10°C', hint: 'Settu niður seint í maí, eftir frost' },
+      { label: 'Sýrustig (pH)', value: '5,0–6,0', hint: 'Lágt pH dregur úr kláðasvepp' },
+      { label: 'Bil', value: '30 cm í röð · 60–75 cm milli raða', hint: 'Snemmyrki þéttar, aðalyrki gisnar' },
+      { label: 'Dýpt', value: '10–15 cm', hint: 'Of grunnt → grænar kartöflur' },
+      { label: 'Hreyking', value: '2× (við 15–20 og 30–40 cm)', hint: 'Mokaðu mold að stönglum' },
+      { label: 'Vökvun', value: '25–35 mm/viku', hint: 'Mest á hnýðismyndun (vikur 6–10)' },
+      { label: 'Áburður', value: '5-10-10 (hóflegt N)', hint: 'Of mikið N → grös, fá hnýði' },
+      { label: 'Uppskera', value: 'Aðalyrki 90–120 dagar', hint: 'Eftir að grös sölna; fyrir frost' },
+    ],
+    watering: [
+      'Jafn raki er lykilatriði — sérstaklega frá blómgun (hnýðismyndun): 30–35 mm á viku.',
+      'Forðastu sveiflur þurrkur→bleyta; þær valda holum hnýðum og sprungum.',
+      'Vökvaðu við rótina, ekki yfir grösin — dregur úr myglu.',
+      'Dragðu úr vökvun þegar grös fara að sölna svo hýðið harðni fyrir geymslu.',
+    ],
+    seasonal: [
+      'Mars: forspíraðu útsæði inni (ljóst, 10–15°C) þar til spírur eru 1–2 cm.',
+      'Seint í maí: settu niður þegar jarðvegur er 7–10°C og frosthætta liðin.',
+      'Júní: fyrsta hreyking þegar grös eru 15–20 cm.',
+      'Júlí: önnur hreyking (grös 30–40 cm); nýjar kartöflur má taka eftir blómgun.',
+      'Ágúst: fylgstu með kartöflumyglu í röku veðri; fjarlægðu sýkt grös.',
+      'September: taktu upp aðaluppskeru fyrir fyrsta frost; láttu grös sölna fyrst.',
+      'Eftir upptöku: þurrkaðu (cure) við 12–16°C í 10–14 daga fyrir geymslu.',
+    ],
+    fertilizer: [
+      { stage: 'Niðursetning', npk: '5-10-10', freq: 'Við niðursetningu', note: 'Hóflegt N, hátt P-K' },
+      { stage: 'Hreyking / blómgun', npk: 'Hliðargjöf af kalí (K)', freq: 'Við aðra hreykingu', note: 'Viðaraska eða greensand fyrir kalí' },
+    ],
+    troubleshooting: [
+      { problem: 'Kartöflumygla (brúnir blettir, hröð sölnun)', cause: 'Svalt og rakt veður í ágúst', fix: 'Loftrými milli plantna, engin yfirvökvun, fjarlægðu sýkt grös' },
+      { problem: 'Kláðasveppur (hrjúfir blettir á hýði)', cause: 'Hátt pH og þurr jörð við hnýðismyndun', fix: 'Haltu pH 5,0–5,5, jöfnum raka, veldu þolin yrki' },
+      { problem: 'Grænar kartöflur', cause: 'Hnýði komast í dagsljós', fix: 'Hreyktu vel og settu niður 10–15 cm djúpt' },
+      { problem: 'Frostskemmd', cause: 'Frost á grös eða hnýði (undir −2°C)', fix: 'Taktu upp fyrir hart frost; þektu með reyfi' },
+      { problem: 'Hol hnýði', cause: 'Óregluleg vökvun, of hraður vöxtur', fix: 'Haltu jöfnum raka' },
+    ],
+    normal: [
+      'Grös sölna neðan frá þegar líður á — eðlilegt þroskamerki.',
+      'Blómgun gefur til kynna að hnýði séu að myndast.',
+      'Lítil græn ber geta myndast eftir blóm — þau eru eitruð, ekki borða.',
+    ],
+    concern: [
+      'Brúnir, votir blettir á grösum og hröð sölnun í ágúst — mögulega mygla.',
+      'Hýði grænkar — hnýði fá of mikið ljós; hreyktu betur.',
+      'Frost í kortunum — taktu upp strax.',
+    ],
+  };
+}
+
+interface PInput {
+  id: string;
+  commonName: string;
+  glyph: PotatoGlyph;
+  skinColor: PepperColor;
+  maturity: PotatoMaturity;
+  use: string;
+  flavor: string;
+  origin: string;
+  daysToGerminate: [number, number];
+  daysToHarvest: [number, number];
+  notes: string;
+  matureHeightCm: number;
+  care: CropCare;
+}
+
+function po(input: PInput): PotatoVariety {
+  return {
+    id: input.id,
+    commonName: input.commonName,
+    scientificName: 'Solanum tuberosum',
+    category: 'potato',
+    glyph: input.glyph,
+    skinColor: input.skinColor,
+    maturity: input.maturity,
+    use: input.use,
+    flavor: input.flavor,
+    origin: input.origin,
+    daysToGerminate: input.daysToGerminate,
+    daysToHarvest: input.daysToHarvest,
+    notes: input.notes,
+    isBuiltIn: true,
+    matureHeightCm: input.matureHeightCm,
+    suitableLocations: ['garden'],
+    care: input.care,
+  };
+}
+
+/**
+ * Outdoor potato catalog. Premiere and a few international cultivars come from
+ * the outdoor-potato guide; Gullauga and Rauðar íslenskar are added from common
+ * Icelandic horticulture (the guide names international cultivars only).
+ */
+const POTATOES: PotatoVariety[] = [
+  po({
+    id: 'potato-premiere',
+    commonName: 'Premiere',
+    glyph: 'yellow',
+    skinColor: 'yellow',
+    maturity: 'early',
+    use: 'Almenn',
+    flavor: 'Mild, gulleit — fjölnota',
+    origin: 'Holland — ræktuð víða á Íslandi',
+    daysToGerminate: [14, 21],
+    daysToHarvest: [60, 65],
+    notes:
+      'Snemmyrki með ljósgult hýði og gott kláðaþol. Áreiðanleg og fljót — gott byrjunaryrki fyrir íslenskan garð.',
+    matureHeightCm: 55,
+    care: potatoCare(
+      'Snemmyrki (60–65 dagar) með gott kláðaþol. Áreiðanleg, fjölnota kartafla — kjörin fyrsta uppskera í íslenskum garði.',
+    ),
+  }),
+  po({
+    id: 'potato-gullauga',
+    commonName: 'Gullauga',
+    glyph: 'yellow',
+    skinColor: 'yellow',
+    maturity: 'maincrop',
+    use: 'Soðning',
+    flavor: 'Sætt, mjölkennd — sígilt íslenskt bragð',
+    origin: 'Íslenskt sígilt yrki (norrænn uppruni)',
+    daysToGerminate: [18, 28],
+    daysToHarvest: [90, 110],
+    notes:
+      'Ástsælasta íslenska matarkartaflan — gult hýði með „gullauga" og mjölkennt, sætt hold. Aðeins seinni til; frábær soðin.',
+    matureHeightCm: 60,
+    care: potatoCare(
+      'Sígilt íslenskt aðalyrki — gult hýði, mjölkennt og sætt hold. Aðeins seinþroska (90–110 dagar) en rómuð soðin.',
+    ),
+  }),
+  po({
+    id: 'potato-raudar-islenskar',
+    commonName: 'Rauðar íslenskar',
+    glyph: 'red',
+    skinColor: 'red',
+    maturity: 'early',
+    use: 'Soðning',
+    flavor: 'Mild, fínkornótt',
+    origin: 'Íslenskt sígilt yrki',
+    daysToGerminate: [16, 24],
+    daysToHarvest: [70, 85],
+    notes:
+      'Gamalgróið íslenskt yrki með rauðu hýði og ljósu holdi. Harðgert og áreiðanlegt í svölu loftslagi.',
+    matureHeightCm: 55,
+    care: potatoCare(
+      'Sígilt íslenskt yrki með rauðu hýði — harðgert og áreiðanlegt í svölu loftslagi. Milt, fínkornótt hold.',
+    ),
+  }),
+  po({
+    id: 'potato-rocket',
+    commonName: 'Rocket',
+    glyph: 'white',
+    skinColor: 'white',
+    maturity: 'early',
+    use: 'Almenn',
+    flavor: 'Milt — mjög snemmt',
+    origin: 'Bretland',
+    daysToGerminate: [14, 21],
+    daysToHarvest: [55, 60],
+    notes:
+      'Eitt allra snemmþroskaðasta yrkið með hvítu hýði og mikilli uppskeru. Bregst vel við forspírun.',
+    matureHeightCm: 50,
+    care: potatoCare(
+      'Mjög snemmyrki (55–60 dagar) með hvítu hýði og mikla uppskeru. Bregst sérlega vel við forspírun.',
+    ),
+  }),
+  po({
+    id: 'potato-nicola',
+    commonName: 'Nicola',
+    glyph: 'yellow',
+    skinColor: 'yellow',
+    maturity: 'maincrop',
+    use: 'Salat',
+    flavor: 'Vaxkennd, sæt — heldur lögun',
+    origin: 'Þýskaland',
+    daysToGerminate: [16, 24],
+    daysToHarvest: [70, 80],
+    notes:
+      'Vinsælt vaxkennt salatyrki sem heldur lögun við suðu. Gult hýði og hold, langt geymsluþol.',
+    matureHeightCm: 55,
+    care: potatoCare(
+      'Vaxkennt salatyrki (70–80 dagar) sem heldur lögun við suðu. Gult hold, langt geymsluþol.',
+    ),
+  }),
+  po({
+    id: 'potato-king-edward',
+    commonName: 'King Edward',
+    glyph: 'white',
+    skinColor: 'white',
+    maturity: 'late',
+    use: 'Bökun / stappa',
+    flavor: 'Mjölkennd — klassísk bökunarkartafla',
+    origin: 'Bretland (1902)',
+    daysToGerminate: [18, 28],
+    daysToHarvest: [100, 110],
+    notes:
+      'Sígilt aðal-/síðyrki með mjölkenndu holdi — frábært í bökun og stöppu. Þarf langan vaxtartíma; áhætta í köldu hausti.',
+    matureHeightCm: 65,
+    care: potatoCare(
+      'Síðyrki (100–110 dagar) með mjölkenndu holdi — klassísk bökunar- og stöppukartafla. Þarf langan, hlýjan vaxtartíma.',
+    ),
+  }),
+  po({
+    id: 'potato-desiree',
+    commonName: 'Desiree',
+    glyph: 'red',
+    skinColor: 'red',
+    maturity: 'maincrop',
+    use: 'Almenn',
+    flavor: 'Rjómakennd — fjölnota',
+    origin: 'Holland',
+    daysToGerminate: [16, 26],
+    daysToHarvest: [80, 90],
+    notes:
+      'Vinsælt aðalyrki með rauðu hýði og ljósgulu, rjómakenndu holdi. Þurrkþolið og fjölnota í eldhúsi.',
+    matureHeightCm: 60,
+    care: potatoCare(
+      'Aðalyrki (80–90 dagar) með rauðu hýði og rjómakenndu holdi. Þurrkþolið og fjölnota — gott í flest.',
+    ),
+  }),
+];
+
 export const BUILT_IN_VARIETIES: Variety[] = [
   ...PEPPERS,
   STEINUNN,
   ...TOMATOES,
   ...STRAWBERRIES,
+  ...POTATOES,
 ];
 
 export function chiliForVarietyId(id?: string): ChiliVariety {

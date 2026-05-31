@@ -12,8 +12,12 @@ export type RosInsightKind =
   | 'pollinate'
   | 'deblossom'
   | 'runner'
+  | 'hill'
   | 'harvest'
   | 'light'
+  | 'frost'
+  | 'season'
+  | 'mulch'
   | 'env'
   | 'info';
 

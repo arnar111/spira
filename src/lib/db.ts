@@ -4,11 +4,15 @@ export type PlantCategory =
   | 'pepper'
   | 'tomato'
   | 'strawberry'
+  | 'potato'
   | 'herb'
   | 'leafy'
   | 'fruit'
   | 'houseplant'
   | 'other';
+
+/** Where a grow lives — drives indoor (LED) vs outdoor (season/frost) advice. */
+export type GrowEnvironment = 'indoor' | 'outdoor';
 
 export type GrowPhase =
   | 'planning'
@@ -45,8 +49,10 @@ export interface Grow {
   name: string;
   category: PlantCategory;
   location: string;
-  /** Structured location category — Window / Tent / Shower / DIY */
+  /** Structured location category — Window / Tent / Shower / DIY / Garden */
   locationKey?: string;
+  /** Indoor (LED-driven) vs outdoor (season/frost-driven). Defaults to indoor. */
+  environment?: GrowEnvironment;
   startDate: number;
   endDate?: number;
   fixture?: string;

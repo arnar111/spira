@@ -55,6 +55,7 @@ import {
   COLOR_LABEL,
   formatShu,
   isPepper,
+  isPotato,
   isStrawberry,
   isTomato,
   varietyByName,
@@ -312,7 +313,9 @@ function PlantRow({ plant, day }: { plant: Plant; day: number }) {
     ? variety.color
     : isTomato(variety) || isStrawberry(variety)
       ? variety.fruitColor
-      : undefined;
+      : isPotato(variety)
+        ? variety.skinColor
+        : undefined;
   return (
     <div className="flex items-center gap-3 rounded-2xl p-3 border bg-moss-900/40 border-moss-800/40">
       <PlantGlyph variety={variety} name={plant.variety} size={44} tilt={-4} />
@@ -354,6 +357,11 @@ function PlantRow({ plant, day }: { plant: Plant; day: number }) {
           {isStrawberry(variety) && (
             <span className="text-[9px] uppercase tracking-wider text-capsicum-400">
               {variety.fruitWeightG}g ber
+            </span>
+          )}
+          {isPotato(variety) && (
+            <span className="text-[9px] uppercase tracking-wider text-moss-300">
+              {variety.use}
             </span>
           )}
         </div>

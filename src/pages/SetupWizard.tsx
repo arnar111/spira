@@ -32,6 +32,7 @@ import {
   MOTHER_SPECIES,
   formatShu,
   isPepper,
+  isPotato,
   isStrawberry,
   suggestForLocation,
   type MotherSpecies,
@@ -142,6 +143,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         category: growCategory,
         location: state.location.trim(),
         locationKey: state.locationKey,
+        environment:
+          LOCATIONS.find((l) => l.key === state.locationKey)?.environment ?? 'indoor',
         startDate: now,
         fixture: state.fixture.trim() || undefined,
         spaceWidthCm: parseNum(state.spaceWidthCm),
@@ -646,7 +649,11 @@ function VarietyRow({
   selected: boolean;
   onClick: () => void;
 }) {
-  const swatch: PepperColor = isPepper(v) ? v.color : v.fruitColor;
+  const swatch: PepperColor = isPepper(v)
+    ? v.color
+    : isPotato(v)
+      ? v.skinColor
+      : v.fruitColor;
   return (
     <button
       type="button"
@@ -682,7 +689,13 @@ function VarietyRow({
               border: '1px solid rgba(231,217,168,.18)',
             }}
           >
-            {isPepper(v) ? v.motherSpecies : isStrawberry(v) ? 'Jarðarber' : 'Tómatur'}
+            {isPepper(v)
+              ? v.motherSpecies
+              : isStrawberry(v)
+                ? 'Jarðarber'
+                : isPotato(v)
+                  ? 'Kartafla'
+                  : 'Tómatur'}
           </span>
           <span
             className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full"
@@ -721,9 +734,11 @@ function VarietyRow({
             >
               {isStrawberry(v)
                 ? 'Jarðarber'
-                : v.growthHabit === 'determinate'
-                  ? 'Ákveðinn'
-                  : 'Óákveðinn'}
+                : isPotato(v)
+                  ? v.use
+                  : v.growthHabit === 'determinate'
+                    ? 'Ákveðinn'
+                    : 'Óákveðinn'}
             </span>
           )}
         </div>
