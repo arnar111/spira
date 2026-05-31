@@ -26,3 +26,7 @@ yarn-error.log*
 .env
 .env.local
 .env.*.local
+
+# Research: keep the HTML source guides as provenance; skip the heavy PDF/zip exports
+research/*.pdf
+research/*.zip

@@ -14,6 +14,7 @@ import {
   MOTHER_SPECIES,
   formatShu,
   isPepper,
+  isStrawberry,
   isTomato,
   varietyByName,
   type MotherSpecies,
@@ -201,7 +202,7 @@ function PlantCard({
   const phase = PHASES.find((p) => p.name === plant.currentPhase) ?? getPhaseForDay(day);
   const swatch: PepperColor | undefined = isPepper(variety)
     ? variety.color
-    : isTomato(variety)
+    : isTomato(variety) || isStrawberry(variety)
       ? variety.fruitColor
       : undefined;
   return (
@@ -253,6 +254,11 @@ function PlantCard({
                 <Pill tone="moss" size="sm">
                   {variety.fruitShape} {variety.fruitWeightG}g
                 </Pill>
+              </>
+            ) : isStrawberry(variety) ? (
+              <>
+                <Pill tone="cap" size="sm">Jarðarber</Pill>
+                <Pill tone="moss" size="sm">{variety.fruitWeightG}g ber</Pill>
               </>
             ) : null}
           </div>

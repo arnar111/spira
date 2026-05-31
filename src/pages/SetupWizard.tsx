@@ -32,6 +32,7 @@ import {
   MOTHER_SPECIES,
   formatShu,
   isPepper,
+  isStrawberry,
   suggestForLocation,
   type MotherSpecies,
   type PepperColor,
@@ -130,10 +131,11 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       const selected = state.varietyIds
         .map((id) => BUILT_IN_VARIETIES.find((v) => v.id === id))
         .filter((v): v is Variety => !!v);
+      // Ef öll valin afbrigði eru í sama flokki, merkjum ræktunina þeim flokki;
+      // annars (blönduð ræktun) fellur hún aftur í 'pepper'.
+      const cats = new Set(selected.map((v) => v.category));
       const growCategory: PlantCategory =
-        selected.length > 0 && selected.every((v) => v.category === 'tomato')
-          ? 'tomato'
-          : 'pepper';
+        selected.length > 0 && cats.size === 1 ? selected[0].category : 'pepper';
       await db.grows.add({
         id: growId,
         name: state.growName.trim(),
@@ -680,7 +682,7 @@ function VarietyRow({
               border: '1px solid rgba(231,217,168,.18)',
             }}
           >
-            {isPepper(v) ? v.motherSpecies : 'Tómatur'}
+            {isPepper(v) ? v.motherSpecies : isStrawberry(v) ? 'Jarðarber' : 'Tómatur'}
           </span>
           <span
             className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full"
@@ -717,7 +719,11 @@ function VarietyRow({
                 border: '1px solid rgba(84,130,85,.4)',
               }}
             >
-              {v.growthHabit === 'determinate' ? 'Ákveðinn' : 'Óákveðinn'}
+              {isStrawberry(v)
+                ? 'Jarðarber'
+                : v.growthHabit === 'determinate'
+                  ? 'Ákveðinn'
+                  : 'Óákveðinn'}
             </span>
           )}
         </div>

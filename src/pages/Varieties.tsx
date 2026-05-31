@@ -11,7 +11,9 @@ import {
   COLOR_LABEL,
   MOTHER_SPECIES,
   formatShu,
+  hasCare,
   isPepper,
+  isStrawberry,
   isTomato,
   type MotherSpecies,
   type PepperColor,
@@ -19,14 +21,21 @@ import {
 } from '@/lib/varieties';
 import { cn } from '@/lib/cn';
 
-/** Sort key: tomatoes first, then peppers by ascending heat. */
+/** Sort key: tomatoes & berries first, then peppers by ascending heat. */
 function heatOf(v: Variety): number {
   return isPepper(v) ? v.shu : -1;
 }
 
+const BERRY_TYPE_LABEL: Record<'day-neutral' | 'everbearing' | 'june-bearing' | 'alpine', string> = {
+  'day-neutral': 'Dagshlutlaust',
+  everbearing: 'Síblómstrandi',
+  'june-bearing': 'Júníberandi',
+  alpine: 'Skógarjarðarber',
+};
+
 export function Varieties() {
   const [q, setQ] = useState('');
-  const [type, setType] = useState<'all' | 'pepper' | 'tomato'>('all');
+  const [type, setType] = useState<'all' | 'pepper' | 'tomato' | 'strawberry'>('all');
   const [mother, setMother] = useState<MotherSpecies | 'all'>('all');
   const [color, setColor] = useState<PepperColor | 'all'>('all');
 
@@ -42,7 +51,8 @@ export function Varieties() {
         return false;
       }
       if (needle) {
-        const hay = [v.commonName, isPepper(v) ? v.motherSpecies : 'tómatur', v.flavor]
+        const catWord = isPepper(v) ? v.motherSpecies : isStrawberry(v) ? 'jarðarber' : 'tómatur';
+        const hay = [v.commonName, catWord, v.flavor]
           .join(' ')
           .toLowerCase();
         if (!hay.includes(needle)) return false;
@@ -96,6 +106,9 @@ export function Varieties() {
         </Chip>
         <Chip active={type === 'tomato'} onClick={() => setType('tomato')}>
           Tómatar
+        </Chip>
+        <Chip active={type === 'strawberry'} onClick={() => setType('strawberry')}>
+          Jarðarber
         </Chip>
       </FilterRow>
       <FilterRow label="Móðurtegund">
@@ -156,6 +169,8 @@ function VarietyCard({ v }: { v: Variety }) {
             </span>
             {isPepper(v) ? (
               <Pill tone="cream" size="sm">{v.motherSpecies}</Pill>
+            ) : isStrawberry(v) ? (
+              <Pill tone="cap" size="sm">Jarðarber</Pill>
             ) : (
               <Pill tone="terra" size="sm">Tómatur</Pill>
             )}
@@ -178,6 +193,8 @@ function VarietyCard({ v }: { v: Variety }) {
                   <Flame size={9} /> {formatShu(v.shu)} SHU
                 </Pill>
               )
+            ) : isStrawberry(v) ? (
+              <Pill tone="moss" size="sm">{BERRY_TYPE_LABEL[v.berryType]}</Pill>
             ) : (
               <Pill tone="moss" size="sm">
                 {v.growthHabit === 'determinate' ? 'Ákveðinn' : 'Óákveðinn'}
@@ -186,7 +203,11 @@ function VarietyCard({ v }: { v: Variety }) {
           </div>
           <div className="text-[11px] text-cream-300/60 mt-1">
             {v.flavor} · {v.matureHeightCm}cm
-            {isTomato(v) ? ` · ${v.fruitShape.toLowerCase()} ${v.fruitWeightG}g` : ' fullorðin'}
+            {isTomato(v)
+              ? ` · ${v.fruitShape.toLowerCase()} ${v.fruitWeightG}g`
+              : isStrawberry(v)
+                ? ` · ${v.fruitWeightG}g ber`
+                : ' fullorðin'}
           </div>
         </div>
       </div>
@@ -195,13 +216,13 @@ function VarietyCard({ v }: { v: Variety }) {
           <div className="mb-1.5">
             <span className="text-cream-400/70">Uppruni:</span> {v.origin}
           </div>
-          <div className={isTomato(v) ? 'mb-3' : 'mb-1.5'}>
+          <div className={hasCare(v) ? 'mb-3' : 'mb-1.5'}>
             <span className="text-cream-400/70">Spírar á:</span>{' '}
             {v.daysToGerminate[0]}–{v.daysToGerminate[1]}d ·{' '}
             <span className="text-cream-400/70">tilbúin á:</span>{' '}
             {v.daysToHarvest[0]}–{v.daysToHarvest[1]}d
           </div>
-          {isTomato(v) ? <CareGuide variety={v} /> : <div>{v.notes}</div>}
+          {hasCare(v) ? <CareGuide variety={v} /> : <div>{v.notes}</div>}
         </div>
       )}
     </button>

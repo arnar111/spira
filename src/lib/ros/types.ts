@@ -10,6 +10,8 @@ export type RosInsightKind =
   | 'prune'
   | 'top'
   | 'pollinate'
+  | 'deblossom'
+  | 'runner'
   | 'harvest'
   | 'light'
   | 'env'

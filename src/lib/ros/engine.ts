@@ -18,10 +18,13 @@ import type {
   GrowPhase,
 } from '@/lib/db';
 import { needsGrowLight, daylightForMonth } from '@/lib/daylight';
-import { varietyByName, varietyById, isTomato } from '@/lib/varieties';
+import { varietyByName, varietyById, isTomato, isStrawberry } from '@/lib/varieties';
 import type { RosInsight, RosSeverity } from './types';
 
 const DAY_MS = 1000 * 60 * 60 * 24;
+
+/** Jarðarber: fjarlægja á fyrstu blóm í ~5 vikur til að byggja upp krónu/rætur. */
+const STRAWBERRY_DEBLOSSOM_DAYS = 35;
 
 /** Fasar þar sem grow telst virkt (ekki í skipulagi / búið / dvala). */
 const ACTIVE_PHASES: ReadonlySet<GrowPhase> = new Set<GrowPhase>([
@@ -128,6 +131,10 @@ function wateringCadenceDays(grow: Grow, plants: Plant[]): number {
     ) {
       // Paprika á blóma/aldinfasa drekkur meira.
       c = Math.min(c, grow.locationKey === 'window' ? 2 : 3);
+    }
+    if (p.category === 'strawberry') {
+      // Jarðarber í litlum pottum þorna hratt — vökva þegar efsti 1 cm er þurr.
+      c = Math.min(c, 2);
     }
     minPhaseCadence = Math.min(minPhaseCadence, c);
   }
@@ -281,6 +288,53 @@ export function computeInsights(input: EngineInput): RosInsight[] {
     const flowering = plantsInPhase(activePlants, 'flowering');
     for (const p of flowering) {
       const variety = plantVariety(p);
+
+      // — JARÐARBER —
+      // Ung planta: fjarlægja fyrstu blóm (deblossom). Eldri: pensilfrjóvgun ~2 daga fresti.
+      const straw = variety ? isStrawberry(variety) : p.category === 'strawberry';
+      if (straw) {
+        const ageDays = daysSince(now, plantStartTs(p));
+        if (ageDays < STRAWBERRY_DEBLOSSOM_DAYS) {
+          insights.push({
+            id: `deblossom-${p.id}`,
+            kind: 'deblossom',
+            severity: 'soon',
+            title: `Fjarlægðu fyrstu blóm af ${plantLabel(p)}`,
+            detail: `Ung jarðarberjaplanta (dagur ${ageDays}): klíptu af blómum fyrstu ~5 vikurnar þar til plantan hefur 6–8 þroskuð blöð. Þá byggjast upp rætur og króna og uppskeran verður margfalt meiri síðar.`,
+            dueInDays: 0,
+            plantId: p.id,
+          });
+          continue;
+        }
+        const cadence = 2;
+        const last = lastLogForPlant(logs, 'pollinate', p.id);
+        const since = last !== undefined ? daysSince(now, last) : undefined;
+        if (since !== undefined && since < cadence) {
+          const left = cadence - since;
+          insights.push({
+            id: `pollinate-${p.id}`,
+            kind: 'pollinate',
+            severity: 'info',
+            title: `${plantLabel(p)} nýlega frjóvguð`,
+            detail: `Síðast frjóvgað ${since === 0 ? 'í dag' : `fyrir ${since} ${dayWord(since)}`}. Næsta pensilfrjóvgun eftir ~${left} ${dayWord(left)}.`,
+            dueInDays: left,
+            plantId: p.id,
+          });
+          continue;
+        }
+        insights.push({
+          id: `pollinate-${p.id}`,
+          kind: 'pollinate',
+          severity: 'due',
+          title: `Frjóvgaðu ${plantLabel(p)}`,
+          detail:
+            'Jarðarber innandyra: strjúktu hvert blómhjarta mjúkt með pensli á 1–2 daga fresti. Hvert blóm hefur 200–400 frævur — annars verður berið skakkt („kattarandlit").',
+          dueInDays: since !== undefined ? cadence - since : 0,
+          plantId: p.id,
+        });
+        continue;
+      }
+
       const tomato = variety ? isTomato(variety) : p.category === 'tomato';
       // Handfrjóvgun: tómatur ~3 daga fresti, paprika ~2 (vægur hristingur).
       const cadence = tomato ? 3 : 2;
@@ -327,6 +381,35 @@ export function computeInsights(input: EngineInput): RosInsight[] {
           detail:
             'Paprika er að mestu sjálffrjóvgandi, en mildur gustur eða létt hristing á plöntunni daglega bætir aldinsetningu innandyra.',
           dueInDays,
+          plantId: p.id,
+        });
+      }
+    }
+  }
+
+  // — RENGLUR (jarðarber) —
+  // Jarðarber reka út renglur; til hámarksuppskeru á að klippa þær vikulega.
+  // Alpa-yrki (Fragaria vesca) mynda engar renglur og eru undanskilin.
+  {
+    const RUNNER_CADENCE = 7;
+    const runnerPhases: GrowPhase[] = ['vegetative', 'flowering', 'fruiting', 'ripening'];
+    for (const p of activePlants) {
+      if (p.category !== 'strawberry') continue;
+      if (!runnerPhases.includes(p.currentPhase)) continue;
+      const variety = plantVariety(p);
+      if (variety && isStrawberry(variety) && variety.berryType === 'alpine') continue;
+      const last = lastLogForPlant(logs, 'prune', p.id);
+      const since = last !== undefined ? daysSince(now, last) : undefined;
+      if (since === undefined || since >= RUNNER_CADENCE) {
+        insights.push({
+          id: `runner-${p.id}`,
+          kind: 'runner',
+          severity: 'info',
+          title: `Klíptu renglur af ${plantLabel(p)}`,
+          detail:
+            since === undefined
+              ? 'Jarðarber reka út renglur (rennur). Klíptu þær af við krónuna vikulega svo orkan fari í ber, ekki í nýjar plöntur.'
+              : `Síðast snyrt fyrir ${since} ${dayWord(since)}. Athugaðu renglur og klíptu þær af við krónuna — vikulega til hámarksuppskeru.`,
           plantId: p.id,
         });
       }
