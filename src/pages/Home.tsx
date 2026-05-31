@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { ChevronRight, Plus, Search, Sparkles } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Pill } from '@/components/ui/Pill';
@@ -10,7 +10,7 @@ import { Sparkline } from '@/components/ui/Sparkline';
 import { PhaseBar } from '@/components/ui/PhaseBar';
 import { Tabs } from '@/components/ui/Tabs';
 import { Eyebrow } from '@/components/ui/Eyebrow';
-import { Chili, type ChiliVariety } from '@/components/Chili';
+import { PlantGlyph } from '@/components/PlantGlyph';
 import { Button } from '@/components/ui/Button';
 import { db, type Grow, type Plant } from '@/lib/db';
 import {
@@ -19,22 +19,26 @@ import {
   cycleProgress,
   daysSince,
   getPhaseForDay,
+  growStageDay,
 } from '@/lib/phases';
-import { chiliForVarietyName } from '@/lib/varieties';
 
 interface DerivedGrow extends Grow {
   day: number;
+  stageDay: number;
   progress: number;
   phaseObj: (typeof PHASES)[number];
 }
 
-function deriveGrow(g: Grow): DerivedGrow {
+function deriveGrow(g: Grow, plants: Plant[]): DerivedGrow {
   const day = daysSince(g.startDate);
+  const gp = plants.filter((p) => p.growId === g.id);
+  const stageDay = growStageDay(g.startDate, gp);
   return {
     ...g,
     day,
-    progress: cycleProgress(day),
-    phaseObj: getPhaseForDay(day),
+    stageDay,
+    progress: cycleProgress(stageDay),
+    phaseObj: getPhaseForDay(stageDay),
   };
 }
 
@@ -44,7 +48,7 @@ export function Home() {
 
   if (grows === undefined || plants === undefined) return null;
 
-  const active = grows.filter((g) => !g.archived).map(deriveGrow);
+  const active = grows.filter((g) => !g.archived).map((g) => deriveGrow(g, plants));
   const archivedCount = grows.filter((g) => g.archived).length;
 
   return (
@@ -123,7 +127,8 @@ function MobileHome({ active, plants, archivedCount }: ViewProps) {
         </div>
 
         {active.length > 0 && (
-          <div
+          <Link
+            to={`/grow/${active[0].id}`}
             style={{
               marginTop: 14,
               padding: '12px 14px',
@@ -133,6 +138,7 @@ function MobileHome({ active, plants, archivedCount }: ViewProps) {
               display: 'flex',
               alignItems: 'center',
               gap: 10,
+              textDecoration: 'none',
             }}
           >
             <div
@@ -151,7 +157,7 @@ function MobileHome({ active, plants, archivedCount }: ViewProps) {
               </span>
             </span>
             <ChevronRight size={16} color="var(--cream-300)" style={{ marginLeft: 'auto' }} />
-          </div>
+          </Link>
         )}
       </div>
 
@@ -257,14 +263,14 @@ function QuickStat({
 function GrowGlassCard({ grow, plants }: { grow: DerivedGrow; plants: Plant[] }) {
   const heroVariety =
     plants[0]?.variety ?? (grow.category === 'pepper' ? 'Habanero Helios' : '');
-  const chili: ChiliVariety = chiliForVarietyName(heroVariety);
   const dim =
     grow.spaceWidthCm && grow.spaceDepthCm
       ? `${grow.spaceWidthCm}×${grow.spaceDepthCm}${grow.spaceHeightCm ? `×${grow.spaceHeightCm}` : ''} cm`
       : null;
 
   return (
-    <div
+    <Link
+      to={`/grow/${grow.id}`}
       style={{
         position: 'relative',
         borderRadius: 22,
@@ -276,13 +282,16 @@ function GrowGlassCard({ grow, plants }: { grow: DerivedGrow; plants: Plant[] })
           '0 1px 0 rgba(253,251,246,.04) inset, 0 8px 24px rgba(0,0,0,.18)',
         padding: 16,
         paddingRight: 104,
+        textDecoration: 'none',
+        color: 'inherit',
+        display: 'block',
       }}
     >
       <div
         className="sp-chili-shadow"
         style={{ position: 'absolute', right: -8, top: -4 }}
       >
-        <Chili variety={chili} size={110} tilt={8} />
+        <PlantGlyph name={heroVariety} size={110} tilt={8} />
       </div>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
@@ -310,7 +319,7 @@ function GrowGlassCard({ grow, plants }: { grow: DerivedGrow; plants: Plant[] })
         {grow.location} · {plants.length} plöntur{dim ? ` · ${dim}` : ''}
       </div>
 
-      <PhaseBar phases={PHASES} currentDay={grow.day} totalDays={TOTAL_CYCLE_DAYS} showLabels={false} />
+      <PhaseBar phases={PHASES} currentDay={grow.stageDay} totalDays={TOTAL_CYCLE_DAYS} showLabels={false} />
 
       <div
         style={{
@@ -335,7 +344,7 @@ function GrowGlassCard({ grow, plants }: { grow: DerivedGrow; plants: Plant[] })
           {Math.round(grow.progress * 100)}%
         </span>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -435,7 +444,7 @@ function DesktopHome({ active, plants, archivedCount }: ViewProps) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/varieties')}>
             <Search size={14} />
             Leita
           </Button>
@@ -640,10 +649,10 @@ function KPICard({
 function DesktopGrowRow({ grow, plants }: { grow: DerivedGrow; plants: Plant[] }) {
   const heroVariety =
     plants[0]?.variety ?? (grow.category === 'pepper' ? 'Habanero Helios' : '');
-  const chili: ChiliVariety = chiliForVarietyName(heroVariety);
   const startDate = new Date(grow.startDate);
   return (
-    <div
+    <Link
+      to={`/grow/${grow.id}`}
       style={{
         position: 'relative',
         borderRadius: 16,
@@ -657,13 +666,15 @@ function DesktopGrowRow({ grow, plants }: { grow: DerivedGrow; plants: Plant[] }
         alignItems: 'center',
         gap: 14,
         minHeight: 0,
+        textDecoration: 'none',
+        color: 'inherit',
       }}
     >
       <div
         className="sp-chili-shadow"
         style={{ flexShrink: 0, marginLeft: -4 }}
       >
-        <Chili variety={chili} size={68} tilt={-6} />
+        <PlantGlyph name={heroVariety} size={68} tilt={-6} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
@@ -701,7 +712,7 @@ function DesktopGrowRow({ grow, plants }: { grow: DerivedGrow; plants: Plant[] }
       >
         <PhaseBar
           phases={PHASES}
-          currentDay={grow.day}
+          currentDay={grow.stageDay}
           totalDays={TOTAL_CYCLE_DAYS}
         />
       </div>
@@ -729,7 +740,7 @@ function DesktopGrowRow({ grow, plants }: { grow: DerivedGrow; plants: Plant[] }
         </div>
       </div>
       <ChevronRight size={16} color="rgba(231,217,168,.4)" />
-    </div>
+    </Link>
   );
 }
 

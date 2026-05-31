@@ -3,6 +3,7 @@ import Dexie, { type Table } from 'dexie';
 export type PlantCategory =
   | 'pepper'
   | 'tomato'
+  | 'strawberry'
   | 'herb'
   | 'leafy'
   | 'fruit'
@@ -44,6 +45,8 @@ export interface Grow {
   name: string;
   category: PlantCategory;
   location: string;
+  /** Structured location category — Window / Tent / Shower / DIY */
+  locationKey?: string;
   startDate: number;
   endDate?: number;
   fixture?: string;
@@ -127,11 +130,25 @@ export interface VarietyPreset {
   daysToHarvest?: [number, number];
   notes?: string;
   isBuiltIn: boolean;
+  motherSpecies?: string;
+  color?: string;
+  suitableLocations?: string[];
+  matureHeightCm?: number;
 }
 
 export interface AppMeta {
   key: string;
   value: unknown;
+}
+
+export interface RosMessage {
+  id: string;
+  growId: string;
+  role: 'user' | 'ros';
+  content: string;
+  timestamp: number;
+  photoIds?: string[]; // local photo ids attached to a chat turn (vision)
+  pending?: boolean; // optimistic UI flag
 }
 
 class SpiraDB extends Dexie {
@@ -143,6 +160,7 @@ class SpiraDB extends Dexie {
   harvests!: Table<HarvestEntry, string>;
   varieties!: Table<VarietyPreset, string>;
   meta!: Table<AppMeta, string>;
+  rosMessages!: Table<RosMessage, string>;
 
   constructor() {
     super('spira');
@@ -155,6 +173,9 @@ class SpiraDB extends Dexie {
       harvests: 'id, growId, plantId, timestamp',
       varieties: 'id, commonName, category, isBuiltIn',
       meta: 'key',
+    });
+    this.version(2).stores({
+      rosMessages: 'id, growId, timestamp',
     });
   }
 }

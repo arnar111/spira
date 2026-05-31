@@ -1,0 +1,33 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# SPA history fallback for react-router BrowserRouter.
+# Deep links / reloads (e.g. /home, /grow/<id>) must serve index.html (200)
+# so the client router can take over instead of Netlify returning a 404.
+#
+# Rule ordering (Netlify processes redirects top-to-bottom, first match wins):
+#   1. Functions with `path` config (/api/account, /api/ros) are matched by
+#      Netlify BEFORE these [[redirects]] rules, so they already resolve.
+#      The explicit /api/* passthrough below is a belt-and-suspenders guard so
+#      that even if a future API path has no matching function it is NOT
+#      rewritten to index.html (which would mask it as an HTML 200).
+#   2. Static assets in dist/ (e.g. /assets/*) are served before redirects too,
+#      because Netlify checks for an existing static file before applying a
+#      200-rewrite catch-all — so the catch-all does not shadow them.
+#   3. The /* -> /index.html catch-all MUST be LAST so it only catches paths
+#      that matched nothing above.
+[[redirects]]
+  from = "/api/*"
+  to = "/api/:splat"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
