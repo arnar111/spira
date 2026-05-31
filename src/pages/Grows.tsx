@@ -10,11 +10,10 @@ import { PlantGlyph } from '@/components/PlantGlyph';
 import { Button } from '@/components/ui/Button';
 import { db } from '@/lib/db';
 import {
-  PHASES,
-  TOTAL_CYCLE_DAYS,
   daysSince,
   getPhaseForDay,
   growStageDay,
+  timelineForCategory,
 } from '@/lib/phases';
 import { LOCATIONS } from '@/lib/locations';
 
@@ -70,8 +69,9 @@ export function Grows() {
         {sorted.map((g) => {
           const gp = plants.filter((p) => p.growId === g.id);
           const day = daysSince(g.startDate);
-          const stageDay = growStageDay(g.startDate, gp);
-          const phase = getPhaseForDay(stageDay);
+          const timeline = timelineForCategory(g.category);
+          const stageDay = growStageDay(g.startDate, gp, timeline);
+          const phase = getPhaseForDay(stageDay, timeline.phases);
           const variety = gp[0]?.variety ?? '';
           const loc = LOCATIONS.find((l) => l.key === g.locationKey);
           return (
@@ -115,9 +115,9 @@ export function Grows() {
                   {g.location} · {gp.length} plöntur · {phase.label.toLowerCase()}
                 </div>
                 <PhaseBar
-                  phases={PHASES}
+                  phases={timeline.phases}
                   currentDay={stageDay}
-                  totalDays={TOTAL_CYCLE_DAYS}
+                  totalDays={timeline.totalDays}
                   showLabels={false}
                 />
                 <ChevronRight
