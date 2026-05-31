@@ -1196,7 +1196,299 @@ const STRAWBERRIES: StrawberryVariety[] = [
   }),
 ];
 
-export const BUILT_IN_VARIETIES: Variety[] = [...PEPPERS, STEINUNN, ...STRAWBERRIES];
+/**
+ * Generic indoor-tomato care — distilled from the Icelandic indoor-tomato guide.
+ * Shared by the international catalog below; Steinunn keeps its own bespoke sheet
+ * (cold-hardy, no-LED-in-summer) because its whole point is the Iceland edge.
+ */
+function indoorTomatoCare(summary: string): CropCare {
+  return {
+    summary,
+    targets: [
+      { label: 'Ljós (vöxtur)', value: 'LED 16–18 klst', hint: 'PPFD 400–600 á vegfasa' },
+      { label: 'Ljós (aldin)', value: 'LED 12–14 klst', hint: 'Meiri styrkur á aldinfasa (PPFD 600+)' },
+      { label: 'Hiti', value: 'Dagur 21–27°C · Nótt 15–18°C', hint: 'Blómgun stöðvast undir 13°C' },
+      { label: 'Lágmarkshiti', value: '10°C', hint: 'Kuldaskemmd neðar' },
+      { label: 'Raki', value: '50–60% á aldinfasa', hint: 'Hærra á ungplöntu (60–70%)' },
+      { label: 'Sýrustig (pH)', value: '6,0–6,8', hint: 'Létt súrt — betri næringarupptaka' },
+      { label: 'Leiðni (EC)', value: '1,8–3,0 mS/cm', hint: 'Veg 1,8–2,4 · aldin 2,0–3,0' },
+      { label: 'Áburður', value: 'Lágt N, hátt P-K á aldinfasa', hint: 'NPK ~10-10-20' },
+      { label: 'Pottur', value: '10–30 L', hint: 'Dvergyrki 10–15 L · há yrki 20–30 L' },
+    ],
+    watering: [
+      'Leyfðu efstu 2–3 cm moldar að þorna; fingurpróf í 3–5 cm dýpt áður en þú vökvar.',
+      'Vökvaðu þar til rennur úr botni og hentu afrennsli — ekki láta pottinn standa í vatni.',
+      'Jöfn vökvun er lykill — sveiflur valda kálbotnsfúa (BER) og sprungum í aldinum.',
+      'Vökvaðu að morgni beint á moldina, ekki á blöðin.',
+    ],
+    pollination: [
+      'Engar býflugur innandyra — tómatablóm þurfa hjálp við aldinsetningu.',
+      'Hristu blómklasann eða snertu hann með rafmagnstannbursta í 1–2 sek um miðjan morgun.',
+      'Frjóvgaðu daglega meðan blómin standa; best við 21–27°C og 40–80% raka.',
+      'Vifta sem blæs vægt yfir plönturnar hjálpar einnig til við frjóvgun.',
+    ],
+    fertilizer: [
+      { stage: 'Ungplanta', npk: '10-10-10 (½ styrkur)', freq: 'Á 2 vikna fresti', note: 'Vægt meðan rætur byggjast upp' },
+      { stage: 'Vöxtur (veg)', npk: '20-10-10', freq: 'Á 2 vikna fresti', note: 'Meira köfnunarefni fyrir blaðvöxt' },
+      { stage: 'Blómgun', npk: '5-10-10', freq: 'Á 2 vikna fresti', note: 'Minnka N, auka fosfór og kalí' },
+      { stage: 'Aldinþroski', npk: '10-10-20 / tómata-áburður', freq: 'Á 1–2 vikna fresti', note: 'Hátt kalí fyrir aldin' },
+    ],
+    troubleshooting: [
+      { problem: 'Blóm detta án aldins', cause: 'Hiti yfir 32°C eða undir 13°C, eða léleg frjóvgun', fix: 'Haltu 15–27°C og frjóvgaðu daglega' },
+      { problem: 'Svört dæld á botni aldins', cause: 'Kálbotnsfúi — kalkflutningur við óreglulega vökvun', fix: 'Vökvaðu jafnt og athugaðu pH' },
+      { problem: 'Aldin springa', cause: 'Skyndileg vatnsupptaka eftir þurrk', fix: 'Vökvaðu jafnt, tíndu örlítið fyrr' },
+      { problem: 'Renglulegar ungplöntur', cause: 'Of lítil birta', fix: 'Lækkaðu ljósið í 15–20 cm og auktu styrk' },
+      { problem: 'Gulnandi neðri blöð', cause: 'Köfnunarefnisskortur eða ofvökvun', fix: 'Athugaðu raka, gefðu áburð' },
+      { problem: 'Hvít, duftkennd áfelling', cause: 'Mjöldögg — hár raki og lélegt loftflæði', fix: 'Bættu loftflæði, lækkaðu raka' },
+    ],
+    normal: [
+      'Neðstu blöð gulna með aldri — fjarlægðu þau.',
+      'Hliðargreinar (suckers) vaxa í blaðöxlum — klíptu þær af óákveðnum yrkjum.',
+      'Létt slapp í hita um miðjan dag sem jafnar sig á kvöldin.',
+    ],
+    concern: [
+      'Öll blöð gulna samtímis — ofvökvun eða næringarskortur.',
+      'Blóm detta í röðum — hita- eða frjóvgunarvandi.',
+      'Brúnir eða svartir blettir með gulum jaðri á blöðum — mögulegur sveppasjúkdómur.',
+    ],
+  };
+}
+
+interface TInput {
+  id: string;
+  commonName: string;
+  glyph: TomatoGlyph;
+  fruitColor: PepperColor;
+  growthHabit: 'determinate' | 'indeterminate';
+  fruitWeightG: number;
+  fruitShape: string;
+  flavor: string;
+  origin: string;
+  daysToGerminate: [number, number];
+  daysToHarvest: [number, number];
+  notes: string;
+  matureHeightCm: number;
+  suitableLocations: LocationKey[];
+  care: CropCare;
+}
+
+function t(input: TInput): TomatoVariety {
+  return {
+    id: input.id,
+    commonName: input.commonName,
+    scientificName: 'Solanum lycopersicum',
+    category: 'tomato',
+    glyph: input.glyph,
+    fruitColor: input.fruitColor,
+    growthHabit: input.growthHabit,
+    fruitWeightG: input.fruitWeightG,
+    fruitShape: input.fruitShape,
+    flavor: input.flavor,
+    origin: input.origin,
+    daysToGerminate: input.daysToGerminate,
+    daysToHarvest: input.daysToHarvest,
+    notes: input.notes,
+    isBuiltIn: true,
+    matureHeightCm: input.matureHeightCm,
+    suitableLocations: input.suitableLocations,
+    care: input.care,
+  };
+}
+
+/**
+ * International indoor-tomato catalog, distilled from the Iceland indoor-tomato
+ * guide. Emphasis on compact/dwarf and cherry types that suit a windowsill or a
+ * small tent under LED. Steinunn remains the Icelandic heritage option.
+ */
+const TOMATOES: TomatoVariety[] = [
+  t({
+    id: 'tomato-sungold',
+    commonName: 'Sungold',
+    glyph: 'cherry_gold',
+    fruitColor: 'orange',
+    growthHabit: 'indeterminate',
+    fruitWeightG: 15,
+    fruitShape: 'Kirsuber',
+    flavor: 'Mjög sætt, ávaxtaríkt — gyllt',
+    origin: 'Japan (F1 blendingur)',
+    daysToGerminate: [6, 12],
+    daysToHarvest: [57, 65],
+    notes:
+      'Sætasta kirsuberjayrkið — gullin-appelsínugul ber í löngum klösum. Óákveðið og hávaxið; þarf stuðning. Þunn húð springur ef vökvun er óregluleg.',
+    matureHeightCm: 90,
+    suitableLocations: ['window', 'tent', 'shower', 'diy'],
+    care: indoorTomatoCare(
+      'Óákveðið (indeterminate) kirsuberjayrki — ákaflega sæt, gyllt ber í sífellu. Hávaxið, þarf uppbindingu og jafna vökvun (annars springa berin).',
+    ),
+  }),
+  t({
+    id: 'tomato-sweet-million',
+    commonName: 'Sweet Million',
+    glyph: 'cherry_red',
+    fruitColor: 'red',
+    growthHabit: 'indeterminate',
+    fruitWeightG: 12,
+    fruitShape: 'Kirsuber',
+    flavor: 'Sætt, klassískt kirsuber',
+    origin: 'Bætt útgáfa af Sweet 100',
+    daysToGerminate: [6, 12],
+    daysToHarvest: [60, 70],
+    notes:
+      'Gríðarlega afkastamikið — hundruð smárra rauðra berja í stórum klösum. Sjúkdómsþolið og sprunguþolnara en mörg kirsuberjayrki.',
+    matureHeightCm: 160,
+    suitableLocations: ['tent', 'shower', 'diy'],
+    care: indoorTomatoCare(
+      'Óákveðið kirsuberjayrki — afar gjöfult, sprunguþolið og sjúkdómsþolið. Hávaxið; gefðu því hátt uppbindingarkerfi.',
+    ),
+  }),
+  t({
+    id: 'tomato-black-cherry',
+    commonName: 'Black Cherry',
+    glyph: 'cherry_black',
+    fruitColor: 'purple',
+    growthHabit: 'indeterminate',
+    fruitWeightG: 18,
+    fruitShape: 'Kirsuber',
+    flavor: 'Djúpt, ríkt, „smoky" sæta',
+    origin: 'Heirloom (USA)',
+    daysToGerminate: [6, 14],
+    daysToHarvest: [64, 75],
+    notes:
+      'Dökkfjólublá/brún kirsuber með djúpu, flóknu bragði. Hávaxið heirloom-yrki sem þarf gott pláss og stuðning.',
+    matureHeightCm: 180,
+    suitableLocations: ['tent', 'shower', 'diy'],
+    care: indoorTomatoCare(
+      'Óákveðið heirloom-kirsuber — dökk, bragðmikil ber. Kröftugur vöxtur sem þarf rúmt pláss og trausta uppbindingu.',
+    ),
+  }),
+  t({
+    id: 'tomato-tiny-tim',
+    commonName: 'Tiny Tim',
+    glyph: 'round_red',
+    fruitColor: 'red',
+    growthHabit: 'determinate',
+    fruitWeightG: 10,
+    fruitShape: 'Kúlulaga',
+    flavor: 'Milt, ferskt kirsuber',
+    origin: 'USA — dvergyrki',
+    daysToGerminate: [6, 12],
+    daysToHarvest: [45, 55],
+    notes:
+      'Sígilt gluggakistu-dvergyrki, aðeins 30–45 cm. Mjög snemmbært og þarf lítið pláss — fullkomið fyrir litla LED-uppsetningu.',
+    matureHeightCm: 38,
+    suitableLocations: ['window', 'tent', 'diy'],
+    care: indoorTomatoCare(
+      'Ákveðið (determinate) dvergyrki, 30–45 cm — snemmbært og plásslítið. Tilvalið á gluggakistu eða í lítilli tjald-uppsetningu.',
+    ),
+  }),
+  t({
+    id: 'tomato-red-robin',
+    commonName: 'Red Robin',
+    glyph: 'round_red',
+    fruitColor: 'red',
+    growthHabit: 'determinate',
+    fruitWeightG: 12,
+    fruitShape: 'Kúlulaga',
+    flavor: 'Milt, sætt',
+    origin: 'USA — dvergyrki',
+    daysToGerminate: [6, 12],
+    daysToHarvest: [55, 60],
+    notes:
+      'Þéttvaxið dvergyrki, 25–30 cm — enn minna en Tiny Tim. Hentar í litla potta og þéttar gluggakistur.',
+    matureHeightCm: 28,
+    suitableLocations: ['window', 'tent', 'diy'],
+    care: indoorTomatoCare(
+      'Ákveðið dvergyrki, aðeins 25–30 cm — plásssparandi og snemmbært. Frábært í lítinn pott á gluggakistu.',
+    ),
+  }),
+  t({
+    id: 'tomato-roma',
+    commonName: 'Roma',
+    glyph: 'plum_red',
+    fruitColor: 'red',
+    growthHabit: 'determinate',
+    fruitWeightG: 60,
+    fruitShape: 'Plómulaga',
+    flavor: 'Þétt hold, lítið vatn — klassísk sósutómatur',
+    origin: 'Ítalía',
+    daysToGerminate: [6, 12],
+    daysToHarvest: [70, 80],
+    notes:
+      'Klassísk plómu-/sósutómatur með þéttu holdi og fáum fræjum. Ákveðið yrki sem ber stóran hluta uppskeru á svipuðum tíma — gott í sósur og þurrkun.',
+    matureHeightCm: 105,
+    suitableLocations: ['tent', 'shower', 'diy'],
+    care: indoorTomatoCare(
+      'Ákveðið plómu-/sósuyrki — þétt hold, fá fræ. Uppskeran kemur þétt saman; tilvalið í sósur og niðursuðu.',
+    ),
+  }),
+  t({
+    id: 'tomato-san-marzano',
+    commonName: 'San Marzano',
+    glyph: 'plum_red',
+    fruitColor: 'red',
+    growthHabit: 'indeterminate',
+    fruitWeightG: 90,
+    fruitShape: 'Plómulaga',
+    flavor: 'Sætt, lágt sýrustig — gæðasósutómatur',
+    origin: 'Ítalía (Napólí-svæðið)',
+    daysToGerminate: [6, 12],
+    daysToHarvest: [75, 90],
+    notes:
+      'Eftirsóttasta sósutómaturinn — löng, mjó plómuber með sætu, þéttu holdi. Óákveðið og hávaxið; þarf uppbindingu og langan vaxtartíma.',
+    matureHeightCm: 135,
+    suitableLocations: ['tent', 'shower', 'diy'],
+    care: indoorTomatoCare(
+      'Óákveðið ítalskt sósuyrki — löng, sæt plómuber. Hávaxið og seinþroska; gefðu því trausta uppbindingu og nægan tíma.',
+    ),
+  }),
+  t({
+    id: 'tomato-brandywine',
+    commonName: 'Brandywine',
+    glyph: 'beefsteak_pink',
+    fruitColor: 'peach',
+    growthHabit: 'indeterminate',
+    fruitWeightG: 400,
+    fruitShape: 'Beefsteak',
+    flavor: 'Ríkt, fyllt — sígilt heirloom-bragð',
+    origin: 'USA — heirloom (1885)',
+    daysToGerminate: [7, 14],
+    daysToHarvest: [80, 90],
+    notes:
+      'Bleikrautt beefsteak-heirloom með stór (400–700 g) aldin og rómað bragð. Krefst mestrar birtu og lengsts vaxtartíma — best í tjaldi með öflugu LED.',
+    matureHeightCm: 150,
+    suitableLocations: ['tent', 'shower', 'diy'],
+    care: indoorTomatoCare(
+      'Óákveðið beefsteak-heirloom — stór, bragðmikil aldin. Þarf mesta birtu, lengstan tíma og kröftuga uppbindingu af öllum yrkjunum hér.',
+    ),
+  }),
+  t({
+    id: 'tomato-patio-princess',
+    commonName: 'Patio Princess',
+    glyph: 'round_red',
+    fruitColor: 'red',
+    growthHabit: 'determinate',
+    fruitWeightG: 70,
+    fruitShape: 'Kúlulaga',
+    flavor: 'Sætt, safaríkt — millistór sneiðtómatur',
+    origin: 'USA — dvergyrki',
+    daysToGerminate: [6, 12],
+    daysToHarvest: [60, 70],
+    notes:
+      'Þétt dvergyrki (45–60 cm) sem ber óvænt stór, 7–10 cm sneiðtómata. Afkastamikið í potti — gott jafnvægi stærðar og uppskeru innandyra.',
+    matureHeightCm: 55,
+    suitableLocations: ['window', 'tent', 'diy'],
+    care: indoorTomatoCare(
+      'Ákveðið dvergyrki, 45–60 cm — ber millistóra sneiðtómata þrátt fyrir smæð. Afkastamikið og plássvænt í potti.',
+    ),
+  }),
+];
+
+export const BUILT_IN_VARIETIES: Variety[] = [
+  ...PEPPERS,
+  STEINUNN,
+  ...TOMATOES,
+  ...STRAWBERRIES,
+];
 
 export function chiliForVarietyId(id?: string): ChiliVariety {
   if (!id) return 'jalapeno';
