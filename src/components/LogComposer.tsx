@@ -141,10 +141,17 @@ export function LogComposer({
   async function submit() {
     setBusy(true);
     const builtData = buildData();
+    const plantId = sel === 'all' ? undefined : sel;
+    // Myndin er búin til um leið og hún er valin (þá getur plantan enn verið
+    // óvalin), svo við samstillum plantId hennar við lokavalið hér — annars
+    // situr myndin eftir með rangt/ótengt plantId og Heilsa finnur hana ekki.
+    if (photoId) {
+      await db.photos.update(photoId, { plantId }).catch(() => undefined);
+    }
     await db.logs.add({
       id: newId(),
       growId,
-      plantId: sel === 'all' ? undefined : sel,
+      plantId,
       timestamp: Date.now(),
       type,
       note: note.trim() || undefined,

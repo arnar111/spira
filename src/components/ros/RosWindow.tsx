@@ -41,6 +41,7 @@ import {
   type HarvestEntry,
   type RosMessage,
   type RosAssessment,
+  type PhotoBlob,
 } from '@/lib/db';
 import { addPhotoFromFile, getPhotoBlob, usePhotoUrl } from '@/lib/photos';
 import {
@@ -354,18 +355,27 @@ function HeilsaTab({
   );
 
   // Nýjasta mynd hverrar plöntu (eingöngu lýsigögn — blob er ekki haldið í minni).
+  // Tengjum mynd við plöntu úr TVEIMUR áttum: (a) plantId á myndinni sjálfri og
+  // (b) skráningu (log) sem ber plantId + photoId. (b) er sú tenging sem birtist í
+  // skráningalistanum og er rétt jafnvel þótt myndin hafi verið valin áður en
+  // plantan var valin (þá situr eftir gamalt/ótengt plantId á myndinni sjálfri).
   const latestByPlant = useLiveQuery(async () => {
     const rows = await db.photos.where('growId').equals(grow.id).toArray();
+    const photoById = new Map(rows.map((ph) => [ph.id, ph] as const));
     const map = new Map<string, LatestPhoto>();
-    for (const ph of rows) {
-      if (!ph.plantId) continue; // spjallmyndir (án plantId) telja ekki með.
-      const cur = map.get(ph.plantId);
-      if (!cur || ph.takenAt > cur.takenAt) {
-        map.set(ph.plantId, { id: ph.id, takenAt: ph.takenAt });
+    const consider = (plantId: string | undefined, photo?: PhotoBlob) => {
+      if (!plantId || !photo) return; // spjallmyndir (án plöntu) telja ekki með.
+      const cur = map.get(plantId);
+      if (!cur || photo.takenAt > cur.takenAt) {
+        map.set(plantId, { id: photo.id, takenAt: photo.takenAt });
       }
+    };
+    for (const ph of rows) consider(ph.plantId, ph);
+    for (const lg of logs) {
+      if (lg.photoId) consider(lg.plantId, photoById.get(lg.photoId));
     }
     return map;
-  }, [grow.id]);
+  }, [grow.id, logs]);
 
   // Vistuð heilsumöt (lifandi) — kort uppfærist um leið og nýtt mat er skrifað.
   const assessmentRows = useLiveQuery(
