@@ -507,23 +507,65 @@ export function computeInsights(input: EngineInput): RosInsight[] {
   // — ÁRSTÍÐ & FROST (aðeins útiræktun) —
   // Útiræktun stýrist af árstíð: mánaðarráð, frostvörn fyrir uppskeru,
   // hreyking kartaflna, mygluvakt og vetrarmold fyrir fjölær jarðarber.
-  if (outdoor && growActive) {
+  // Athugið: ekki gáttað á `growActive` — útiræktun í 'planning' (t.d. nýsett
+  // kartöflubeð) á samt að fá árstíða- og sáningarráð.
+  if (outdoor && !grow.archived && activePlants.length > 0) {
     const season = seasonForMonth(month);
     const risk = frostRisk(month);
     const hasPotato = activePlants.some((p) => p.category === 'potato');
     const hasStrawberry = activePlants.some((p) => p.category === 'strawberry');
 
-    // Frostvörn: á jaðri/utan vaxtartíma með þroskaðar plöntur -> taktu upp.
-    const maturingPhases: GrowPhase[] = ['fruiting', 'ripening', 'harvest'];
-    const someMaturing = activePlants.some((p) => maturingPhases.includes(p.currentPhase));
-    if (risk !== 'none' && (someMaturing || hasPotato)) {
-      insights.push({
-        id: `frost-${grow.id}`,
-        kind: 'frost',
-        severity: risk === 'hard' ? 'due' : 'soon',
-        title: risk === 'hard' ? 'Frosthætta — taktu upp núna' : 'Frost á næsta leiti',
-        detail: `${season.name}: ${risk === 'hard' ? 'hörð frosthætta' : 'frosthætta á jaðri tímabils'} í Reykjavík. Taktu upp uppskeru fyrir fyrsta frost (hörð frost undir −2°C skemma hnýði og aldin).`,
-      });
+    // Sáning/forspírun: kartöflur sem bíða niðursetningar fá árstíðabundið ráð,
+    // svo splunkuný ræktun standi ekki ráðlaus.
+    const plantingPotatoes = activePlants.some(
+      (p) =>
+        p.category === 'potato' &&
+        (p.currentPhase === 'planning' || p.currentPhase === 'germinating'),
+    );
+    if (plantingPotatoes) {
+      if (month >= 2 && month <= 4) {
+        insights.push({
+          id: `plant-${grow.id}`,
+          kind: 'season',
+          severity: 'soon',
+          title: 'Forspíraðu kartöfluútsæðið',
+          detail:
+            'Mars er rétti tíminn til að forspíra útsæði inni (ljóst, 10–15°C) þar til spírur eru 1–2 cm — það flýtir uppskeru um 2–4 vikur.',
+        });
+      } else if (month === 5 || month === 6) {
+        insights.push({
+          id: `plant-${grow.id}`,
+          kind: 'season',
+          severity: 'soon',
+          title: 'Kominn tími til að setja niður',
+          detail:
+            'Seint í maí–júní: settu kartöflur niður 10–15 cm djúpt þegar jarðvegur er 7–10°C og frosthætta er liðin.',
+        });
+      }
+    }
+
+    // Frost ræðst af árstíð: á haustin -> taktu upp fyrir frost; á vorin ->
+    // verðu ungar plöntur fyrir næturfrosti (ekki uppskera!).
+    const growingPhases: GrowPhase[] = ['vegetative', 'flowering', 'fruiting', 'ripening', 'harvest'];
+    const someGrowing = activePlants.some((p) => growingPhases.includes(p.currentPhase));
+    if (someGrowing && risk !== 'none') {
+      if (month >= 9) {
+        insights.push({
+          id: `frost-${grow.id}`,
+          kind: 'frost',
+          severity: risk === 'hard' ? 'due' : 'soon',
+          title: risk === 'hard' ? 'Frosthætta — taktu upp núna' : 'Frost á næsta leiti',
+          detail: `${season.name}: ${risk === 'hard' ? 'hörð frosthætta' : 'frosthætta á jaðri tímabils'} í Reykjavík. Taktu upp uppskeru fyrir fyrsta frost (hörð frost undir −2°C skemma hnýði og aldin).`,
+        });
+      } else {
+        insights.push({
+          id: `frost-${grow.id}`,
+          kind: 'frost',
+          severity: 'soon',
+          title: 'Næturfrost mögulegt',
+          detail: `${season.name}: enn getur gert næturfrost í Reykjavík. Verðu ungar plöntur með reyfi á köldum nóttum og bíddu með viðkvæm afbrigði þar til frosthætta er liðin.`,
+        });
+      }
     }
 
     // Hreyking kartaflna í vexti.
@@ -633,12 +675,12 @@ function dayWord(n: number): string {
 }
 
 /** Stutt merki fyrir plöntu — gælunafn ef til, annars afbrigðisnafn. */
-function plantLabel(p: Plant): string {
+export function plantLabel(p: Plant): string {
   return p.nickname?.trim() || p.variety;
 }
 
 /** Íslenskt heiti fasa fyrir samhengistexta. */
-function phaseLabel(phase: GrowPhase): string {
+export function phaseLabel(phase: GrowPhase): string {
   const map: Record<GrowPhase, string> = {
     planning: 'skipulag',
     germinating: 'spírun',

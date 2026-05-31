@@ -7,7 +7,7 @@ import { Pill } from '@/components/ui/Pill';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { PlantGlyph } from '@/components/PlantGlyph';
 import { db, type Plant } from '@/lib/db';
-import { PHASES, daysSince, getPhaseForDay } from '@/lib/phases';
+import { daysSince, getPhaseForDay, timelineForCategory } from '@/lib/phases';
 import {
   COLOR_HEX,
   COLOR_LABEL,
@@ -200,7 +200,7 @@ function PlantCard({
   variety: Variety | undefined;
   onClick: () => void;
 }) {
-  const phase = PHASES.find((p) => p.name === plant.currentPhase) ?? getPhaseForDay(day);
+  const phase = getPhaseForDay(day, timelineForCategory(plant.category).phases);
   const swatch: PepperColor | undefined = isPepper(variety)
     ? variety.color
     : isTomato(variety) || isStrawberry(variety)

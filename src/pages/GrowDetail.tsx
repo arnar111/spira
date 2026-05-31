@@ -46,11 +46,10 @@ import {
 } from '@/lib/db';
 import { usePhotoUrl } from '@/lib/photos';
 import {
-  PHASES,
-  TOTAL_CYCLE_DAYS,
   daysSince,
   getPhaseForDay,
   growStageDay,
+  timelineForCategory,
 } from '@/lib/phases';
 import {
   COLOR_HEX,
@@ -110,8 +109,9 @@ export function GrowDetail() {
   if (!grow || !plants || !logs) return null;
 
   const day = daysSince(grow.startDate);
-  const stageDay = growStageDay(grow.startDate, plants);
-  const phase = getPhaseForDay(stageDay);
+  const timeline = timelineForCategory(grow.category);
+  const stageDay = growStageDay(grow.startDate, plants, timeline);
+  const phase = getPhaseForDay(stageDay, timeline.phases);
   const loc = LOCATIONS.find((l) => l.key === grow.locationKey);
   const heroVariety = plants[0]?.variety ?? 'Habanero Helios';
   const totalHarvest = (harvests ?? []).reduce((s, h) => s + (h.weightG ?? 0), 0);
@@ -172,7 +172,7 @@ export function GrowDetail() {
         >
           {grow.name}
         </div>
-        <PhaseBar phases={PHASES} currentDay={stageDay} totalDays={TOTAL_CYCLE_DAYS} />
+        <PhaseBar phases={timeline.phases} currentDay={stageDay} totalDays={timeline.totalDays} />
         <div
           className="sp-mono"
           style={{
