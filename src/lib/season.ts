@@ -11,6 +11,8 @@
  * Pure module — callers pass the month (1–12); no clock calls inside.
  */
 
+import type { GrowEnvironment } from './db';
+
 export type FrostRisk = 'hard' | 'risk' | 'none';
 
 export interface SeasonMonth {
@@ -42,6 +44,19 @@ export const REYKJAVIK_SEASON: SeasonMonth[] = [
   { month: 11, name: 'Nóvember', frost: 'hard', outdoorNote: 'Útiræktun í dvala — fylgstu með geymdum kartöflum.' },
   { month: 12, name: 'Desember', frost: 'hard', outdoorNote: 'Dvali — fylgstu með geymslu og skipuleggðu næsta ár.' },
 ];
+
+/**
+ * Is a grow outdoor? Uses `environment` when set, else infers from the location
+ * (`garden`). The Rós engine additionally treats potato grows as outdoor; this
+ * grow-only helper is for UI that doesn't have the plant list to hand.
+ */
+export function growIsOutdoor(grow: {
+  environment?: GrowEnvironment;
+  locationKey?: string;
+}): boolean {
+  if (grow.environment) return grow.environment === 'outdoor';
+  return grow.locationKey === 'garden';
+}
 
 export function seasonForMonth(month: number): SeasonMonth {
   const m = (((month - 1) % 12) + 12) % 12;

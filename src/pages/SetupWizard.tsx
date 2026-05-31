@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { GrowingPlant } from '@/components/GrowingPlant';
 import { PlantGlyph } from '@/components/PlantGlyph';
+import { SeasonCard } from '@/components/SeasonCard';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { cn } from '@/lib/cn';
@@ -97,6 +98,10 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
 
   const set = (patch: Partial<WizardState>) =>
     setState((s) => ({ ...s, ...patch }));
+
+  // Útiræktun (garður): sleppum LED-skrefinu og sýnum árstíðayfirlit í staðinn.
+  const outdoor =
+    LOCATIONS.find((l) => l.key === state.locationKey)?.environment === 'outdoor';
 
   function pickLocation(key: LocationKey) {
     const cat = LOCATIONS.find((l) => l.key === key)!;
@@ -258,8 +263,15 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 onChange={pickLocation}
               />
             )}
-            {step === 1 && <StepSpace key="step-1" state={state} set={set} />}
-            {step === 2 && <StepLight key="step-2" state={state} set={set} />}
+            {step === 1 && (
+              <StepSpace key="step-1" state={state} set={set} outdoor={outdoor} />
+            )}
+            {step === 2 &&
+              (outdoor ? (
+                <StepSeason key="step-2" />
+              ) : (
+                <StepLight key="step-2" state={state} set={set} />
+              ))}
             {step === 3 && (
               <StepVarieties
                 key="step-3"
@@ -406,14 +418,16 @@ function LocationCard({
 function StepSpace({
   state,
   set,
+  outdoor = false,
 }: {
   state: WizardState;
   set: (patch: Partial<WizardState>) => void;
+  outdoor?: boolean;
 }) {
   return (
     <StepWrap>
       <StepHeader
-        eyebrow="Rýmið þitt"
+        eyebrow={outdoor ? 'Beðið þitt' : 'Rýmið þitt'}
         title="Smáatriðin"
         hint="Stillingarnar fylgdu úr staðsetningu — breyttu því sem á við."
       />
@@ -422,7 +436,7 @@ function StepSpace({
           <input
             value={state.growName}
             onChange={(e) => set({ growName: e.target.value })}
-            placeholder="t.d. Sturtu-piparar"
+            placeholder={outdoor ? 't.d. Kartöflugarður' : 't.d. Sturtu-piparar'}
             className={inputCls}
           />
         </Field>
@@ -430,13 +444,15 @@ function StepSpace({
           <input
             value={state.location}
             onChange={(e) => set({ location: e.target.value })}
-            placeholder="t.d. Sturtuklefi, baðherbergi"
+            placeholder={outdoor ? 't.d. Garður, matjurtabeð' : 't.d. Sturtuklefi, baðherbergi'}
             className={inputCls}
           />
         </Field>
         <div>
-          <label className="text-sm text-cream-200 font-medium mb-2 block">Stærð rýmis</label>
-          <div className="grid grid-cols-3 gap-2">
+          <label className="text-sm text-cream-200 font-medium mb-2 block">
+            {outdoor ? 'Stærð beðs' : 'Stærð rýmis'}
+          </label>
+          <div className={cn('grid gap-2', outdoor ? 'grid-cols-2' : 'grid-cols-3')}>
             <NumberInput
               value={state.spaceWidthCm}
               onChange={(v) => set({ spaceWidthCm: v })}
@@ -446,25 +462,47 @@ function StepSpace({
             <NumberInput
               value={state.spaceDepthCm}
               onChange={(v) => set({ spaceDepthCm: v })}
-              label="Dýpt"
+              label={outdoor ? 'Lengd' : 'Dýpt'}
               suffix="cm"
             />
-            <NumberInput
-              value={state.spaceHeightCm}
-              onChange={(v) => set({ spaceHeightCm: v })}
-              label="Hæð"
-              suffix="cm"
-            />
+            {!outdoor && (
+              <NumberInput
+                value={state.spaceHeightCm}
+                onChange={(v) => set({ spaceHeightCm: v })}
+                label="Hæð"
+                suffix="cm"
+              />
+            )}
           </div>
         </div>
-        <Field label="Markhitastig" icon={Thermometer}>
-          <NumberInput
-            value={state.targetTempC}
-            onChange={(v) => set({ targetTempC: v })}
-            suffix="°C"
-          />
-        </Field>
+        {!outdoor && (
+          <Field label="Markhitastig" icon={Thermometer}>
+            <NumberInput
+              value={state.targetTempC}
+              onChange={(v) => set({ targetTempC: v })}
+              suffix="°C"
+            />
+          </Field>
+        )}
       </Card>
+    </StepWrap>
+  );
+}
+
+function StepSeason() {
+  return (
+    <StepWrap>
+      <StepHeader
+        eyebrow="Árstíð"
+        title="Vaxtartíminn úti"
+        hint="Útiræktun stýrist af árstíð og frosti — engin gróðurljós þarf."
+      />
+      <SeasonCard />
+      <p className="text-[11.5px] text-cream-300/70 leading-snug mt-3">
+        Kartöflur: forspíraðu inni í mars, settu niður seint í maí þegar frosthætta er liðin, og
+        taktu upp í september fyrir fyrsta frost. Rós minnir þig á hreykingu og uppskeru þegar þar
+        að kemur.
+      </p>
     </StepWrap>
   );
 }

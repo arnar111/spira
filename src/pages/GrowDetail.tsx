@@ -17,6 +17,8 @@ import {
 import { Pill } from '@/components/ui/Pill';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { PhaseBar } from '@/components/ui/PhaseBar';
+import { SeasonCard } from '@/components/SeasonCard';
+import { growIsOutdoor } from '@/lib/season';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -207,6 +209,12 @@ export function GrowDetail() {
         <Stat label="Plöntur" value={String(plants.length)} />
         <Stat label="Uppskera" value={`${totalHarvest.toFixed(0)}g`} />
       </div>
+
+      {growIsOutdoor(grow) && (
+        <div className="mt-4">
+          <SeasonCard />
+        </div>
+      )}
 
       <section className="mt-6">
         <div className="flex items-center justify-between mb-2">
