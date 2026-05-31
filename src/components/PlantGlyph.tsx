@@ -2,6 +2,7 @@ import { type CSSProperties } from 'react';
 import { Chili } from './Chili';
 import { Tomato } from './Tomato';
 import { Strawberry } from './Strawberry';
+import { Potato } from './Potato';
 import { chiliForVarietyName, varietyByName, type Variety } from '@/lib/varieties';
 
 interface PlantGlyphProps {
@@ -30,6 +31,9 @@ export function PlantGlyph({ variety, name, ...rest }: PlantGlyphProps) {
   }
   if (v?.category === 'strawberry') {
     return <Strawberry variety={v.glyph} {...rest} />;
+  }
+  if (v?.category === 'potato') {
+    return <Potato variety={v.glyph} {...rest} />;
   }
   if (v?.category === 'pepper') {
     return <Chili variety={v.chili} {...rest} />;

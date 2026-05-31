@@ -1,7 +1,8 @@
 import type { LucideIcon } from 'lucide-react';
-import { Home, Tent, Droplets, Hammer } from 'lucide-react';
+import { Home, Tent, Droplets, Hammer, Trees } from 'lucide-react';
+import type { GrowEnvironment } from './db';
 
-export type LocationKey = 'window' | 'tent' | 'shower' | 'diy';
+export type LocationKey = 'window' | 'tent' | 'shower' | 'diy' | 'garden';
 
 export interface LocationCategory {
   key: LocationKey;
@@ -9,6 +10,8 @@ export interface LocationCategory {
   short: string;
   description: string;
   icon: LucideIcon;
+  /** Indoor (LED-driven) or outdoor (season/frost-driven). */
+  environment: GrowEnvironment;
   /** Plant size that fits comfortably here */
   maxHeightCm: number;
   /** Typical natural light strength 0-1 */
@@ -34,6 +37,7 @@ export const LOCATIONS: LocationCategory[] = [
     description:
       'Sólríkur gluggi, takmarkað pláss. Hentar fyrir minni og fljótvaxnar piprategundir.',
     icon: Home,
+    environment: 'indoor',
     maxHeightCm: 70,
     lightScore: 0.4,
     humidityControl: false,
@@ -53,6 +57,7 @@ export const LOCATIONS: LocationCategory[] = [
     description:
       'Ræktunartjald með LED og loftrás. Hentar fyrir öll afbrigði — superhots og fyrir hærri uppskeru.',
     icon: Tent,
+    environment: 'indoor',
     maxHeightCm: 200,
     lightScore: 1,
     humidityControl: true,
@@ -72,6 +77,7 @@ export const LOCATIONS: LocationCategory[] = [
     description:
       'Bjart sturtuherbergi með háu lofti og raka. Frábært fyrir Habanero og Bhut Jolokia.',
     icon: Droplets,
+    environment: 'indoor',
     maxHeightCm: 180,
     lightScore: 0.7,
     humidityControl: true,
@@ -91,6 +97,7 @@ export const LOCATIONS: LocationCategory[] = [
     description:
       'Sérsmíðuð aðstaða — segðu Spíru rýmið og þú færð pipra sem hentar.',
     icon: Hammer,
+    environment: 'indoor',
     maxHeightCm: 150,
     lightScore: 0.6,
     humidityControl: false,
@@ -101,6 +108,26 @@ export const LOCATIONS: LocationCategory[] = [
       spaceHeightCm: 150,
       targetTempC: 22,
       fixture: 'Lumatek Attis Pro 200W',
+    },
+  },
+  {
+    key: 'garden',
+    label: 'Garður',
+    short: 'Útiræktun',
+    description:
+      'Útibeð eða matjurtagarður undir berum himni. Náttúrubirta ræður — ræktun stýrist af árstíð og frosti. Hentar kartöflum og útijarðarberjum.',
+    icon: Trees,
+    environment: 'outdoor',
+    maxHeightCm: 120,
+    lightScore: 1,
+    humidityControl: false,
+    defaults: {
+      growName: 'Garður',
+      spaceWidthCm: 200,
+      spaceDepthCm: 200,
+      spaceHeightCm: 0,
+      targetTempC: 12,
+      fixture: 'Náttúrubirta',
     },
   },
 ];

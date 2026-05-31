@@ -109,7 +109,7 @@ export function PhaseBar({
           }}
         >
           {phases.map((p) => (
-            <span key={p.name}>{p.name}</span>
+            <span key={p.name}>{p.label}</span>
           ))}
         </div>
       )}

@@ -7,13 +7,14 @@ import { Pill } from '@/components/ui/Pill';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { PlantGlyph } from '@/components/PlantGlyph';
 import { db, type Plant } from '@/lib/db';
-import { PHASES, daysSince, getPhaseForDay } from '@/lib/phases';
+import { daysSince, getPhaseForDay, timelineForCategory } from '@/lib/phases';
 import {
   COLOR_HEX,
   COLOR_LABEL,
   MOTHER_SPECIES,
   formatShu,
   isPepper,
+  isPotato,
   isStrawberry,
   isTomato,
   varietyByName,
@@ -199,12 +200,14 @@ function PlantCard({
   variety: Variety | undefined;
   onClick: () => void;
 }) {
-  const phase = PHASES.find((p) => p.name === plant.currentPhase) ?? getPhaseForDay(day);
+  const phase = getPhaseForDay(day, timelineForCategory(plant.category).phases);
   const swatch: PepperColor | undefined = isPepper(variety)
     ? variety.color
     : isTomato(variety) || isStrawberry(variety)
       ? variety.fruitColor
-      : undefined;
+      : isPotato(variety)
+        ? variety.skinColor
+        : undefined;
   return (
     <button
       type="button"
@@ -259,6 +262,11 @@ function PlantCard({
               <>
                 <Pill tone="cap" size="sm">Jarðarber</Pill>
                 <Pill tone="moss" size="sm">{variety.fruitWeightG}g ber</Pill>
+              </>
+            ) : isPotato(variety) ? (
+              <>
+                <Pill tone="moss" size="sm">Kartafla</Pill>
+                <Pill tone="cream" size="sm">{variety.use}</Pill>
               </>
             ) : null}
           </div>

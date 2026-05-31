@@ -8,7 +8,9 @@ import { Stat } from '@/components/ui/Stat';
 import { Sparkline } from '@/components/ui/Sparkline';
 import { Button } from '@/components/ui/Button';
 import { DaylightCard } from '@/components/DaylightCard';
+import { SeasonCard } from '@/components/SeasonCard';
 import { db, newId } from '@/lib/db';
+import { growIsOutdoor } from '@/lib/season';
 import { cn } from '@/lib/cn';
 
 export function Environment() {
@@ -18,6 +20,8 @@ export function Environment() {
 
   if (!allGrows || !env) return null;
   const active = allGrows.filter((g) => !g.archived);
+  const anyOutdoor = active.some((g) => growIsOutdoor(g));
+  const anyIndoor = active.length === 0 || active.some((g) => !growIsOutdoor(g));
 
   return (
     <motion.div
@@ -43,7 +47,8 @@ export function Environment() {
       </header>
 
       <div className="flex flex-col gap-3">
-        <DaylightCard />
+        {anyIndoor && <DaylightCard />}
+        {anyOutdoor && <SeasonCard />}
         {active.length === 0 && (
           <div className="text-sm text-cream-300/60 text-center py-8 border border-dashed border-moss-800/40 rounded-2xl">
             Engar virkar ræktanir.
