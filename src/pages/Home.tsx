@@ -14,31 +14,34 @@ import { PlantGlyph } from '@/components/PlantGlyph';
 import { Button } from '@/components/ui/Button';
 import { db, type Grow, type Plant } from '@/lib/db';
 import {
-  PHASES,
-  TOTAL_CYCLE_DAYS,
   cycleProgress,
   daysSince,
   getPhaseForDay,
   growStageDay,
+  timelineForCategory,
+  type CropTimeline,
 } from '@/lib/phases';
 
 interface DerivedGrow extends Grow {
   day: number;
   stageDay: number;
   progress: number;
-  phaseObj: (typeof PHASES)[number];
+  phaseObj: CropTimeline['phases'][number];
+  timeline: CropTimeline;
 }
 
 function deriveGrow(g: Grow, plants: Plant[]): DerivedGrow {
   const day = daysSince(g.startDate);
   const gp = plants.filter((p) => p.growId === g.id);
-  const stageDay = growStageDay(g.startDate, gp);
+  const timeline = timelineForCategory(g.category);
+  const stageDay = growStageDay(g.startDate, gp, timeline);
   return {
     ...g,
     day,
     stageDay,
-    progress: cycleProgress(stageDay),
-    phaseObj: getPhaseForDay(stageDay),
+    progress: cycleProgress(stageDay, timeline.totalDays),
+    phaseObj: getPhaseForDay(stageDay, timeline.phases),
+    timeline,
   };
 }
 
@@ -319,7 +322,7 @@ function GrowGlassCard({ grow, plants }: { grow: DerivedGrow; plants: Plant[] })
         {grow.location} · {plants.length} plöntur{dim ? ` · ${dim}` : ''}
       </div>
 
-      <PhaseBar phases={PHASES} currentDay={grow.stageDay} totalDays={TOTAL_CYCLE_DAYS} showLabels={false} />
+      <PhaseBar phases={grow.timeline.phases} currentDay={grow.stageDay} totalDays={grow.timeline.totalDays} showLabels={false} />
 
       <div
         style={{
@@ -711,9 +714,9 @@ function DesktopGrowRow({ grow, plants }: { grow: DerivedGrow; plants: Plant[] }
         }}
       >
         <PhaseBar
-          phases={PHASES}
+          phases={grow.timeline.phases}
           currentDay={grow.stageDay}
-          totalDays={TOTAL_CYCLE_DAYS}
+          totalDays={grow.timeline.totalDays}
         />
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 64 }}>

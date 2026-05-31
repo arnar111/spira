@@ -17,6 +17,8 @@ import {
 import { Pill } from '@/components/ui/Pill';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { PhaseBar } from '@/components/ui/PhaseBar';
+import { SeasonCard } from '@/components/SeasonCard';
+import { growIsOutdoor } from '@/lib/season';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -44,11 +46,10 @@ import {
 } from '@/lib/db';
 import { usePhotoUrl } from '@/lib/photos';
 import {
-  PHASES,
-  TOTAL_CYCLE_DAYS,
   daysSince,
   getPhaseForDay,
   growStageDay,
+  timelineForCategory,
 } from '@/lib/phases';
 import {
   COLOR_HEX,
@@ -108,8 +109,9 @@ export function GrowDetail() {
   if (!grow || !plants || !logs) return null;
 
   const day = daysSince(grow.startDate);
-  const stageDay = growStageDay(grow.startDate, plants);
-  const phase = getPhaseForDay(stageDay);
+  const timeline = timelineForCategory(grow.category);
+  const stageDay = growStageDay(grow.startDate, plants, timeline);
+  const phase = getPhaseForDay(stageDay, timeline.phases);
   const loc = LOCATIONS.find((l) => l.key === grow.locationKey);
   const heroVariety = plants[0]?.variety ?? 'Habanero Helios';
   const totalHarvest = (harvests ?? []).reduce((s, h) => s + (h.weightG ?? 0), 0);
@@ -170,7 +172,7 @@ export function GrowDetail() {
         >
           {grow.name}
         </div>
-        <PhaseBar phases={PHASES} currentDay={stageDay} totalDays={TOTAL_CYCLE_DAYS} />
+        <PhaseBar phases={timeline.phases} currentDay={stageDay} totalDays={timeline.totalDays} />
         <div
           className="sp-mono"
           style={{
@@ -207,6 +209,12 @@ export function GrowDetail() {
         <Stat label="Plöntur" value={String(plants.length)} />
         <Stat label="Uppskera" value={`${totalHarvest.toFixed(0)}g`} />
       </div>
+
+      {growIsOutdoor(grow) && (
+        <div className="mt-4">
+          <SeasonCard />
+        </div>
+      )}
 
       <section className="mt-6">
         <div className="flex items-center justify-between mb-2">

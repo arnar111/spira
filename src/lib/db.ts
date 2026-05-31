@@ -157,6 +157,29 @@ export interface RosMessage {
   pending?: boolean; // optimistic UI flag
 }
 
+/**
+ * Rós's most recent photo health assessment for a single plant ("Heilsa" tab).
+ * Keyed by plantId so a re-run overwrites the previous result — there is always
+ * at most one current assessment per plant. Device-local like photos/rosMessages:
+ * NOT part of the sync snapshot (image-derived, never leaves the device beyond
+ * the one vision call that produced it).
+ */
+export interface RosAssessment {
+  /** Primary key — one current assessment per plant. */
+  plantId: string;
+  growId: string;
+  /** The photo that was analyzed. */
+  photoId: string;
+  /** takenAt of that photo — lets the UI flag when a newer photo has arrived. */
+  photoTakenAt: number;
+  /** Parsed 0–10 health score, or null when none could be read from the reply. */
+  score: number | null;
+  /** Full Markdown assessment text from Rós. */
+  text: string;
+  /** When the analysis was run. */
+  createdAt: number;
+}
+
 class SpiraDB extends Dexie {
   grows!: Table<Grow, string>;
   plants!: Table<Plant, string>;
@@ -167,6 +190,7 @@ class SpiraDB extends Dexie {
   varieties!: Table<VarietyPreset, string>;
   meta!: Table<AppMeta, string>;
   rosMessages!: Table<RosMessage, string>;
+  rosAssessments!: Table<RosAssessment, string>;
 
   constructor() {
     super('spira');
@@ -182,6 +206,11 @@ class SpiraDB extends Dexie {
     });
     this.version(2).stores({
       rosMessages: 'id, growId, timestamp',
+    });
+    // Local-only health assessments (not synced). Keyed by plantId so a re-run
+    // overwrites the prior result; growId is indexed for per-grow live queries.
+    this.version(3).stores({
+      rosAssessments: 'plantId, growId',
     });
   }
 }
