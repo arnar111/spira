@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Archive,
+  Camera,
   ChevronRight,
   Droplet,
   Flame,
@@ -21,6 +22,7 @@ import { PhaseBar } from '@/components/ui/PhaseBar';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { PlantGlyph } from '@/components/PlantGlyph';
+import { DiagnoseDialog } from '@/components/DiagnoseDialog';
 import {
   db,
   newId,
@@ -85,6 +87,7 @@ export function GrowDetail() {
   );
 
   const [openLog, setOpenLog] = useState(false);
+  const [openDiagnose, setOpenDiagnose] = useState(false);
 
   if (!grow || !plants || !logs) return null;
 
@@ -178,7 +181,11 @@ export function GrowDetail() {
           <h2 className="sp-display text-cream-50" style={{ fontSize: 20, fontWeight: 500 }}>
             Plöntur
           </h2>
-          <span className="text-[11px] text-cream-400/70">{plants.length} alls</span>
+          {plants.length > 0 && (
+            <Button size="sm" variant="ghost" onClick={() => setOpenDiagnose(true)}>
+              <Camera size={13} /> Greina mynd
+            </Button>
+          )}
         </div>
         <div className="flex flex-col gap-2">
           {plants.map((p) => (
@@ -223,6 +230,14 @@ export function GrowDetail() {
           growId={grow.id}
           plants={plants}
           onClose={() => setOpenLog(false)}
+        />
+      )}
+
+      {openDiagnose && grow && (
+        <DiagnoseDialog
+          grow={grow}
+          plants={plants}
+          onClose={() => setOpenDiagnose(false)}
         />
       )}
     </motion.div>

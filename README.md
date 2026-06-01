@@ -30,6 +30,16 @@ Spíra styður nú **tvo plöntuflokka**:
 - **Ljósareiknir (DLI)** — reiknar daglegt ljósmagn út frá ljósstyrk (PPFD) og ljóstíma og
   segir hvort plantan fái nóg fyrir hvern vaxtarfasa.
 
+## AI plöntugreinir
+
+Taktu mynd af plöntu (📷 „Greina mynd" á ræktunarsíðu) og fáðu skipulagða heilsugreiningu á
+íslensku: alvarleikastig, líkleg vandamál með vissustigi, ráðlagðar aðgerðir og tillögu að
+skráningu. Greiningin er byggð á Claude (vision) með þekkingargrunni úr ræktunarhandbókunum.
+
+Uppsetning: API-lykillinn er **alltaf** geymdur á server (Netlify-fall `/api/diagnose`) — aldrei í
+vafranum. Settu `ANTHROPIC_API_KEY` í Netlify umhverfisbreytur (sjá `.env.example`). Myndir eru
+minnkaðar í vafranum áður en þær eru sendar. Sjálfgefið líkan er `claude-opus-4-8`.
+
 ## Fasi 1 — Grunnur (núverandi)
 
 - [x] Vite + React + TypeScript + Tailwind scaffold
