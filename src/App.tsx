@@ -39,8 +39,40 @@ export default function App() {
       syncManager.setAccount(account.code);
       const onboardingComplete = await getOnboardingComplete();
       setState({ kind: 'authenticated', account, onboardingComplete });
+      // Render instantly from local data, then refresh from the cloud in the
+      // background so this device reflects edits made on other devices.
+      pullFromCloud();
     })();
   }, []);
+
+  // Re-pull whenever the tab regains focus or the network reconnects, so a
+  // device left open still catches up with changes made elsewhere.
+  useEffect(() => {
+    if (state.kind !== 'authenticated') return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') pullFromCloud();
+    };
+    const onOnline = () => pullFromCloud();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', onOnline);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('online', onOnline);
+    };
+  }, [state.kind]);
+
+  function pullFromCloud(opts?: { force?: boolean }) {
+    void syncManager.pullLatest(opts).then((changed) => {
+      if (!changed) return;
+      // Pages re-render from IndexedDB via useLiveQuery; only the onboarding
+      // gate is held in component state, so refresh it after a cloud import.
+      void getOnboardingComplete().then((onboardingComplete) =>
+        setState((prev) =>
+          prev.kind === 'authenticated' ? { ...prev, onboardingComplete } : prev,
+        ),
+      );
+    });
+  }
 
   async function refreshAfterSignIn() {
     const account = getCurrentAccount();

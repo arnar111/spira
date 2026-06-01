@@ -7,7 +7,7 @@ import {
   type HarvestEntry,
   type AppMeta,
 } from './db';
-import { syncData } from './account';
+import { signIn, syncData } from './account';
 
 export interface SnapshotV1 {
   version: 1;
@@ -21,6 +21,33 @@ export interface SnapshotV1 {
 
 const SNAPSHOT_VERSION = 1;
 const SYNC_DEBOUNCE_MS = 1200;
+
+// Device-local meta keys that must never travel in the synced snapshot.
+// `cloudUpdatedAt` records the server `updated_at` of the snapshot this device
+// currently holds, so startup pulls can tell whether the cloud is newer.
+const CLOUD_BASELINE_KEY = 'cloudUpdatedAt';
+const LOCAL_ONLY_META_KEYS = new Set<string>(['lastSyncedAt', CLOUD_BASELINE_KEY]);
+
+export async function getCloudBaseline(): Promise<string | null> {
+  const row = await db.meta.get(CLOUD_BASELINE_KEY);
+  return typeof row?.value === 'string' ? row.value : null;
+}
+
+export async function setCloudBaseline(updatedAt: string | null | undefined): Promise<void> {
+  if (typeof updatedAt !== 'string' || updatedAt.length === 0) return;
+  await db.meta.put({ key: CLOUD_BASELINE_KEY, value: updatedAt });
+}
+
+// Lexicographic comparison is unreliable across timestamp formats, so compare
+// the parsed epoch values; a remote with no known local baseline is "newer".
+function isRemoteNewer(remote: string | null, baseline: string | null): boolean {
+  if (!remote) return false;
+  if (!baseline) return true;
+  const r = Date.parse(remote);
+  const b = Date.parse(baseline);
+  if (Number.isNaN(r) || Number.isNaN(b)) return remote !== baseline;
+  return r > b;
+}
 
 export async function exportSnapshot(): Promise<SnapshotV1> {
   const [grows, plants, logs, environment, harvests, meta] = await Promise.all([
@@ -38,12 +65,12 @@ export async function exportSnapshot(): Promise<SnapshotV1> {
     logs,
     environment,
     harvests,
-    meta: meta.filter((m) => m.key !== 'lastSyncedAt'),
+    meta: meta.filter((m) => !LOCAL_ONLY_META_KEYS.has(m.key)),
   };
 }
 
-export async function importSnapshot(snapshot: unknown): Promise<void> {
-  if (!isSnapshot(snapshot)) return;
+export async function importSnapshot(snapshot: unknown): Promise<boolean> {
+  if (!isSnapshot(snapshot)) return false;
   await db.transaction(
     'rw',
     [db.grows, db.plants, db.logs, db.environment, db.harvests, db.meta],
@@ -65,6 +92,7 @@ export async function importSnapshot(snapshot: unknown): Promise<void> {
       ]);
     },
   );
+  return true;
 }
 
 export async function clearLocalData(): Promise<void> {
@@ -110,6 +138,10 @@ class SyncManager {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private inFlight: Promise<void> | null = null;
   private pendingAfterFlight = false;
+  private pullInFlight: Promise<boolean> | null = null;
+  // While suspended, Dexie write hooks don't schedule a push — used so importing
+  // a freshly-pulled snapshot doesn't immediately echo it back to the server.
+  private suspended = false;
 
   setAccount(code: string | null) {
     if (this.code === code) return;
@@ -126,6 +158,7 @@ class SyncManager {
   schedule(): void {
     if (!this.code) return;
     if (this.isDemo()) return;
+    if (this.suspended) return;
     if (this.timer) clearTimeout(this.timer);
     this.setStatus('pending', this.lastSyncedAt);
     this.timer = setTimeout(() => {
@@ -171,13 +204,80 @@ class SyncManager {
     this.setStatus('syncing', this.lastSyncedAt);
     try {
       const snapshot = await exportSnapshot();
-      await syncData(this.code, snapshot);
+      const { updated_at } = await syncData(this.code, snapshot);
+      await setCloudBaseline(updated_at);
       const now = Date.now();
       this.lastSyncedAt = now;
       this.setStatus('idle', now);
     } catch (err) {
       console.error('[sync] failed', err);
       this.setStatus('error', this.lastSyncedAt);
+    }
+  }
+
+  private async runSuspended<T>(fn: () => Promise<T>): Promise<T> {
+    this.suspended = true;
+    try {
+      return await fn();
+    } finally {
+      this.suspended = false;
+    }
+  }
+
+  /**
+   * Fetch the cloud snapshot and adopt it locally if the server's copy is newer
+   * than what this device last synced — this is what lets a second device (or a
+   * returning session) see edits made elsewhere. Skips when there are unsynced
+   * local changes (a queued/failed push) so we never clobber them, unless
+   * `force` is set. Network/lookup failures are swallowed so startup never
+   * blocks on connectivity. Returns true when local data was replaced.
+   */
+  async pullLatest(opts?: { force?: boolean }): Promise<boolean> {
+    if (!this.code || this.isDemo()) return false;
+    if (
+      !opts?.force &&
+      (this.timer || this.status === 'pending' || this.status === 'error')
+    ) {
+      return false;
+    }
+    if (this.pullInFlight) return this.pullInFlight;
+    if (this.inFlight) {
+      try {
+        await this.inFlight;
+      } catch {
+        /* push error is reported separately */
+      }
+    }
+    this.pullInFlight = this.runPull();
+    try {
+      return await this.pullInFlight;
+    } finally {
+      this.pullInFlight = null;
+    }
+  }
+
+  private async runPull(): Promise<boolean> {
+    const code = this.code;
+    if (!code) return false;
+    this.setStatus('syncing', this.lastSyncedAt);
+    try {
+      const remote = await signIn(code);
+      const remoteUpdatedAt =
+        typeof remote.updated_at === 'string' ? remote.updated_at : null;
+      let changed = false;
+      if (isRemoteNewer(remoteUpdatedAt, await getCloudBaseline())) {
+        changed = await this.runSuspended(() => importSnapshot(remote.data));
+      }
+      await setCloudBaseline(remoteUpdatedAt);
+      const now = Date.now();
+      this.lastSyncedAt = now;
+      this.setStatus('idle', now);
+      return changed;
+    } catch (err) {
+      console.error('[sync] pull failed', err);
+      // A failed pull shouldn't surface as a sync error — local data is intact.
+      this.setStatus('idle', this.lastSyncedAt);
+      return false;
     }
   }
 

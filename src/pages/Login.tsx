@@ -16,7 +16,7 @@ import {
   signUp,
   type AccountResponse,
 } from '@/lib/account';
-import { clearLocalData, importSnapshot } from '@/lib/sync';
+import { clearLocalData, importSnapshot, setCloudBaseline } from '@/lib/sync';
 import { DEMO_CODE, DEMO_NAME, seedDemoData } from '@/lib/demo';
 
 type Mode = 'signin' | 'signup';
@@ -65,6 +65,9 @@ export function Login({ onSignedIn }: LoginProps) {
           await importSnapshot(result.data);
         }
       }
+      // Record the cloud version we just adopted so the next startup pull only
+      // re-imports when another device has pushed something newer.
+      await setCloudBaseline(result.updated_at);
       setCurrentAccount({ code: result.code, name: result.name });
       onSignedIn();
       navigate(mode === 'signup' ? '/setup' : '/home', { replace: true });

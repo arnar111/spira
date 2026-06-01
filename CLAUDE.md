@@ -41,10 +41,11 @@ Auth is a single uppercase 3-char code matching `/^[A-Z0-9]{3}$/`. The code IS t
 
 `src/lib/sync.ts` is the sync engine. There is **no field-level merge** — sync replaces everything:
 
-- `exportSnapshot()` serializes grows/plants/logs/environment/harvests/meta into a `SnapshotV1` (`version: 1`). **Photos are NOT included** — image blobs stay device-local and never sync. The `lastSyncedAt` meta key is stripped.
+- `exportSnapshot()` serializes grows/plants/logs/environment/harvests/meta into a `SnapshotV1` (`version: 1`). **Photos are NOT included** — image blobs stay device-local and never sync. Device-local meta keys (`lastSyncedAt`, `cloudUpdatedAt`) are stripped (`LOCAL_ONLY_META_KEYS`).
 - On **sign-in**, the server's `data` blob is `importSnapshot()`ed: it **clears local tables then bulk-adds** the snapshot. So signing in overwrites local data with the cloud copy.
+- **Pull-on-load / focus**: `syncManager.pullLatest()` (called from `App.tsx` on startup, on `visibilitychange`→visible, and on `online`) re-fetches the cloud snapshot for an already-signed-in device and adopts it **only if the server is newer** than the locally-recorded `cloudUpdatedAt` baseline. This is what lets edits made on one device show up on another. It skips when there are unsynced local changes (queued/failed push) so it can't clobber them, and import runs with sync hooks **suspended** so it doesn't echo straight back. Each successful push/pull records the server's `updated_at` as the new baseline.
 - `syncManager` (singleton) debounces pushes by `SYNC_DEBOUNCE_MS` (1200ms) and serializes in-flight requests. `installAutoSyncHooks()` (called once in `App.tsx`) attaches Dexie `creating`/`updating`/`deleting` hooks to the synced tables so any mutation schedules a push. Photos table is intentionally not hooked.
-- Because it's whole-snapshot last-write-wins, **two devices on the same code overwrite each other** — there is no conflict resolution. Keep this in mind for any feature touching sync.
+- Because it's whole-snapshot last-write-wins, **two devices editing offline at the same time still overwrite each other** — the baseline check resolves the common sequential case (edit on A, then open B) but there is no field-level conflict resolution. Keep this in mind for any feature touching sync.
 
 If you add a new synced table, update: the `stores()` schema, `SnapshotV1` + `exportSnapshot`/`importSnapshot`/`isSnapshot`, `clearLocalData`, and the hook list in `installAutoSyncHooks`.
 
