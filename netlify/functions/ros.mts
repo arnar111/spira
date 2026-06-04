@@ -24,6 +24,7 @@ interface RosBody {
   messages: RosTurn[];
   context?: string;
   images?: InlineImage[];
+  stream?: boolean;
 }
 
 type GeminiPart = { text?: string } | { inline_data: { mime_type: string; data: string } };
@@ -105,6 +106,10 @@ export default async (req: Request, _context: Context) => {
     generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
   });
 
+  if (body.stream === true) {
+    return await streamResponse(payload, KEY);
+  }
+
   const chain = buildModelChain();
   const startedAt = Date.now();
   let lastStatus = 0;
@@ -170,6 +175,186 @@ export default async (req: Request, _context: Context) => {
 export const config: Config = {
   path: '/api/ros',
 };
+
+// --- Streaming path -------------------------------------------------------
+//
+// Sömu fallback-reglur og í venjulegu leiðinni, en með SSE. Við könnum
+// líkana-keðjuna á undan og opnum EKKI SSE-straum fyrr en upstream-líkan hefur
+// skilað fyrsta texta-delta. Þannig getum við fallið aftur á venjulega
+// JSON-villuna (sama snið og venjulega leiðin) ef öll líkön bregðast áður en
+// nokkur straumur opnast — villumeðhöndlun helst samræmd hjá biðlaranum.
+//
+// Um leið og fyrsta delta hefur verið áframsent læsum við líkanið — síðari
+// villa skilar sér þá sem `error`-atburður og straumnum er lokað (við skiptum
+// aldrei um líkan eftir að straumur er opinn).
+async function streamResponse(payload: string, key: string): Promise<Response> {
+  const chain = buildModelChain();
+  const startedAt = Date.now();
+  let lastStatus = 0;
+
+  for (const model of chain) {
+    if (Date.now() - startedAt > OVERALL_BUDGET_MS) break;
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${key}`;
+    const controller = new AbortController();
+    // Tímamörk gilda á tíma-að-fyrsta-bæti; þau eru hreinsuð þegar fyrsta delta
+    // er komið svo langt svar verði ekki rofið.
+    const timer = setTimeout(() => controller.abort(), ATTEMPT_TIMEOUT_MS);
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+        signal: controller.signal,
+      });
+    } catch {
+      clearTimeout(timer);
+      lastStatus = 504;
+      continue; // netvilla / tímamörk — reyndu næsta líkan
+    }
+
+    if (!res.ok || !res.body) {
+      clearTimeout(timer);
+      lastStatus = res.ok ? 502 : res.status;
+      if (!res.ok && !RETRYABLE.has(res.status)) break; // 400/403/404 — vonlaust
+      continue;
+    }
+
+    // Lesum fyrstu delta-in fram að fyrsta texta svo við vitum hvort líkanið
+    // skilar einhverju. Ef ekkert kemur (tómt/öryggis-blokkað) reynum við næsta.
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let firstDelta = '';
+    let upstreamDone = false;
+
+    try {
+      while (!firstDelta) {
+        const { done, value } = await reader.read();
+        if (done) {
+          upstreamDone = true;
+          break;
+        }
+        buffer += decoder.decode(value, { stream: true });
+        let nl: number;
+        while ((nl = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.slice(0, nl).replace(/\r$/, '');
+          buffer = buffer.slice(nl + 1);
+          const text = parseSseDataLine(line);
+          if (text) {
+            firstDelta = text;
+            break;
+          }
+        }
+      }
+    } catch {
+      clearTimeout(timer);
+      lastStatus = 504;
+      continue; // rofnaði fyrir fyrsta delta — reyndu næsta líkan
+    }
+    clearTimeout(timer);
+
+    if (!firstDelta) {
+      // Straumur kláraðist án texta (öryggis-blokk / tómt svar) — næsta líkan.
+      if (upstreamDone) lastStatus = lastStatus || res.status;
+      continue;
+    }
+
+    // Líkanið skilar texta → opnum OKKAR SSE-straum og áframsendum afganginn.
+    return openClientStream(reader, decoder, buffer, firstDelta, model);
+  }
+
+  // Engin delta barst úr neinu líkani — sama JSON-villa og venjulega leiðin.
+  const overloaded = lastStatus === 503 || lastStatus === 429 || lastStatus === 504;
+  return json(
+    {
+      error: 'upstream_error',
+      lastStatus,
+      message: overloaded
+        ? 'Rós er mjög upptekin í augnablikinu — öll líkön svöruðu ekki. Reyndu aftur eftir smá stund.'
+        : 'Rós svaraði ekki. Reyndu aftur síðar.',
+    },
+    overloaded ? 503 : 502,
+  );
+}
+
+// Búum til SSE-svar fyrir biðlarann út frá líkani sem þegar hefur skilað fyrsta
+// delta. `buffer` er það sem eftir var ólesið eftir fyrsta delta.
+function openClientStream(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  decoder: TextDecoder,
+  initialBuffer: string,
+  firstDelta: string,
+  model: string,
+): Response {
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (obj: unknown) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+      };
+
+      // Fyrsta delta sem þegar var lesið úr upstream.
+      send({ delta: firstDelta });
+
+      let buffer = initialBuffer;
+      const flush = () => {
+        let nl: number;
+        while ((nl = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.slice(0, nl).replace(/\r$/, '');
+          buffer = buffer.slice(nl + 1);
+          const text = parseSseDataLine(line);
+          if (text) send({ delta: text });
+        }
+      };
+
+      try {
+        // Tæmum það sem þegar var í buffer.
+        flush();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          flush();
+        }
+        // Síðasta lína án nýlínu.
+        const tail = parseSseDataLine(buffer);
+        if (tail) send({ delta: tail });
+        send({ done: true, model });
+      } catch {
+        // Straumur rofnaði eftir að fyrsta delta var sent — engin líkana-skipti
+        // héðan í frá, bara villa og loka.
+        send({ error: 'upstream_error', message: 'Rós rofnaði í miðju svari. Reyndu aftur.' });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
+  });
+}
+
+// Tekur eina línu úr upstream SSE ("data: {json}") og dregur út samanlagðan
+// texta úr candidates[0].content.parts[].text. Skilar '' ef engin texti.
+function parseSseDataLine(line: string): string {
+  const trimmed = line.trimStart();
+  if (!trimmed.startsWith('data:')) return '';
+  const jsonStr = trimmed.slice(5).trim();
+  if (!jsonStr || jsonStr === '[DONE]') return '';
+  let data: unknown;
+  try {
+    data = JSON.parse(jsonStr);
+  } catch {
+    return '';
+  }
+  return extractText(data);
+}
 
 function extractText(data: unknown): string {
   if (!isRecord(data)) return '';

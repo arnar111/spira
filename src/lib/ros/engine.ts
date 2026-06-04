@@ -20,6 +20,7 @@ import type {
 import { needsGrowLight, daylightForMonth } from '@/lib/daylight';
 import { seasonForMonth, frostRisk } from '@/lib/season';
 import { varietyByName, varietyById, isTomato, isStrawberry } from '@/lib/varieties';
+import { predictHarvestWindow } from './predict';
 import type { RosInsight, RosSeverity } from './types';
 
 const DAY_MS = 1000 * 60 * 60 * 24;
@@ -654,6 +655,68 @@ export function computeInsights(input: EngineInput): RosInsight[] {
     }
   }
 
+  // — SPÍRUN SEINKAR —
+  // Planta enn í spírun en aldur (frá sáningu/stofnun) hefur farið vel fram úr
+  // efra spírunarmarki afbrigðis (+5 daga svigrúm). Líklega vandi með raka/hita.
+  {
+    for (const p of plantsInPhase(activePlants, 'germinating')) {
+      const variety = plantVariety(p);
+      if (!variety || !variety.daysToGerminate) continue;
+      const [, maxGerm] = variety.daysToGerminate;
+      const sownTs = p.sowDate ?? p.createdAt;
+      const ageDays = daysSince(now, sownTs);
+      if (ageDays > maxGerm + 5) {
+        insights.push({
+          id: `germin-${p.id}`,
+          kind: 'info',
+          severity: 'soon',
+          title: `${plantLabel(p)} er sein að spíra`,
+          detail: `Dagur ${ageDays} frá sáningu — afbrigðið spírar venjulega á ${variety.daysToGerminate[0]}–${maxGerm} dögum. Athugaðu að moldin haldist rök (ekki blaut) og hlý; paprika spírar best við 26–28°C. Íhugaðu að sá aftur ef ekkert bólar á spírum.`,
+          plantId: p.id,
+        });
+      }
+    }
+  }
+
+  // — MYNDAVAKT —
+  // Engin (eða gömul, >= 14 daga) 'photo' skráning meðan einhver planta er komin
+  // fram úr spírun -> hvetja til myndatöku svo Heilsa-sjónmat Rósar geti fylgst með.
+  if (growActive) {
+    const pastGerminating = activePlants.some(
+      (p) => p.currentPhase !== 'germinating' && ACTIVE_PHASES.has(p.currentPhase),
+    );
+    if (pastGerminating) {
+      const lastPhoto = lastLogTs(logs, 'photo');
+      const since = lastPhoto !== undefined ? daysSince(now, lastPhoto) : undefined;
+      if (since === undefined || since >= 14) {
+        insights.push({
+          id: `photo-${grow.id}`,
+          kind: 'info',
+          severity: 'info',
+          title: 'Taktu mynd af plöntunum',
+          detail:
+            since === undefined
+              ? 'Engin mynd skráð enn. Taktu mynd svo Heilsa-sjónmat Rósar geti metið vöxt og heilsu og fylgst með framvindu.'
+              : `Síðasta mynd fyrir ${since} ${dayWord(since)}. Taktu nýja mynd svo Heilsa-sjónmat Rósar geti borið saman og fylgst með framvindu.`,
+        });
+      }
+    }
+  }
+
+  // — SPUNAMAUR-VAKT (aðeins innidyra) —
+  // Þurrt vetrarloft innandyra (nóv–mars) er kjörlendi spunamaurs. Vægur hnippur
+  // um vikulega skoðun á bakhlið blaða og að halda rakanum uppi.
+  if (growActive && !outdoor && (month >= 11 || month <= 3)) {
+    insights.push({
+      id: `pest-${grow.id}`,
+      kind: 'info',
+      severity: 'info',
+      title: 'Spunamaur-vakt',
+      detail:
+        'Þurrt vetrarloft innandyra ýtir undir spunamaur. Skoðaðu bakhlið blaða vikulega (fínn vefur, ljósir doppóttir blettir) og haltu rakanum uppi með úðun eða rakatæki.',
+    });
+  }
+
   // Stöðug röðun: 'due' -> 'soon' -> 'info'. Innan sömu severity helst upphafleg röð.
   return stableSortBySeverity(insights);
 }
@@ -672,6 +735,21 @@ function stableSortBySeverity(items: RosInsight[]): RosInsight[] {
 /** Íslensk fleirtölu-/eintölumeðferð fyrir „dag(a)". */
 function dayWord(n: number): string {
   return Math.abs(n) === 1 ? 'dag' : 'daga';
+}
+
+/**
+ * Stutt dagsetning á íslensku frá tímastimpli (fellur aftur á ISO ef locale vantar).
+ * Hér er Date smíðað ÚT FRÁ ts sem berst inn — engin klukkuköllun (deterministískt).
+ */
+function shortDate(ts: number): string {
+  try {
+    return new Date(ts).toLocaleDateString('is-IS', {
+      day: 'numeric',
+      month: 'short',
+    });
+  } catch {
+    return new Date(ts).toISOString().slice(0, 10);
+  }
 }
 
 /** Stutt merki fyrir plöntu — gælunafn ef til, annars afbrigðisnafn. */
@@ -752,6 +830,23 @@ export function buildContextDigest(input: EngineInput): string {
   if (harvests.length > 0) {
     const totalG = harvests.reduce((sum, h) => sum + (h.weightG || 0), 0);
     lines.push(`Uppskera til þessa: ${harvests.length} skráningar, samtals ${totalG} g.`);
+  }
+
+  // Uppskeruspá: áætlaður gluggi hverrar virkrar plöntu (deterministískt frá 'now').
+  const outlookLines: string[] = [];
+  for (const p of activePlants) {
+    const prediction = predictHarvestWindow(p, plantVariety(p), now);
+    if (!prediction) continue;
+    const { daysUntilStart, windowStart } = prediction;
+    const when =
+      daysUntilStart <= 0
+        ? 'gluggi opinn núna'
+        : `gluggi opnast eftir ${daysUntilStart} ${dayWord(daysUntilStart)}`;
+    outlookLines.push(`- ${plantLabel(p)}: ${when} (${shortDate(windowStart)})`);
+  }
+  if (outlookLines.length > 0) {
+    lines.push('Uppskeruspá:');
+    lines.push(...outlookLines);
   }
 
   // Nýlegir minnispunktar (síðustu 3 'note' skráningar).

@@ -4,6 +4,7 @@ import { AnimatePresence } from 'framer-motion';
 import { Welcome } from './pages/Welcome';
 import { SetupWizard } from './pages/SetupWizard';
 import { Home } from './pages/Home';
+import { RosOverview } from './pages/RosOverview';
 import { Login } from './pages/Login';
 import { Layout } from './components/Layout';
 import { Grows } from './pages/Grows';
@@ -103,6 +104,7 @@ export default function App() {
         />
         <Route element={<Layout account={account} onSignOut={handleSignOut} />}>
           <Route path="/home" element={<Home />} />
+          <Route path="/ros" element={<RosOverview />} />
           <Route path="/grows" element={<Grows />} />
           <Route path="/grow/:id" element={<GrowDetail />} />
           <Route path="/plants" element={<Plants />} />
