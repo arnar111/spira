@@ -9,6 +9,7 @@ import {
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   Activity,
+  Bookmark,
   CalendarDays,
   Camera,
   Droplet,
@@ -32,6 +33,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Tabs } from '@/components/ui/Tabs';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { RosAvatar } from '@/components/ros/RosAvatar';
+import { DiagnosisTab } from '@/components/ros/DiagnosisWizard';
 import {
   db,
   newId,
@@ -62,6 +64,7 @@ import type {
 } from '@/lib/ros/types';
 import {
   askRos,
+  askRosStream,
   blobToInlineImage,
   type RosTurn,
   type RosInlineImage,
@@ -175,7 +178,11 @@ export function RosWindow({ grow, open, onClose }: RosWindowProps): JSX.Element 
         </header>
 
         <div className="shrink-0 mb-3">
-          <Tabs tabs={['Ráð', 'Heilsa', 'Spjall']} active={tab} onChange={setTab} />
+          <Tabs
+            tabs={['Ráð', 'Heilsa', 'Greining', 'Spjall']}
+            active={tab}
+            onChange={setTab}
+          />
         </div>
 
         <div className="min-h-0 flex-1 flex flex-col">
@@ -196,6 +203,14 @@ export function RosWindow({ grow, open, onClose }: RosWindowProps): JSX.Element 
             />
           )}
           {tab === 2 && (
+            <DiagnosisTab
+              grow={grow}
+              plants={plants}
+              logs={logs}
+              harvests={harvests}
+            />
+          )}
+          {tab === 3 && (
             <ChatTab
               grow={grow}
               plants={plants}
@@ -650,6 +665,21 @@ function PlantHealthCard({
 
 /* — SPJALL — */
 
+/** Íslenskar tillöguspurningar fyrir hverja innsýnar-gerð (efstu ráð → spjall). */
+const SUGGESTION_BY_KIND: Partial<Record<RosInsightKind, string>> = {
+  water: 'Hvernig veit ég hvort ég eigi að vökva núna?',
+  feed: 'Hvaða áburð ætti ég að nota núna?',
+  pollinate: 'Hvernig frjóvga ég blómin rétt?',
+  harvest: 'Hvenær verður uppskeran tilbúin?',
+  light: 'Þarf ég gróðurljós þennan mánuð?',
+  top: 'Hvernig toppa ég plöntuna rétt?',
+  frost: 'Hvernig ver ég plönturnar gegn frosti?',
+  hill: 'Hvernig hreyki ég rétt að kartöflunum?',
+};
+
+/** Almenn vara-tillaga ef of fáar innsýnir gefa spurningu. */
+const FALLBACK_SUGGESTION = 'Hvað ætti ég að gera næst?';
+
 function ChatTab({
   grow,
   plants,
@@ -669,14 +699,36 @@ function ChatTab({
   const [text, setText] = useState('');
   const [pendingPhotos, setPendingPhotos] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
+  // Lifandi streymdur texti svars Rósar (null þegar ekkert er að streyma).
+  const [streamText, setStreamText] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const list = messages ?? [];
 
+  // Tillöguspurningar út frá efstu ráðum (deduppað eftir gerð, fyllt með varatillögu).
+  const suggestions = useMemo(() => {
+    const now = Date.now();
+    const month = new Date(now).getMonth() + 1;
+    const insights = computeInsights({ grow, plants, logs, harvests, now, month });
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const ins of insights) {
+      if (seen.has(ins.kind)) continue;
+      const q = SUGGESTION_BY_KIND[ins.kind];
+      if (!q) continue;
+      seen.add(ins.kind);
+      out.push(q);
+      if (out.length >= 3) break;
+    }
+    // Vara-tillagan bætist við í mesta lagi EINU sinni — aldrei tvær eins flögur.
+    if (out.length < 2) out.push(FALLBACK_SUGGESTION);
+    return out.slice(0, 3);
+  }, [grow, plants, logs, harvests]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end' });
-  }, [list.length, sending]);
+  }, [list.length, sending, streamText]);
 
   const onPickPhotos = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
@@ -697,11 +749,13 @@ function ChatTab({
     setPendingPhotos((prev) => prev.filter((p) => p !== id));
   }
 
-  async function send() {
-    const trimmed = text.trim();
-    if ((!trimmed && pendingPhotos.length === 0) || sending) return;
+  async function send(override?: string) {
+    const trimmed = (override ?? text).trim();
+    // Tillögusmellur (override) sendir alltaf texta; myndir fylgja aðeins venjulegri ritun.
+    const usePhotos = override === undefined;
+    const photoIds = usePhotos ? [...pendingPhotos] : [];
+    if ((!trimmed && photoIds.length === 0) || sending) return;
 
-    const photoIds = [...pendingPhotos];
     const now = Date.now();
     const month = new Date(now).getMonth() + 1;
 
@@ -716,9 +770,12 @@ function ChatTab({
     };
     await db.rosMessages.add(userMsg);
 
-    setText('');
-    setPendingPhotos([]);
+    if (usePhotos) {
+      setText('');
+      setPendingPhotos([]);
+    }
     setSending(true);
+    setStreamText(null);
 
     // Optimistic „pending" kúla fyrir svar Rósar.
     const pendingId = newId();
@@ -757,15 +814,18 @@ function ChatTab({
         month,
       });
 
-      const reply = await askRos({
-        messages: turns,
-        context,
-        images: images.length > 0 ? images : undefined,
-      });
+      const result = await askRosStream(
+        {
+          messages: turns,
+          context,
+          images: images.length > 0 ? images : undefined,
+        },
+        (textSoFar) => setStreamText(textSoFar),
+      );
 
       await db.rosMessages.update(pendingId, {
         content:
-          reply.trim() ||
+          result.text.trim() ||
           'Rós svaraði engu í þetta sinn. Reyndu aftur eftir smá stund.',
         pending: false,
         timestamp: Date.now(),
@@ -782,6 +842,7 @@ function ChatTab({
       });
     } finally {
       setSending(false);
+      setStreamText(null);
     }
   }
 
@@ -808,10 +869,35 @@ function ChatTab({
           </div>
         )}
         {list.map((m) => (
-          <ChatBubble key={m.id} message={m} />
+          <ChatBubble
+            key={m.id}
+            message={m}
+            growId={grow.id}
+            streamText={m.pending ? streamText : null}
+          />
         ))}
         <div ref={bottomRef} />
       </div>
+
+      {/* Tillöguspurningar (þegar ekki er verið að senda) */}
+      {!sending && suggestions.length > 0 && (
+        <div className="shrink-0 flex gap-2 overflow-x-auto pt-2 -mx-0.5 px-0.5">
+          {suggestions.map((q, i) => (
+            <button
+              key={`${q}-${i}`}
+              type="button"
+              onClick={() => void send(q)}
+              className="shrink-0 rounded-full px-3 py-1.5 text-[12px] text-cream-100 whitespace-nowrap transition-colors hover:brightness-110 active:scale-[.98]"
+              style={{
+                background: 'rgba(18,31,20,.6)',
+                border: '1px solid rgba(64,104,67,.5)',
+              }}
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Myndir í bið */}
       {pendingPhotos.length > 0 && (
@@ -868,8 +954,31 @@ function ChatTab({
   );
 }
 
-function ChatBubble({ message }: { message: RosMessage }) {
+function ChatBubble({
+  message,
+  growId,
+  streamText,
+}: {
+  message: RosMessage;
+  growId: string;
+  streamText?: string | null;
+}) {
   const isUser = message.role === 'user';
+  const [saved, setSaved] = useState(false);
+
+  // Vista svar Rósar sem minnispunkt í dagbók (syncast sjálfkrafa um Dexie-hooka).
+  const saveToJournal = useCallback(async () => {
+    if (saved) return;
+    await db.logs.add({
+      id: newId(),
+      growId,
+      timestamp: Date.now(),
+      type: 'note',
+      note: 'Rós: ' + message.content.slice(0, 500),
+    });
+    setSaved(true);
+  }, [saved, growId, message.content]);
+
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} gap-2`}>
       {!isUser && (
@@ -877,40 +986,59 @@ function ChatBubble({ message }: { message: RosMessage }) {
           <RosAvatar size={26} />
         </div>
       )}
-      <div
-        className="max-w-[78%] rounded-2xl px-3 py-2"
-        style={
-          isUser
-            ? {
-                background: 'rgba(194,106,77,.22)',
-                border: '1px solid rgba(194,106,77,.4)',
-                borderBottomRightRadius: 6,
-              }
-            : {
-                background: 'rgba(36,56,39,.7)',
-                border: '1px solid rgba(64,104,67,.45)',
-                borderBottomLeftRadius: 6,
-              }
-        }
-      >
-        {message.photoIds && message.photoIds.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap mb-1.5">
-            {message.photoIds.map((pid) => (
-              <ChatThumb key={pid} photoId={pid} />
-            ))}
-          </div>
-        )}
-        {message.pending ? (
-          <Spinner />
-        ) : (
-          message.content &&
-          (isUser ? (
-            <p className="text-[13px] text-cream-100 whitespace-pre-wrap leading-relaxed">
-              {message.content}
-            </p>
+      <div className="max-w-[78%] flex flex-col items-start">
+        <div
+          className="rounded-2xl px-3 py-2"
+          style={
+            isUser
+              ? {
+                  background: 'rgba(194,106,77,.22)',
+                  border: '1px solid rgba(194,106,77,.4)',
+                  borderBottomRightRadius: 6,
+                }
+              : {
+                  background: 'rgba(36,56,39,.7)',
+                  border: '1px solid rgba(64,104,67,.45)',
+                  borderBottomLeftRadius: 6,
+                }
+          }
+        >
+          {message.photoIds && message.photoIds.length > 0 && (
+            <div className="flex gap-1.5 flex-wrap mb-1.5">
+              {message.photoIds.map((pid) => (
+                <ChatThumb key={pid} photoId={pid} />
+              ))}
+            </div>
+          )}
+          {message.pending ? (
+            streamText ? (
+              <MarkdownText content={streamText + ' ▍'} />
+            ) : (
+              <Spinner />
+            )
           ) : (
-            <MarkdownText content={message.content} />
-          ))
+            message.content &&
+            (isUser ? (
+              <p className="text-[13px] text-cream-100 whitespace-pre-wrap leading-relaxed">
+                {message.content}
+              </p>
+            ) : (
+              <MarkdownText content={message.content} />
+            ))
+          )}
+        </div>
+
+        {/* Vista svar Rósar í dagbók (aðeins fullkláruð svör). */}
+        {!isUser && !message.pending && message.content && (
+          <button
+            type="button"
+            onClick={() => void saveToJournal()}
+            disabled={saved}
+            className="mt-1 inline-flex items-center gap-1 text-[11px] text-cream-300/70 hover:text-cream-100 transition-colors disabled:cursor-default disabled:hover:text-cream-300/70"
+          >
+            <Bookmark size={11} />
+            {saved ? 'Vistað ✓' : 'Vista í dagbók'}
+          </button>
         )}
       </div>
     </div>

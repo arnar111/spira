@@ -180,6 +180,23 @@ export interface RosAssessment {
   createdAt: number;
 }
 
+/**
+ * Vikuskýrsla Rósar — AI-samantekt yfir allar ræktanir á tilteknu tímabili.
+ * Staðbundin eins og photos/rosMessages/rosAssessments: EKKI hluti af
+ * sync-snapshot (LLM-afurð sem má alltaf búa til aftur).
+ */
+export interface RosReport {
+  id: string;
+  /** Hvenær skýrslan var gerð. */
+  createdAt: number;
+  /** Tímabil skýrslunnar í dögum (t.d. 7 fyrir vikuskýrslu). */
+  periodDays: number;
+  /** Markdown texti skýrslunnar frá Rós. */
+  text: string;
+  /** Hvaða líkan svaraði (ef vitað). */
+  model?: string;
+}
+
 class SpiraDB extends Dexie {
   grows!: Table<Grow, string>;
   plants!: Table<Plant, string>;
@@ -191,6 +208,7 @@ class SpiraDB extends Dexie {
   meta!: Table<AppMeta, string>;
   rosMessages!: Table<RosMessage, string>;
   rosAssessments!: Table<RosAssessment, string>;
+  rosReports!: Table<RosReport, string>;
 
   constructor() {
     super('spira');
@@ -211,6 +229,10 @@ class SpiraDB extends Dexie {
     // overwrites the prior result; growId is indexed for per-grow live queries.
     this.version(3).stores({
       rosAssessments: 'plantId, growId',
+    });
+    // Vikuskýrslur Rósar (staðbundnar, ekki syncaðar) — raðað eftir createdAt.
+    this.version(4).stores({
+      rosReports: 'id, createdAt',
     });
   }
 }

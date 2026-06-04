@@ -4,6 +4,7 @@ import {
   Cloud,
   CloudAlert,
   CloudUpload,
+  Flower2,
   History,
   Home,
   Layers,
@@ -20,6 +21,7 @@ import { clearLocalData, syncManager, type SyncStatus } from '@/lib/sync';
 
 const navItems = [
   { to: '/home', label: 'Heim', icon: Home, available: true },
+  { to: '/ros', label: 'Rós', icon: Flower2, available: true },
   { to: '/grows', label: 'Ræktanir', icon: Layers, available: true },
   { to: '/plants', label: 'Plöntur', icon: Sprout, available: true },
   { to: '/environment', label: 'Umhverfi', icon: Thermometer, available: true },
@@ -30,6 +32,7 @@ const navItems = [
 
 const mobileNav = [
   { to: '/home', label: 'Heim', icon: Home, available: true },
+  { to: '/ros', label: 'Rós', icon: Flower2, available: true },
   { to: '/plants', label: 'Plöntur', icon: Sprout, available: true },
   { to: '/grows', label: 'Ræktanir', icon: Layers, available: true },
   { to: '/varieties', label: 'Afbrigði', icon: Leaf, available: true },
