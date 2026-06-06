@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Complete Guide to the Véritable SMART Indoor Garden System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Georgia&display=swap" rel="stylesheet">
+<style>
+/* Reset and Base */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Georgia, serif;
+  font-size: 11pt;
+  line-height: 1.6;
+  color: #333;
+  background: #fff;
+}
+h1, h2, h3 { font-family: Georgia, serif; color: #2c3e20; margin-top: 0; }
+h1 { font-size: 20pt; page-break-after: avoid; margin-bottom: 0.5em; }
+h2 { font-size: 16pt; page-break-after: avoid; margin-top: 1.5em; margin-bottom: 0.4em; }
+h3 { font-size: 13pt; page-break-after: avoid; margin-top: 1.2em; margin-bottom: 0.3em; }
+p {
+  margin: 0.8em 0;
+  orphans: 2;
+  widows: 2;
+  text-align: justify;
+  text-align-last: left;
+}
+/* Page Setup */
+@page {
+  size: A4;
+  margin: 2.5cm 2cm;
+  @top-center { content: string(doctitle); font-size: 9pt; color: #666; }
+  @bottom-center { content: counter(page); font-size: 9pt; }
+}
+@page :first {
+  margin: 0;
+  @top-center { content: none; }
+  @bottom-center { content: none; }
+}
+@page cover {
+  margin: 0;
+  @top-center { content: none; }
+  @bottom-center { content: none; }
+}
+@page toc {
+  @top-center { content: none; }
+  @bottom-center { content: none; }
+}
+h1 { string-set: doctitle content(); }
+/* Content wrapper */
+.content {
+  padding: 0;
+  background: #fff;
+  color: #333;
+}
+/* Cover */
+.cover {
+  page: cover;
+  width: 210mm;
+  height: 297mm;
+  margin: 0;
+  position: relative;
+  overflow: hidden;
+  page-break-after: always;
+  background: linear-gradient(135deg, #f5f0e8 0%, #e8dcc8 40%, #d4c4a8 70%, #c4b090 100%);
+}
+.cover::before {
+  content: "";
+  position: absolute;
+  top: -50px;
+  right: -100px;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(139,115,85,0.15) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.cover::after {
+  content: "";
+  position: absolute;
+  bottom: -80px;
+  left: -80px;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(76,125,65,0.12) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.cover-decoration-top {
+  position: absolute;
+  top: 30px;
+  left: 30px;
+  right: 30px;
+  height: 3px;
+  background: linear-gradient(90deg, #4a7c3f, #8b7355, transparent);
+}
+.cover-decoration-bottom {
+  position: absolute;
+  bottom: 30px;
+  left: 30px;
+  right: 30px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #8b7355, #4a7c3f);
+}
+.cover-leaf {
+  position: absolute;
+  font-size: 120pt;
+  color: rgba(76,125,65,0.08);
+  top: 60px;
+  right: 40px;
+}
+.cover-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  width: 80%;
+  z-index: 1;
+}
+.cover-title {
+  font-size: 32pt;
+  font-weight: 700;
+  color: #2c3e20;
+  margin-bottom: 0.3cm;
+  line-height: 1.2;
+}
+.cover-subtitle {
+  font-size: 14pt;
+  color: #5a4a3a;
+  margin-bottom: 1.5cm;
+  font-style: italic;
+}
+.cover-tagline {
+  font-size: 11pt;
+  color: #6b5b4b;
+  margin-bottom: 3cm;
+  line-height: 1.5;
+}
+.cover-meta {
+  font-size: 10pt;
+  color: #5a4a3a;
+  line-height: 2;
+}
+/* TOC */
+.toc-page {
+  page: toc;
+  page-break-after: always;
+  padding: 2.5cm 2cm;
+  background: #fff;
+}
+.toc-title {
+  font-size: 22pt;
+  font-weight: 700;
+  color: #2c3e20;
+  margin-bottom: 1cm;
+  text-align: center;
+}
+.toc {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.toc li { margin: 0.4em 0; }
+.toc a {
+  color: #333;
+  text-decoration: none;
+  display: flex;
+  justify-content: space-between;
+}
+.toc a::after {
+  content: leader('.') target-counter(attr(href url), page);
+  flex-shrink: 0;
+  margin-left: 0.5em;
+}
+.toc .toc-l1 { font-weight: bold; font-size: 11pt; }
+.toc .toc-l2 { padding-left: 1.5em; font-size: 10pt; }
+/* Tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 100%;
+  margin: 1em 0;
+  font-size: 9.5pt;
+  page-break-inside: avoid;
+  background: #fff;
+}
+thead { display: table-header-group; }
+thead tr {
+  border-top: 2px solid #333;
+  border-bottom: 1px solid #333;
+}
+th {
+  padding: 6px 8px;
+  text-align: left;
+  font-weight: bold;
+  background: #f0ede6;
+  color: #2c3e20;
+  border-bottom: 1px solid #333;
+}
+td {
+  padding: 5px 8px;
+  border-bottom: 1px solid #ddd;
+  background: #fff;
+  color: #333;
+  vertical-align: top;
+}
+tbody tr:last-child { border-bottom: 2px solid #333; }
+tr { page-break-inside: avoid; }
+caption {
+  font-weight: bold;
+  margin-bottom: 0.5em;
+  text-align: left;
+  color: #2c3e20;
+  font-size: 10pt;
+}
+caption::before { content: attr(data-label) ": "; }
+/* Figures */
+figure {
+  margin: 1.5em 0;
+  page-break-inside: avoid;
+  text-align: center;
+}
+figure img {
+  max-width: 90%;
+  max-height: 45vh;
+  height: auto;
+}
+figcaption {
+  font-size: 10pt;
+  color: #555;
+  margin-top: 0.5em;
+  font-style: italic;
+}
+/* Info Boxes */
+.info-box {
+  background: #f5f3ee;
+  border-left: 4px solid #4a7c3f;
+  padding: 1em 1.2em;
+  margin: 1em 0;
+  page-break-inside: avoid;
+}
+.info-box-title {
+  font-weight: bold;
+  color: #2c3e20;
+  margin-bottom: 0.5em;
+}
+.warning-box {
+  background: #fdf8f0;
+  border-left: 4px solid #c4a35a;
+  padding: 1em 1.2em;
+  margin: 1em 0;
+  page-break-inside: avoid;
+}
+.warning-box-title {
+  font-weight: bold;
+  color: #5a4a3a;
+  margin-bottom: 0.5em;
+}
+/* Print Helpers */
+.page-break { page-break-before: always; }
+.no-break { page-break-inside: avoid; }
+/* Section content */
+.section-content {
+  padding: 0;
+}
+</style>
+</head>
+<body>
+
+<!-- ========== COVER PAGE ========== -->
+<div class="cover">
+  <div class="cover-decoration-top"></div>
+  <div class="cover-decoration-bottom"></div>
+  <div class="cover-leaf">&#127807;</div>
+  <div class="cover-content">
+    <div class="cover-title">The Complete Guide to the<br>Véritable SMART<br>Indoor Garden System</div>
+    <div class="cover-subtitle">Setup, Care, Nutrition &amp; Maintenance for Year-Round Growing</div>
+    <div class="cover-tagline">A comprehensive reference for integrating the Véritable SMART<br>hydroponic system into your indoor growing workflow &mdash;<br>with actionable data for the Sp&iacute;ra app.</div>
+    <div class="cover-meta">
+      Sp&iacute;ra Research Series &mdash; Report 05<br>
+      Prepared for Sp&iacute;ra Grow Journal<br>
+      V&eacute;ritable-Gardens &middot; Indoor Hydroponics &middot; Smart Growing
+    </div>
+  </div>
+</div>
+
+<!-- ========== TABLE OF CONTENTS ========== -->
+<div class="toc-page">
+  <div class="toc-title">Table of Contents</div>
+  <ul class="toc">
+    <li class="toc-l1"><a href="#s1">1. Introduction &amp; System Overview</a></li>
+    <li class="toc-l1"><a href="#s2">2. The Lingot System: How It Works</a></li>
+    <li class="toc-l2"><a href="#s2-1">2.1 Lingot Composition &amp; Nutrient Delivery</a></li>
+    <li class="toc-l2"><a href="#s2-2">2.2 Plant Categories &amp; Growing Timeline</a></li>
+    <li class="toc-l1"><a href="#s3">3. Water Management</a></li>
+    <li class="toc-l2"><a href="#s3-1">3.1 Tank Capacity &amp; Refill Schedule</a></li>
+    <li class="toc-l2"><a href="#s3-2">3.2 Water Quality &amp; Wick Maintenance</a></li>
+    <li class="toc-l1"><a href="#s4">4. Nutrition &amp; Fertilization</a></li>
+    <li class="toc-l2"><a href="#s4-1">4.1 Proprietary Lingot vs. DIY Nutrients</a></li>
+    <li class="toc-l2"><a href="#s4-2">4.2 Compatible Nutrient Products</a></li>
+    <li class="toc-l1"><a href="#s5">5. LED Lighting &amp; AdaptLight Technology</a></li>
+    <li class="toc-l2"><a href="#s5-1">5.1 Light Spectrum &amp; Photoperiod by Growth Stage</a></li>
+    <li class="toc-l2"><a href="#s5-2">5.2 Growth Stage Modes (APP &amp; CONNECT)</a></li>
+    <li class="toc-l1"><a href="#s6">6. The V&eacute;ritable Connect App</a></li>
+    <li class="toc-l2"><a href="#s6-1">6.1 App Features &amp; Functionality</a></li>
+    <li class="toc-l2"><a href="#s6-2">6.2 Bluetooth Connectivity &amp; Setup</a></li>
+    <li class="toc-l1"><a href="#s7">7. Product Variants &amp; Comparison</a></li>
+    <li class="toc-l1"><a href="#s8">8. Maintenance Schedule &amp; Troubleshooting</a></li>
+    <li class="toc-l1"><a href="#s9">9. Sp&iacute;ra App Integration: Data Model</a></li>
+    <li class="toc-l2"><a href="#s9-1">9.1 Setup Type Definition</a></li>
+    <li class="toc-l2"><a href="#s9-2">9.2 Care Parameters &amp; Notification Rules</a></li>
+    <li class="toc-l2"><a href="#s9-3">9.3 Lingot Crop Presets</a></li>
+    <li class="toc-l1"><a href="#s10">10. Sourcing, Pricing &amp; Accessories</a></li>
+    <li class="toc-l1"><a href="#s11">11. Key Takeaways</a></li>
+  </ul>
+</div>
+
+<!-- ========== SECTION 1 ========== -->
+<div class="section-content">
+<h1 id="s1">1. Introduction &amp; System Overview</h1>
+
+<p>The <strong>V&eacute;ritable SMART</strong> (and its Bluetooth-enabled sibling, the <strong>V&eacute;ritable CONNECT</strong>) is a French-designed, compact hydroponic indoor garden manufactured by <strong>Veritable-Gardens SAS</strong> in Saint-Priest, France. Unlike traditional pot-and-soil growing, the V&eacute;ritable system uses a proprietary <strong>Lingot</strong> pod system &mdash; pre-seeded, nutrient-embedded biodegradable cartridges that eliminate the guesswork of germination, planting depth, and initial fertilization. The system is designed for countertop use in kitchens, living rooms, or offices, and operates fully autonomously for weeks at a time with minimal user intervention.</p>
+
+<p>The core value proposition of the V&eacute;ritable SMART is <strong>set-and-forget simplicity</strong> combined with <strong>year-round production</strong>. The built-in LED grow light runs on a timer, the water reservoir feeds plants via capillary wicks, and the Lingots contain everything a plant needs for its first 3&ndash;6 months of life. For users in climates like Iceland &mdash; where Sp&iacute;ra is primarily targeted &mdash; the V&eacute;ritable SMART offers a compelling complement to seasonal outdoor growing: fresh herbs, leafy greens, baby vegetables, and even compact fruiting plants like cherry tomatoes or strawberries can be harvested throughout the dark winter months when outdoor gardening is impossible.</p>
+
+<p>This report covers every aspect of owning and operating a V&eacute;ritable SMART system, from unboxing to daily maintenance, with particular attention to the data points needed to integrate it as a first-class growing environment within the Sp&iacute;ra app. Whether a Sp&iacute;ra user is selecting &ldquo;Indoor Pot,&rdquo; &ldquo;Outdoor Pot,&rdquo; &ldquo;Shower,&rdquo; &ldquo;Growth Tent,&rdquo; or now <strong>&ldquo;V&eacute;ritable SMART&rdquo;</strong> as their setup type, the app needs precise parameters to deliver relevant AI advice, timely notifications, and accurate care schedules.</p>
+
+<figure>
+  <img src="veritable_product_comparison.png" alt="V&eacute;ritable Product Lineup Comparison Chart">
+  <figcaption>Figure 1: Comparison of V&eacute;ritable product variants by Lingot slots, tank capacity, and LED power.</figcaption>
+</figure>
+
+<!-- ========== SECTION 2 ========== -->
+<h1 id="s2">2. The Lingot System: How It Works</h1>
+
+<p>The <strong>Lingot</strong> is the heart of the V&eacute;ritable growing system. It is a rectangular, biodegradable pod approximately 5 &times; 15 cm in size, containing a carefully engineered growing medium, pre-sown seeds, and a time-released nutrient charge. Understanding the Lingot's composition and lifecycle is essential for any grower &mdash; and for building accurate care logic into the Sp&iacute;ra app.</p>
+
+<h2 id="s2-1">2.1 Lingot Composition &amp; Nutrient Delivery</h2>
+
+<p>Each Lingot consists of three functional layers. The <strong>outer shell</strong> is made from biodegradable plant-based materials that hold the pod's shape while allowing root penetration. The <strong>growing medium</strong> inside is a blend of peat, coconut fiber, and perlite &mdash; a soilless mix that provides excellent aeration, moisture retention, and root anchorage. The <strong>nutrient core</strong> contains a controlled-release organic fertilizer charge (typically 4&ndash;5 grams) that gradually breaks down over the Lingot's lifetime, supplying nitrogen, phosphorus, potassium, and micronutrients to the plant.</p>
+
+<p>The Lingot is placed into a grow basket that sits partially submerged in the water tank. Two <strong>capillary wicks</strong> extend from the bottom of the Lingot into the water, drawing moisture upward through passive capillary action. This eliminates the need for pumps, electricity for irrigation, or manual watering schedules &mdash; the plant takes exactly what it needs. The wicks are made of woven textile fibers and typically last 6&ndash;12 months before requiring replacement. When the tank runs low, a <strong>float-based visual indicator</strong> drops, alerting the user to refill.</p>
+
+<div class="info-box">
+  <div class="info-box-title">Key Lingot Facts for Sp&iacute;ra Integration</div>
+  <ul>
+    <li><strong>Dimensions:</strong> ~5 cm &times; 15 cm &times; 4 cm (fits standard V&eacute;ritable grow baskets)</li>
+    <li><strong>Weight:</strong> ~80&ndash;100 grams dry</li>
+    <li><strong>Nutrient charge:</strong> 4&ndash;5 g organic controlled-release fertilizer</li>
+    <li><strong>NPK analysis:</strong> approximately 4.3&ndash;2.1&ndash;6.6 (varies by variety)</li>
+    <li><strong>pH range:</strong> 5.5&ndash;6.5 (slightly acidic, optimal for nutrient uptake)</li>
+    <li><strong>Lifetime:</strong> 3&ndash;6 months depending on plant variety</li>
+    <li><strong>Seed count:</strong> multiple seeds per Lingot (thinned to 1&ndash;3 plants after germination)</li>
+    <li><strong>Compostable:</strong> Lingot shell and spent medium are biodegradable</li>
+  </ul>
+</div>
+
+<h2 id="s2-2">2.2 Plant Categories &amp; Growing Timeline</h2>
+
+<p>V&eacute;ritable offers over <strong>30 Lingot varieties</strong> across five plant categories. Each category has distinct growing timelines, light requirements, and harvesting patterns. The table below summarizes the key parameters for each category &mdash; these values are critical for building crop presets in the Sp&iacute;ra app.</p>
+
+<table>
+  <caption data-label="Table 1">Lingot Plant Categories &mdash; Growing Parameters</caption>
+  <thead>
+    <tr><th>Category</th><th>Varieties</th><th>Sprouting</th><th>Ready to Harvest</th><th>Harvest Duration</th><th>Light Need</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Aromatic Herbs</td><td>Basil, Parsley, Cilantro, Mint, Chives, Dill, Oregano, Sage, Thyme, Savory, Shiso</td><td>1&ndash;2 weeks</td><td>4 weeks</td><td>4&ndash;6 months</td><td>Medium</td></tr>
+    <tr><td>Baby Vegetables</td><td>Baby Leaf Kale, Sorrel, Tatsoi, Arugula, Mizuna, Pak Choi</td><td>1&ndash;2 weeks</td><td>5 weeks</td><td>3&ndash;4 months</td><td>Medium</td></tr>
+    <tr><td>Edible Flowers</td><td>Nasturtium, Pansy, Borage, Marigold</td><td>1&ndash;2 weeks</td><td>5 weeks</td><td>3&ndash;4 months</td><td>Medium</td></tr>
+    <tr><td>Mini Fruits &amp; Vegetables</td><td>Cherry Tomato, Dwarf Tomato, Bell Pepper, Hot Pepper, Eggplant, Strawberry</td><td>1&ndash;3 weeks</td><td>8&ndash;12 weeks</td><td>3&ndash;4 months</td><td>High</td></tr>
+    <tr><td>Microgreens &amp; Shoots</td><td>Pea Shoots, Radish Microgreens, Mustard Microgreens, Sunflower Shoots</td><td>3&ndash;7 days</td><td>3 weeks</td><td>1&ndash;2 months</td><td>Low&ndash;Medium</td></tr>
+  </tbody>
+</table>
+
+<figure>
+  <img src="veritable_lingot_timeline.png" alt="Lingot Growing Timeline by Plant Category">
+  <figcaption>Figure 2: Sprouting, readiness, and harvest duration timelines across the five Lingot plant categories.</figcaption>
+</figure>
+</div>
+
+<!-- ========== SECTION 3 ========== -->
+<div class="section-content page-break">
+<h1 id="s3">3. Water Management</h1>
+
+<p>Water management is the single most important recurring task for a V&eacute;ritable SMART owner. While the system is designed to be low-maintenance, neglecting the water tank is the most common cause of poor plant performance. This section provides precise guidance on how often to refill, how much water to add, and how to maintain water quality.</p>
+
+<h2 id="s3-1">3.1 Tank Capacity &amp; Refill Schedule</h2>
+
+<p>The V&eacute;ritable SMART features a <strong>2-liter water reservoir</strong> (the Exky SMART has a 1-liter tank). Under normal growing conditions with 4 Lingots installed, the tank will need refilling approximately <strong>every 7 to 14 days</strong>. The exact interval depends on several factors: plant size and transpiration rate, ambient temperature and humidity, the number of Lingots installed, and the plant varieties being grown. Large, fruiting plants like cherry tomatoes or bell peppers consume significantly more water than compact herbs like thyme or chives.</p>
+
+<p>The system includes a <strong>visual water level indicator</strong> &mdash; a small float that drops as the water level decreases. When the float is at its lowest position, the tank is nearly empty and should be refilled immediately. For users who want more precise monitoring, the V&eacute;ritable CONNECT (Bluetooth-enabled) sends a push notification to the mobile app when the water level drops below a threshold. However, even CONNECT users should visually verify the indicator periodically, as the app notification relies on the same float sensor.</p>
+
+<table>
+  <caption data-label="Table 2">Water Refill Schedule by Plant Load</caption>
+  <thead>
+    <tr><th>Configuration</th><th>Approx. Refill Interval</th><th>Water per Refill</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>4 herbs / leafy greens</td><td>10&ndash;14 days</td><td>1.5&ndash;2 L</td><td>Low transpiration; most forgiving</td></tr>
+    <tr><td>2 herbs + 2 fruiting plants</td><td>7&ndash;10 days</td><td>1.5&ndash;2 L</td><td>Mixed load; monitor closely</td></tr>
+    <tr><td>4 fruiting plants</td><td>5&ndash;7 days</td><td>1.5&ndash;2 L</td><td>High water demand; check twice weekly</td></tr>
+    <tr><td>Exky SMART (2 Lingots)</td><td>7&ndash;10 days</td><td>0.8&ndash;1 L</td><td>Smaller tank; more frequent checks</td></tr>
+  </tbody>
+</table>
+
+<div class="warning-box">
+  <div class="warning-box-title">Critical Water Management Rules</div>
+  <ul>
+    <li><strong>Never let the tank run completely dry</strong> &mdash; even for a few hours. Dry wicks lose capillary action and may not re-saturate properly, stressing or killing plants.</li>
+    <li><strong>Use room-temperature water</strong> (18&ndash;22&deg;C). Cold water shocks roots; hot water damages them.</li>
+    <li><strong>Fill to just below the max line</strong> &mdash; overfilling can submerge the grow baskets and cause root rot.</li>
+    <li><strong>Tap water is acceptable</strong> in most regions. If your tap water is very hard or heavily chlorinated, let it sit uncovered for 24 hours before use, or use filtered water.</li>
+  </ul>
+</div>
+
+<h2 id="s3-2">3.2 Water Quality &amp; Wick Maintenance</h2>
+
+<p>Over time, mineral deposits from tap water and organic matter from the Lingots can accumulate in the water tank and on the wicks. This buildup can reduce capillary efficiency and create an environment for algae or bacterial growth. A simple monthly cleaning routine prevents these issues.</p>
+
+<p>To clean the tank, remove all Lingots and set them aside (roots can tolerate brief air exposure). Empty the tank completely and rinse it with warm water. For stubborn deposits, a dilute solution of white vinegar (1 part vinegar to 4 parts water) can be used &mdash; rinse thoroughly afterward. The wicks should be inspected monthly; if they appear clogged, discolored, or slimy, they should be replaced. Replacement wicks are available from V&eacute;ritable retailers. Never use soap or detergent on any part of the system, as residue can harm plants.</p>
+
+<p>Algae growth in the tank is a common issue, especially if the garden is placed in a bright location where light penetrates the water reservoir. Algae are generally harmless to plants but can clog wicks and create unpleasant odors. The best prevention is to keep the tank opaque (the V&eacute;ritable SMART tank is dark-colored for this reason) and to change the water completely every 2&ndash;3 weeks rather than just topping it up.</p>
+</div>
+
+<!-- ========== SECTION 4 ========== -->
+<div class="section-content page-break">
+<h1 id="s4">4. Nutrition &amp; Fertilization</h1>
+
+<p>One of the most common questions from new V&eacute;ritable owners is: <em>&ldquo;Do I need to add fertilizer, or does the Lingot have everything?&rdquo;</em> The answer depends on the plant variety, the age of the Lingot, and the grower's goals. This section explains when and how to supplement the Lingot's built-in nutrients.</p>
+
+<h2 id="s4-1">4.1 Proprietary Lingot vs. DIY Nutrients</h2>
+
+<p>The Lingot's embedded nutrient charge is designed to support the plant for its entire commercial lifespan &mdash; typically 3 to 6 months. For herbs and leafy greens, this built-in nutrition is usually sufficient. However, <strong>fruiting plants</strong> (cherry tomatoes, peppers, strawberries, eggplant) are heavy feeders and will benefit from supplemental fertilization once the initial Lingot nutrients begin to deplete, usually around <strong>8&ndash;10 weeks after planting</strong>.</p>
+
+<p>Signs that a plant needs additional nutrition include: yellowing lower leaves (nitrogen deficiency), poor flowering or fruit set (phosphorus/potassium deficiency), stunted growth despite adequate light and water, and pale or discolored foliage. If these symptoms appear and the Lingot is more than 2 months old, supplemental feeding is warranted.</p>
+
+<p>For growers who want to reuse Lingot baskets with their own seeds and growing medium (a common practice after the initial Lingot is spent), a complete hydroponic nutrient solution becomes essential. The Lingot basket provides the physical structure, but all nutrition must come from the water. In this scenario, a two-part or three-part hydroponic fertilizer designed for recirculating systems is recommended.</p>
+
+<h2 id="s4-2">4.2 Compatible Nutrient Products</h2>
+
+<p>Several nutrient products are compatible with the V&eacute;ritable system. The table below lists the most commonly used options, their NPK ratios, application methods, and suitability for different growing scenarios. All products listed are liquid concentrates that are diluted into the water tank.</p>
+
+<table>
+  <caption data-label="Table 3">Compatible Nutrient Products for V&eacute;ritable Systems</caption>
+  <thead>
+    <tr><th>Product</th><th>NPK Ratio</th><th>Type</th><th>Application Rate</th><th>Best For</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>V&eacute;ritable Lingot Refill</td><td>4.3&ndash;2.1&ndash;6.6</td><td>Embedded in Lingot</td><td>Pre-loaded; no action needed</td><td>All Lingot varieties; first 3&ndash;6 months</td></tr>
+    <tr><td>General Hydroponics Flora Series</td><td>2&ndash;1&ndash;6 / 5&ndash;0&ndash;1 / 0&ndash;5&ndash;4</td><td>Synthetic liquid (3-part)</td><td>2&ndash;4 ml per liter; mix all 3 parts</td><td>Heavy-feeding fruiting plants; reusable setups</td></tr>
+    <tr><td>Biobizz Bio-Grow / Bio-Bloom</td><td>4&ndash;0&ndash;0 / 2&ndash;7&ndash;4</td><td>Organic liquid (2-part)</td><td>2&ndash;4 ml per liter of water</td><td>Organic growers; herbs and leafy greens</td></tr>
+    <tr><td>Canna Aqua Vega / Aqua Flores</td><td>5&ndash;3&ndash;10 / 0&ndash;4&ndash;8</td><td>Synthetic liquid (2-part)</td><td>4 ml per liter (Part A + Part B)</td><td>Experienced growers; fruiting plants</td></tr>
+    <tr><td>Plagron Alga Grow / Alga Bloom</td><td>4&ndash;2&ndash;4 / 3&ndash;2&ndash;5</td><td>Organic liquid (2-part)</td><td>4 ml per liter of water</td><td>Organic hydroponics; all plant stages</td></tr>
+  </tbody>
+</table>
+
+<div class="info-box">
+  <div class="info-box-title">How to Add Nutrients to the V&eacute;ritable Tank</div>
+  <ol>
+    <li>Empty the water tank completely (discard old water).</li>
+    <li>Fill a separate container with fresh room-temperature water.</li>
+    <li>Add the recommended amount of nutrient concentrate and stir thoroughly.</li>
+    <li>Pour the nutrient solution into the V&eacute;ritable tank up to the max fill line.</li>
+    <li>Wait 15&ndash;20 minutes for the wicks to re-saturate before checking plant response.</li>
+    <li>Repeat every 2&ndash;3 weeks, or whenever the tank is refilled.</li>
+  </ol>
+</div>
+</div>
+
+<!-- ========== SECTION 5 ========== -->
+<div class="section-content page-break">
+<h1 id="s5">5. LED Lighting &amp; AdaptLight Technology</h1>
+
+<p>The V&eacute;ritable SMART uses a proprietary <strong>AdaptLight</strong> LED system that is arguably the most sophisticated lighting technology in the consumer indoor gardening market. Understanding how it works &mdash; and how it adapts to plant growth stages &mdash; is essential for maximizing yields and for modeling light parameters in the Sp&iacute;ra app.</p>
+
+<h2 id="s5-1">5.1 Light Spectrum &amp; Photoperiod by Growth Stage</h2>
+
+<p>The AdaptLight system consists of an array of <strong>OSRAM LEDs</strong> optimized for horticultural applications. The LEDs emit light in two primary wavelength bands: <strong>blue light (450&ndash;495 nm)</strong> and <strong>red light (620&ndash;750 nm)</strong>, with some far-red extension. Blue light drives vegetative growth, leaf development, and compact plant structure. Red light stimulates flowering, fruiting, and stem elongation. The ratio between these two spectra shifts automatically as the plant grows, a feature V&eacute;ritable calls <strong>Adapt'Light</strong>.</p>
+
+<p>On the V&eacute;ritable CONNECT model, this spectrum adaptation is controlled via the app. The user selects a <strong>growth stage mode</strong> (Germination, Growth, or Flowering), and the LED controller adjusts the red:blue ratio and photoperiod accordingly. On the V&eacute;ritable SMART (non-Bluetooth), the light runs a fixed default program that provides a balanced spectrum suitable for most plants &mdash; approximately 16 hours on, 8 hours off, with a moderate red:blue ratio.</p>
+
+<figure>
+  <img src="veritable_adaptlight_spectrum.png" alt="AdaptLight LED Spectrum by Growth Stage">
+  <figcaption>Figure 3: Blue vs. red light spectrum ratio and photoperiod duration across five growth stages.</figcaption>
+</figure>
+
+<table>
+  <caption data-label="Table 4">AdaptLight Settings by Growth Stage (CONNECT App)</caption>
+  <thead>
+    <tr><th>Growth Stage</th><th>Blue:Red Ratio</th><th>Photoperiod</th><th>Purpose</th><th>Duration</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Germination</td><td>80:20</td><td>16 hours</td><td>Promote rapid sprouting; compact seedlings</td><td>Week 0&ndash;1</td></tr>
+    <tr><td>Seedling / Growth</td><td>60:40</td><td>16 hours</td><td>Strong vegetative growth; leaf and stem development</td><td>Week 1&ndash;4</td></tr>
+    <tr><td>Vegetative (mature)</td><td>40:60</td><td>14 hours</td><td>Transition to reproductive phase; build plant structure</td><td>Week 4&ndash;6</td></tr>
+    <tr><td>Flowering</td><td>20:80</td><td>12 hours</td><td>Trigger and sustain flowering</td><td>Week 6&ndash;10</td></tr>
+    <tr><td>Fruiting</td><td>15:85</td><td>10&ndash;12 hours</td><td>Maximize fruit development and sugar accumulation</td><td>Week 10+</td></tr>
+  </tbody>
+</table>
+
+<h2 id="s5-2">5.2 Growth Stage Modes (APP &amp; CONNECT)</h2>
+
+<p>The V&eacute;ritable CONNECT app offers three preset lighting modes that simplify the spectrum management for users who do not want to manually adjust red:blue ratios. These modes map roughly to the growth stages described above and are selected when setting up a new Lingot in the app.</p>
+
+<p><strong>Germination Mode</strong> is optimized for the first 1&ndash;2 weeks after planting a Lingot. It provides high blue light to encourage compact, sturdy seedlings and prevent leggy growth. The photoperiod is 16 hours. <strong>Growth Mode</strong> is the default for leafy greens and herbs throughout their lifecycle. It provides a balanced spectrum with slightly more red than blue, promoting lush foliage. The photoperiod remains at 16 hours. <strong>Flowering Mode</strong> is designed for fruiting plants (tomatoes, peppers, strawberries) once they reach maturity. It shifts the spectrum heavily toward red and reduces the photoperiod to 12 hours, mimicking the shorter days of late summer that trigger reproductive development in many plants.</p>
+
+<p>The V&eacute;ritable SMART (without Bluetooth) does not offer app-controlled mode switching. Instead, it runs a <strong>fixed program</strong> that provides a compromise spectrum suitable for a mix of herbs and leafy greens. Users growing fruiting plants on the SMART model may achieve better results by manually timing an external timer to reduce light hours to 12 once plants reach flowering size, or by upgrading to the CONNECT model for full spectrum control.</p>
+</div>
+
+<!-- ========== SECTION 6 ========== -->
+<div class="section-content page-break">
+<h1 id="s6">6. The V&eacute;ritable Connect App</h1>
+
+<p>The <strong>V&eacute;ritable CONNECT</strong> model adds Bluetooth Low Energy (BLE) connectivity and a companion mobile app that transforms the indoor garden from a passive appliance into an interactive growing companion. While the V&eacute;ritable SMART lacks Bluetooth, understanding the app's functionality is valuable for Sp&iacute;ra integration &mdash; many of the same features (plant tracking, care reminders, harvest logging) can and should be replicated within Sp&iacute;ra for SMART users.</p>
+
+<h2 id="s6-1">6.1 App Features &amp; Functionality</h2>
+
+<p>The V&eacute;ritable CONNECT app (available for iOS and Android) provides a structured interface for managing the garden. Upon first launch, the app guides the user through a setup wizard: selecting the garden model, naming it, and choosing growth stage modes for each Lingot slot. The home screen displays a visual representation of the garden with status indicators for water level, light mode, and plant age.</p>
+
+<p>The core features include: <strong>Water level monitoring</strong> &mdash; a real-time reading from the tank's float sensor, with push notifications when levels drop; <strong>Light mode control</strong> &mdash; switching between Germination, Growth, and Flowering modes for each slot independently; <strong>Plant tracking</strong> &mdash; logging planting dates, variety names, and growth stage transitions; <strong>Harvest logging</strong> &mdash; recording harvest quantities and dates (though the app's harvest tracking is basic compared to Sp&iacute;ra's journal system); and <strong>Tips &amp; guidance</strong> &mdash; contextual care advice based on the selected plant variety and growth stage.</p>
+
+<p>User reviews of the app are mixed. The app has a <strong>3.4-star rating on the App Store</strong> and a similar rating on Google Play. Common complaints include Bluetooth pairing difficulties (especially on Android), occasional crashes, and a desire for more detailed plant care information. Strengths include the intuitive garden visualization and the convenience of remote light mode switching. For Sp&iacute;ra, these pain points represent an opportunity: by offering robust, offline-first tracking with AI-powered advice (via R&oacute;s), Sp&iacute;ra can provide a superior experience even for CONNECT owners who may prefer Sp&iacute;ra's journal and companion features over V&eacute;ritable's native app.</p>
+
+<h2 id="s6-2">6.2 Bluetooth Connectivity &amp; Setup</h2>
+
+<p>Pairing the V&eacute;ritable CONNECT with the app requires a one-time setup process. The garden must be powered on, Bluetooth enabled on the phone, and the app granted location permissions (BLE scanning requires location access on both iOS and Android). The app scans for nearby V&eacute;ritable devices and displays them in a list. Once selected, the pairing is automatic and persists across app launches.</p>
+
+<p>Connection range is typical for BLE: approximately <strong>10 meters line-of-sight</strong>, less through walls. The app does not require an internet connection for basic functions (light control, water monitoring), but some features (plant variety database updates, cloud backup) require connectivity. The V&eacute;ritable SMART model lacks Bluetooth entirely, so none of these app features are available. However, the SMART's physical button on the lamp arm allows manual toggling of the light on/off, and the light runs its internal timer autonomously once set.</p>
+</div>
+
+<!-- ========== SECTION 7 ========== -->
+<div class="section-content page-break">
+<h1 id="s7">7. Product Variants &amp; Comparison</h1>
+
+<p>V&eacute;ritable offers a tiered product lineup ranging from compact 2-Lingot units to larger 4-Lingot models, with and without smart connectivity. Understanding the differences helps growers choose the right model for their needs &mdash; and helps Sp&iacute;ra tailor its setup parameters appropriately.</p>
+
+<table>
+  <caption data-label="Table 5">V&eacute;ritable Product Lineup &mdash; Full Comparison</caption>
+  <thead>
+    <tr><th>Feature</th><th>Exky CLASSIC</th><th>Exky SMART</th><th>V&eacute;ritable CLASSIC</th><th>V&eacute;ritable SMART</th><th>V&eacute;ritable CONNECT</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Lingot slots</td><td>2</td><td>2</td><td>4</td><td>4</td><td>4</td></tr>
+    <tr><td>Water tank</td><td>1 L</td><td>1 L</td><td>2 L</td><td>2 L</td><td>2 L</td></tr>
+    <tr><td>LED power</td><td>7.5 W</td><td>7.5 W</td><td>10.5 W</td><td>10.5 W</td><td>12 W</td></tr>
+    <tr><td>Bluetooth / App</td><td>No</td><td>No</td><td>No</td><td>No</td><td>Yes (BLE)</td></tr>
+    <tr><td>AdaptLight spectrum control</td><td>Fixed</td><td>Fixed</td><td>Fixed</td><td>Fixed</td><td>App-controlled (3 modes)</td></tr>
+    <tr><td>Light timer</td><td>Manual</td><td>Auto 16/8</td><td>Manual</td><td>Auto 16/8</td><td>App-controlled</td></tr>
+    <tr><td>Water level alert</td><td>Visual only</td><td>Visual only</td><td>Visual only</td><td>Visual only</td><td>Visual + App push</td></tr>
+    <tr><td>Dimensions (cm)</td><td>~20 &times; 37 &times; 38</td><td>~20 &times; 37 &times; 38</td><td>~33 &times; 37 &times; 39</td><td>~33 &times; 37 &times; 39</td><td>~33 &times; 37 &times; 39</td></tr>
+    <tr><td>Weight</td><td>~1.2 kg</td><td>~1.3 kg</td><td>~2.0 kg</td><td>~2.1 kg</td><td>~2.2 kg</td></tr>
+    <tr><td>Colors</td><td>White</td><td>White, Grey, Red, Taupe</td><td>White</td><td>White, Grey, Red, Taupe</td><td>White, Grey</td></tr>
+    <tr><td>Price (USA)</td><td>$89</td><td>$119&ndash;129</td><td>$119</td><td>$149&ndash;159</td><td>$199</td></tr>
+    <tr><td>Price (EU)</td><td>&euro;75&ndash;85</td><td>&euro;95&ndash;115</td><td>&euro;95&ndash;105</td><td>&euro;125&ndash;145</td><td>&euro;175&ndash;195</td></tr>
+  </tbody>
+</table>
+
+<p>The <strong>V&eacute;ritable SMART</strong> represents the sweet spot for most users: 4 Lingot slots, a 2-liter tank, automatic lighting, and a competitive price point. The CONNECT adds Bluetooth and app control for approximately $40&ndash;50 more, which is worthwhile for growers who want spectrum tuning and push notifications. The Exky models are ideal for small spaces or beginners who want to test the system before committing to a larger unit.</p>
+</div>
+
+<!-- ========== SECTION 8 ========== -->
+<div class="section-content page-break">
+<h1 id="s8">8. Maintenance Schedule &amp; Troubleshooting</h1>
+
+<p>Consistent maintenance is the difference between a thriving V&eacute;ritable garden and a disappointing experience. The following schedule consolidates all recurring tasks into a clear, actionable framework. These intervals should be modeled as notification triggers in the Sp&iacute;ra app.</p>
+
+<table>
+  <caption data-label="Table 6">V&eacute;ritable SMART Maintenance Schedule</caption>
+  <thead>
+    <tr><th>Task</th><th>Frequency</th><th>Details</th><th>Sp&iacute;ra Notification</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Check water level</td><td>Every 3&ndash;4 days</td><td>Visually inspect float indicator; refill if low</td><td>&ldquo;Check water level&rdquo; (every 3 days)</td></tr>
+    <tr><td>Refill water tank</td><td>Every 7&ndash;14 days</td><td>Empty old water; add fresh room-temp water to max line</td><td>&ldquo;Refill water tank&rdquo; (based on plant load)</td></tr>
+    <tr><td>Clean water tank</td><td>Every 2&ndash;3 weeks</td><td>Rinse tank; use dilute vinegar for mineral deposits</td><td>&ldquo;Clean water tank&rdquo; (every 14 days)</td></tr>
+    <tr><td>Inspect wicks</td><td>Monthly</td><td>Check for clogging, discoloration, or algae; replace if needed</td><td>&ldquo;Inspect wicks&rdquo; (monthly)</td></tr>
+    <tr><td>Replace wicks</td><td>Every 6&ndash;12 months</td><td>Order replacement wicks; swap all wicks</td><td>&ldquo;Replace wicks&rdquo; (every 6 months)</td></tr>
+    <tr><td>Clean LED panel</td><td>Monthly</td><td>Wipe dust from LED surface with dry cloth</td><td>&ldquo;Clean LED panel&rdquo; (monthly)</td></tr>
+    <tr><td>Thin seedlings</td><td>1&ndash;2 weeks after sprouting</td><td>Leave 1&ndash;3 strongest seedlings per Lingot; snip others at base</td><td>&ldquo;Thin seedlings&rdquo; (7&ndash;14 days post-planting)</td></tr>
+    <tr><td>Harvest / prune</td><td>Weekly (herbs) / As needed (fruiting)</td><td>Cut outer leaves/stems; never remove more than 1/3 of plant</td><td>&ldquo;Harvest ready&rdquo; (based on crop preset)</td></tr>
+    <tr><td>Add supplemental nutrients</td><td>Every 2&ndash;3 weeks (fruiting only)</td><td>Dilute liquid fertilizer into tank water</td><td>&ldquo;Add nutrients&rdquo; (fruiting plants, every 14&ndash;21 days)</td></tr>
+    <tr><td>Replace Lingot</td><td>Every 3&ndash;6 months</td><td>Remove spent Lingot; compost; insert new Lingot</td><td>&ldquo;Lingot expired &mdash; replace&rdquo; (based on variety)</td></tr>
+  </tbody>
+</table>
+
+<div class="warning-box">
+  <div class="warning-box-title">Common Problems &amp; Solutions</div>
+  <ul>
+    <li><strong>Leggy seedlings:</strong> Insufficient light. Ensure LED is on for 16 hours daily. Move garden away from competing natural light sources that may confuse the plant's photoperiod.</li>
+    <li><strong>Yellow lower leaves:</strong> Nitrogen deficiency. If Lingot is older than 8 weeks, begin supplemental feeding with a nitrogen-rich fertilizer (e.g., Bio-Grow or FloraGro).</li>
+    <li><strong>No flowers on fruiting plants:</strong> Light spectrum may be too blue, or photoperiod too long. Switch to Flowering mode (CONNECT) or reduce light to 12 hours manually (SMART).</li>
+    <li><strong>Algae in tank:</strong> Light penetrating water. Ensure tank is not overfilled; clean tank weekly; keep garden away from strong ambient light.</li>
+    <li><strong>Wicks not drawing water:</strong> Wicks may be air-locked or clogged. Remove and re-soak wicks in water for 30 minutes. Replace if problem persists.</li>
+    <li><strong>Mold on Lingot surface:</strong> Too humid, poor air circulation. Reduce ambient humidity if possible; ensure room has some airflow (gentle fan).</li>
+  </ul>
+</div>
+</div>
+
+<!-- ========== SECTION 9 ========== -->
+<div class="section-content page-break">
+<h1 id="s9">9. Sp&iacute;ra App Integration: Data Model</h1>
+
+<p>This section defines the technical data model needed to integrate the V&eacute;ritable SMART as a first-class setup type within the Sp&iacute;ra app. The model includes setup configuration, care parameters, notification rules, and Lingot crop presets. All values are derived from the research in this report and are ready for implementation.</p>
+
+<h2 id="s9-1">9.1 Setup Type Definition</h2>
+
+<p>The V&eacute;ritable SMART should be added as a new <code>setupType</code> option alongside the existing choices (Indoor Pot, Outdoor Pot, Shower, Growth Tent). The setup object captures the hardware configuration and defines the baseline care parameters.</p>
+
+<table>
+  <caption data-label="Table 7">Sp&iacute;ra Setup Type &mdash; V&eacute;ritable SMART</caption>
+  <thead>
+    <tr><th>Field</th><th>Type</th><th>Value / Example</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>setupType</code></td><td>string</td><td><code>"veritable_smart"</code></td><td>Unique identifier for this setup type</td></tr>
+    <tr><td><code>displayName.is</code></td><td>string</td><td><code>"V&eacute;ritable SMART"</code></td><td>Icelandic display name</td></tr>
+    <tr><td><code>displayName.en</code></td><td>string</td><td><code>"V&eacute;ritable SMART"</code></td><td>English display name</td></tr>
+    <tr><td><code>lingotSlots</code></td><td>number</td><td><code>4</code></td><td>Number of Lingot baskets (2 for Exky)</td></tr>
+    <tr><td><code>tankCapacityLiters</code></td><td>number</td><td><code>2</code></td><td>Water reservoir capacity (1 for Exky)</td></tr>
+    <tr><td><code>ledPowerWatts</code></td><td>number</td><td><code>10.5</code></td><td>LED array power consumption</td></tr>
+    <tr><td><code>hasBluetooth</code></td><td>boolean</td><td><code>false</code></td><td>SMART has no BLE; CONNECT would be <code>true</code></td></tr>
+    <tr><td><code>defaultPhotoperiodHours</code></td><td>number</td><td><code>16</code></td><td>Default light-on duration</td></tr>
+    <tr><td><code>lightSpectrum</code></td><td>string</td><td><code>"balanced"</code></td><td>Fixed on SMART; "adjustable" on CONNECT</td></tr>
+    <tr><td><code>wateringMethod</code></td><td>string</td><td><code>"capillary_wick"</code></td><td>Passive capillary action</td></tr>
+    <tr><td><code>hasBuiltInNutrients</code></td><td>boolean</td><td><code>true</code></td><td>Lingot contains embedded fertilizer</td></tr>
+    <tr><td><code>nutrientDurationWeeks</code></td><td>number</td><td><code>12</code></td><td>Built-in nutrients last ~12 weeks</td></tr>
+    <tr><td><code>indoorOnly</code></td><td>boolean</td><td><code>true</code></td><td>Not suitable for outdoor use</td></tr>
+    <tr><td><code>idealTempCelsius</code></td><td>object</td><td><code>{ min: 18, max: 26 }</code></td><td>Optimal ambient temperature range</td></tr>
+    <tr><td><code>idealHumidityPercent</code></td><td>object</td><td><code>{ min: 40, max: 70 }</code></td><td>Optimal relative humidity range</td></tr>
+  </tbody>
+</table>
+
+<h2 id="s9-2">9.2 Care Parameters &amp; Notification Rules</h2>
+
+<p>The notification engine in Sp&iacute;ra should generate reminders based on the following rules. These are tailored to the V&eacute;ritable SMART's passive hydroponic design and differ significantly from soil-based setups.</p>
+
+<table>
+  <caption data-label="Table 8">Sp&iacute;ra Notification Rules for V&eacute;ritable SMART</caption>
+  <thead>
+    <tr><th>Notification</th><th>Trigger</th><th>Frequency</th><th>Priority</th><th>Message (EN)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Check water level</td><td>Fixed interval from planting date</td><td>Every 3 days</td><td>High</td><td>&ldquo;Check your V&eacute;ritable water level &mdash; refill if the indicator is low.&rdquo;</td></tr>
+    <tr><td>Refill water tank</td><td>Days since last refill + plant load</td><td>Every 7&ndash;14 days</td><td>High</td><td>&ldquo;Time to refill your V&eacute;ritable tank. Empty old water first, then add fresh water to the max line.&rdquo;</td></tr>
+    <tr><td>Clean water tank</td><td>Fixed interval</td><td>Every 14 days</td><td>Medium</td><td>&ldquo;Clean your V&eacute;ritable water tank to prevent algae and mineral buildup.&rdquo;</td></tr>
+    <tr><td>Inspect wicks</td><td>Fixed interval</td><td>Every 30 days</td><td>Medium</td><td>&ldquo;Inspect the capillary wicks &mdash; replace if clogged or discolored.&rdquo;</td></tr>
+    <tr><td>Replace wicks</td><td>Fixed interval from setup date</td><td>Every 180 days</td><td>Low</td><td>&ldquo;Consider replacing your V&eacute;ritable wicks for optimal water uptake.&rdquo;</td></tr>
+    <tr><td>Thin seedlings</td><td>Days after planting (per Lingot)</td><td>7&ndash;14 days post-planting</td><td>High</td><td>&ldquo;Thin your Lingot seedlings &mdash; keep the 1&ndash;3 strongest and snip the rest at the base.&rdquo;</td></tr>
+    <tr><td>Start supplemental nutrients</td><td>Weeks after planting + category</td><td>8 weeks (fruiting plants only)</td><td>Medium</td><td>&ldquo;Your fruiting plants may need supplemental nutrients now. Add liquid fertilizer to the tank.&rdquo;</td></tr>
+    <tr><td>Switch to flowering light</td><td>Weeks after planting + category</td><td>6&ndash;8 weeks (fruiting plants)</td><td>Medium</td><td>&ldquo;Switch your V&eacute;ritable CONNECT to Flowering mode for better fruit production.&rdquo;</td></tr>
+    <tr><td>Lingot expired</td><td>Days after planting (per variety)</td><td>90&ndash;180 days</td><td>Low</td><td>&ldquo;Your Lingot is nearing the end of its lifespan. Plan a replacement soon.&rdquo;</td></tr>
+    <tr><td>Harvest ready</td><td>Days after planting (per variety)</td><td>Variety-dependent (21&ndash;84 days)</td><td>High</td><td>&ldquo;Your [variety] is ready for first harvest! Cut outer leaves/stems, never more than 1/3.&rdquo;</td></tr>
+  </tbody>
+</table>
+
+<h2 id="s9-3">9.3 Lingot Crop Presets</h2>
+
+<p>Sp&iacute;ra should include a curated set of Lingot crop presets that users can select when adding a plant to their V&eacute;ritable SMART setup. Each preset encodes the full growing lifecycle: planting date, expected sprouting, first harvest, ongoing harvest schedule, and expiry. These presets are the foundation of accurate AI advice and timely notifications.</p>
+
+<table>
+  <caption data-label="Table 9">Lingot Crop Presets for Sp&iacute;ra (Selected Varieties)</caption>
+  <thead>
+    <tr><th>Variety</th><th>Category</th><th>Sprout (days)</th><th>First Harvest (days)</th><th>Harvest Freq.</th><th>Lifespan (days)</th><th>Supplemental Nutrients?</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Sweet Basil</td><td>Aromatic Herb</td><td>7&ndash;14</td><td>28</td><td>Every 7 days</td><td>150</td><td>No</td></tr>
+    <tr><td>Flat Parsley</td><td>Aromatic Herb</td><td>14&ndash;21</td><td>35</td><td>Every 10 days</td><td>180</td><td>No</td></tr>
+    <tr><td>Cilantro</td><td>Aromatic Herb</td><td>7&ndash;14</td><td>28</td><td>Every 7 days</td><td>120</td><td>No</td></tr>
+    <tr><td>Mint</td><td>Aromatic Herb</td><td>10&ndash;14</td><td>30</td><td>Every 7 days</td><td>180</td><td>No</td></tr>
+    <tr><td>Chives</td><td>Aromatic Herb</td><td>14&ndash;21</td><td>35</td><td>Every 14 days</td><td>180</td><td>No</td></tr>
+    <tr><td>Baby Leaf Kale</td><td>Baby Vegetable</td><td>7&ndash;14</td><td>35</td><td>Every 10 days</td><td>120</td><td>No</td></tr>
+    <tr><td>Arugula</td><td>Baby Vegetable</td><td>5&ndash;10</td><td>25</td><td>Every 7 days</td><td>90</td><td>No</td></tr>
+    <tr><td>Cherry Tomato</td><td>Mini Fruit</td><td>7&ndash;14</td><td>70</td><td>As fruits ripen</td><td>120</td><td>Yes (week 8)</td></tr>
+    <tr><td>Mini Bell Pepper</td><td>Mini Vegetable</td><td>10&ndash;14</td><td>84</td><td>As fruits ripen</td><td>120</td><td>Yes (week 8)</td></tr>
+    <tr><td>Hot Pepper</td><td>Mini Vegetable</td><td>10&ndash;14</td><td>77</td><td>As fruits ripen</td><td>120</td><td>Yes (week 8)</td></tr>
+    <tr><td>Strawberry</td><td>Mini Fruit</td><td>14&ndash;21</td><td>56</td><td>As fruits ripen</td><td>120</td><td>Yes (week 6)</td></tr>
+    <tr><td>Pea Shoots</td><td>Microgreens</td><td>3&ndash;7</td><td>14</td><td>Every 7 days</td><td>45</td><td>No</td></tr>
+    <tr><td>Radish Microgreens</td><td>Microgreens</td><td>3&ndash;5</td><td>10</td><td>Every 5 days</td><td>35</td><td>No</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ========== SECTION 10 ========== -->
+<div class="section-content page-break">
+<h1 id="s10">10. Sourcing, Pricing &amp; Accessories</h1>
+
+<p>The V&eacute;ritable SMART and its consumables are widely available across Europe and North America. For Icelandic users of Sp&iacute;ra, sourcing may require international shipping, so understanding the full cost of ownership is important.</p>
+
+<table>
+  <caption data-label="Table 10">V&eacute;ritable SMART &mdash; Cost of Ownership (First Year)</caption>
+  <thead>
+    <tr><th>Item</th><th>Unit Price (EUR)</th><th>Unit Price (USD)</th><th>Qty / Year</th><th>Annual Cost (EUR)</th><th>Annual Cost (USD)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>V&eacute;ritable SMART garden unit</td><td>&euro;125&ndash;145</td><td>$149&ndash;159</td><td>1</td><td>&euro;125&ndash;145</td><td>$149&ndash;159</td></tr>
+    <tr><td>Lingot (assorted herbs)</td><td>&euro;3.50&ndash;4.50</td><td>$4.00&ndash;5.50</td><td>16</td><td>&euro;56&ndash;72</td><td>$64&ndash;88</td></tr>
+    <tr><td>Lingot (fruiting varieties)</td><td>&euro;4.50&ndash;5.50</td><td>$5.50&ndash;6.50</td><td>8</td><td>&euro;36&ndash;44</td><td>$44&ndash;52</td></tr>
+    <tr><td>Replacement wicks (pack of 8)</td><td>&euro;8&ndash;12</td><td>$10&ndash;14</td><td>1</td><td>&euro;8&ndash;12</td><td>$10&ndash;14</td></tr>
+    <tr><td>Liquid nutrient supplement</td><td>&euro;15&ndash;25</td><td>$18&ndash;30</td><td>2</td><td>&euro;30&ndash;50</td><td>$36&ndash;60</td></tr>
+    <tr><td><strong>Total (first year)</strong></td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td><strong>&euro;255&ndash;323</strong></td><td><strong>$303&ndash;373</strong></td></tr>
+    <tr><td><strong>Ongoing (year 2+)</strong></td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td><strong>&euro;130&ndash;178</strong></td><td><strong>$154&ndash;214</strong></td></tr>
+  </tbody>
+</table>
+
+<p>The <strong>official V&eacute;ritable store</strong> (veritable.com) ships to most EU countries including Iceland. For North American users, <strong>veritableusa.com</strong> is the official distributor. Major retailers including Amazon, Boulanger (France), MediaMarkt (Europe), and Williams Sonoma (USA) also stock V&eacute;ritable products. Third-party Lingot-compatible pods are available from some hydroponic retailers, though V&eacute;ritable recommends using official Lingots for best results.</p>
+
+<p>Beyond Lingots and wicks, useful accessories include a <strong>small fan</strong> for air circulation (reduces mold risk and strengthens stems), a <strong>digital thermometer/hygrometer</strong> for monitoring ambient conditions, and <strong>liquid pH test strips</strong> for growers using supplemental nutrients. The V&eacute;ritable CONNECT model requires a smartphone with iOS 12+ or Android 8+ and Bluetooth 4.0+ support.</p>
+</div>
+
+<!-- ========== SECTION 11 ========== -->
+<div class="section-content page-break">
+<h1 id="s11">11. Key Takeaways</h1>
+
+<p>The V&eacute;ritable SMART is a well-engineered, low-maintenance hydroponic system that fills a distinct niche in the indoor growing ecosystem. Unlike DIY hydroponics, it requires no assembly, no plumbing, and no deep technical knowledge. Unlike soil-based growing, it eliminates the mess, pests, and watering guesswork. For Sp&iacute;ra users in Iceland and similar climates, it represents an ideal <strong>winter companion</strong> to seasonal outdoor growing &mdash; providing fresh herbs, greens, and even small fruits during the months when outdoor gardening is impossible.</p>
+
+<p>The key operational principles are simple: <strong>keep the tank filled</strong>, <strong>let the light run</strong>, and <strong>harvest regularly</strong>. The Lingot system handles germination, initial nutrition, and planting depth automatically. Fruiting plants require supplemental nutrients after approximately 8 weeks, and the CONNECT model's app-controlled spectrum tuning offers a meaningful yield advantage for tomatoes, peppers, and strawberries. Maintenance is minimal &mdash; a tank clean every 2&ndash;3 weeks, wick inspection monthly, and Lingot replacement every 3&ndash;6 months.</p>
+
+<p>For Sp&iacute;ra integration, the critical data model elements are: (1) a <code>veritable_smart</code> setup type with tank capacity, LED specs, and passive-wick watering method; (2) a notification engine tuned to hydroponic rhythms (water checks every 3 days, tank refills every 7&ndash;14 days, cleaning every 14 days); (3) Lingot crop presets with accurate sprouting, harvest, and lifespan timelines for the ~30 available varieties; and (4) AI prompting context that distinguishes V&eacute;ritable care (passive hydroponics, built-in nutrients, capillary watering) from soil-based setups. With this data in place, Sp&iacute;ra can deliver precise, relevant guidance to V&eacute;ritable growers &mdash; whether they are nurturing their first basil Lingot or managing a full 4-slot garden of cherry tomatoes and strawberries through an Icelandic winter.</p>
+</div>
+
+</body>
+</html>

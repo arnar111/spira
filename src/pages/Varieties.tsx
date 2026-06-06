@@ -12,6 +12,8 @@ import {
   MOTHER_SPECIES,
   formatShu,
   hasCare,
+  isHerb,
+  isLeafy,
   isPepper,
   isPotato,
   isStrawberry,
@@ -42,7 +44,9 @@ const POTATO_MATURITY_LABEL: Record<'early' | 'maincrop' | 'late', string> = {
 
 export function Varieties() {
   const [q, setQ] = useState('');
-  const [type, setType] = useState<'all' | 'pepper' | 'tomato' | 'strawberry' | 'potato'>('all');
+  const [type, setType] = useState<
+    'all' | 'pepper' | 'tomato' | 'strawberry' | 'potato' | 'herb' | 'leafy'
+  >('all');
   const [mother, setMother] = useState<MotherSpecies | 'all'>('all');
   const [color, setColor] = useState<PepperColor | 'all'>('all');
 
@@ -64,7 +68,11 @@ export function Varieties() {
             ? 'jarðarber'
             : isPotato(v)
               ? 'kartafla'
-              : 'tómatur';
+              : isHerb(v)
+                ? 'kryddjurt'
+                : isLeafy(v)
+                  ? 'salat'
+                  : 'tómatur';
         const hay = [v.commonName, catWord, v.flavor]
           .join(' ')
           .toLowerCase();
@@ -126,6 +134,12 @@ export function Varieties() {
         <Chip active={type === 'potato'} onClick={() => setType('potato')}>
           Kartöflur
         </Chip>
+        <Chip active={type === 'herb'} onClick={() => setType('herb')}>
+          Kryddjurtir
+        </Chip>
+        <Chip active={type === 'leafy'} onClick={() => setType('leafy')}>
+          Salat
+        </Chip>
       </FilterRow>
       <FilterRow label="Móðurtegund">
         <Chip active={mother === 'all'} onClick={() => setMother('all')}>
@@ -173,7 +187,9 @@ function VarietyCard({ v }: { v: Variety }) {
     ? v.color
     : isPotato(v)
       ? v.skinColor
-      : v.fruitColor;
+      : isTomato(v) || isStrawberry(v)
+        ? v.fruitColor
+        : 'green';
   return (
     <button
       type="button"
@@ -219,6 +235,8 @@ function VarietyCard({ v }: { v: Variety }) {
               <Pill tone="moss" size="sm">{BERRY_TYPE_LABEL[v.berryType]}</Pill>
             ) : isPotato(v) ? (
               <Pill tone="moss" size="sm">{POTATO_MATURITY_LABEL[v.maturity]}</Pill>
+            ) : isHerb(v) || isLeafy(v) ? (
+              <Pill tone="moss" size="sm">{v.harvestFrequency}</Pill>
             ) : (
               <Pill tone="moss" size="sm">
                 {v.growthHabit === 'determinate' ? 'Ákveðinn' : 'Óákveðinn'}

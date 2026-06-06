@@ -17,7 +17,7 @@ interface DemoPlant {
 interface DemoGrow {
   name: string;
   location: string;
-  locationKey: 'window' | 'tent' | 'shower' | 'diy';
+  locationKey: 'window' | 'tent' | 'shower' | 'diy' | 'veritable';
   startedDaysAgo: number;
   spaceWidthCm: number;
   spaceDepthCm: number;
@@ -119,6 +119,24 @@ const GROWS: DemoGrow[] = [
       { varietyId: 'tomato-steinunn', nickname: 'Steinunn', daysAgoSown: 58, phase: 'flowering' },
     ],
   },
+  {
+    name: 'Véritable í eldhúsglugganum',
+    location: 'Eldhúsbekkur við glugga',
+    locationKey: 'veritable',
+    startedDaysAgo: 45,
+    spaceWidthCm: 33,
+    spaceDepthCm: 19,
+    spaceHeightCm: 39,
+    targetTempC: 21,
+    fixture: 'Véritable AdaptLight LED',
+    notes:
+      'Véritable SMART vatnsræktun með innbyggðu LED (16/8) og Lingot-hylkjum. Nánast viðhaldsfrítt — bara áfylling og tankhreinsun.',
+    plants: [
+      { varietyId: 'herb-basil', nickname: 'Basil', daysAgoSown: 45, phase: 'vegetative' },
+      { varietyId: 'herb-mint', nickname: 'Minta', daysAgoSown: 45, phase: 'vegetative' },
+      { varietyId: 'leafy-arugula', nickname: 'Klettur', daysAgoSown: 40, phase: 'vegetative' },
+    ],
+  },
 ];
 
 const LOG_NOTES = [
@@ -152,10 +170,9 @@ export async function seedDemoData(): Promise<void> {
     const growVarieties = g.plants
       .map((p) => BUILT_IN_VARIETIES.find((v) => v.id === p.varietyId))
       .filter((v): v is Variety => !!v);
-    const growCategory =
-      growVarieties.length > 0 && growVarieties.every((v) => v.category === 'tomato')
-        ? 'tomato'
-        : 'pepper';
+    // Eitt yfirflokks-gildi á ræktun: flokkur fyrstu plöntu (blandað herb/leafy
+    // Véritable verður þá 'herb' frekar en að falla á 'pepper').
+    const growCategory = growVarieties[0]?.category ?? 'pepper';
     await db.grows.add({
       id: growId,
       name: g.name,
@@ -225,6 +242,26 @@ export async function seedDemoData(): Promise<void> {
           note: pickNote(i * 7 + j * 3),
         });
       }
+    }
+
+    // Véritable vatnsræktun: tankáfylling + tankhreinsun svo viðhaldsspjaldið hafi gögn.
+    if (g.locationKey === 'veritable') {
+      await db.logs.add({
+        id: newId(),
+        growId,
+        timestamp: now - 5 * DAY_MS,
+        type: 'water',
+        data: { amountMl: 2000 },
+        note: 'Fyllti á tankinn — ferskt vatn upp að efstu línu',
+      });
+      await db.logs.add({
+        id: newId(),
+        growId,
+        timestamp: now - 9 * DAY_MS,
+        type: 'maintenance',
+        data: { task: 'clean_tank' },
+        note: 'Skolaði tankinn og skipti um vatn',
+      });
     }
 
     // Environment samples for the grow — 14 days of readings

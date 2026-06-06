@@ -2,6 +2,7 @@ import type { ChiliVariety } from '@/components/Chili';
 import type { TomatoGlyph } from '@/components/Tomato';
 import type { StrawberryGlyph } from '@/components/Strawberry';
 import type { PotatoGlyph } from '@/components/Potato';
+import type { HerbGlyph } from '@/components/Herb';
 import type { VarietyPreset } from './db';
 import type { LocationKey } from './locations';
 
@@ -166,11 +167,40 @@ export interface PotatoVariety extends VarietyCommon {
   care: CropCare;
 }
 
+/**
+ * Aromatic herbs (basil, parsley, mint…) grown indoors — primarily in a
+ * Véritable hydroponic garden or a sunny window. Care is optional: only a few
+ * reference crops (e.g. basil) carry a full hydroponic care guide.
+ */
+export interface HerbVariety extends VarietyCommon {
+  category: 'herb';
+  glyph: HerbGlyph;
+  /** Approx. lifespan of one Lingot/plant in days (harvest window). */
+  lifespanDays: number;
+  /** How often the crop can be cut, e.g. "á 7 daga fresti". */
+  harvestFrequency: string;
+  care?: CropCare;
+}
+
+/**
+ * Leafy greens & baby vegetables (kale, arugula, pea shoots, microgreens) —
+ * fast indoor/hydroponic salad crops. Same optional-care shape as herbs.
+ */
+export interface LeafyVariety extends VarietyCommon {
+  category: 'leafy';
+  glyph: HerbGlyph;
+  lifespanDays: number;
+  harvestFrequency: string;
+  care?: CropCare;
+}
+
 export type Variety =
   | PepperVariety
   | TomatoVariety
   | StrawberryVariety
-  | PotatoVariety;
+  | PotatoVariety
+  | HerbVariety
+  | LeafyVariety;
 
 /** Back-compat alias — most of the app was written before tomatoes existed. */
 export type VarietyWithChili = PepperVariety;
@@ -191,11 +221,29 @@ export function isPotato(v?: Variety): v is PotatoVariety {
   return v?.category === 'potato';
 }
 
-/** Any variety that carries a structured care guide. */
-export type CaredVariety = TomatoVariety | StrawberryVariety | PotatoVariety;
+export function isHerb(v?: Variety): v is HerbVariety {
+  return v?.category === 'herb';
+}
+
+export function isLeafy(v?: Variety): v is LeafyVariety {
+  return v?.category === 'leafy';
+}
+
+/**
+ * Any variety that carries a structured care guide. Tomatoes, strawberries and
+ * potatoes always have one; herbs and leafy greens carry it only on the few
+ * reference crops (basil, arugula), so we additionally check the runtime field.
+ */
+export type CaredVariety =
+  | TomatoVariety
+  | StrawberryVariety
+  | PotatoVariety
+  | (HerbVariety & { care: CropCare })
+  | (LeafyVariety & { care: CropCare });
 
 export function hasCare(v?: Variety): v is CaredVariety {
-  return isTomato(v) || isStrawberry(v) || isPotato(v);
+  if (isTomato(v) || isStrawberry(v) || isPotato(v)) return true;
+  return (isHerb(v) || isLeafy(v)) && v.care !== undefined;
 }
 
 interface VInput {
@@ -330,9 +378,10 @@ const PEPPERS: PepperVariety[] = [
     origin: 'Jalapa, Veracruz, Mexíkó',
     daysToGerminate: [7, 14],
     daysToHarvest: [70, 90],
-    notes: 'Tínd græn er klassísk — fær rauð við fullan þroska.',
+    notes:
+      'Tínd græn er klassísk — fær rauð við fullan þroska. Fæst líka sem Lingot fyrir Véritable: plantan helst þétt í körfunni, fyrsta uppskera eftir ~11 vikur og viðbótarnæring frá viku 8.',
     matureHeightCm: 70,
-    suitableLocations: ['window', 'tent', 'shower', 'diy'],
+    suitableLocations: ['window', 'tent', 'shower', 'diy', 'veritable'],
   }),
   v({
     id: 'pepper-jalapeno-red',
@@ -395,9 +444,10 @@ const PEPPERS: PepperVariety[] = [
     origin: 'Fr. Guiana',
     daysToGerminate: [10, 18],
     daysToHarvest: [80, 100],
-    notes: 'Þurrkun og duft — algeng í blöndum.',
+    notes:
+      'Þurrkun og duft — algeng í blöndum. Fæst líka sem Lingot fyrir Véritable: helst þétt í körfunni, fyrsta uppskera eftir ~11 vikur og viðbótarnæring frá viku 8.',
     matureHeightCm: 90,
-    suitableLocations: ['window', 'tent', 'shower', 'diy'],
+    suitableLocations: ['window', 'tent', 'shower', 'diy', 'veritable'],
   }),
   v({
     id: 'pepper-cayenne-golden',
@@ -954,9 +1004,9 @@ const STEINUNN: TomatoVariety = {
   daysToGerminate: [6, 12],
   daysToHarvest: [60, 85],
   matureHeightCm: 45,
-  suitableLocations: ['window', 'tent', 'diy'],
+  suitableLocations: ['window', 'tent', 'diy', 'veritable'],
   notes:
-    'Íslenskt dvergyrki með hjartalaga aldin og hrukkótt (rugose) blöð. Kuldaþolið og þrífst í NV-glugga undir íslenskri sumarbirtu — engin gróðurljós þörf maí–ágúst.',
+    'Íslenskt dvergyrki með hjartalaga aldin og hrukkótt (rugose) blöð. Kuldaþolið og þrífst í NV-glugga undir íslenskri sumarbirtu — engin gróðurljós þörf maí–ágúst. Sem smáaldin í Véritable þarf hún viðbótarnæringu frá viku 8.',
   care: {
     summary:
       'Ákveðinn (determinate) dvergvöxtur, 30–60 cm. Hjartalaga 50 g aldin, hrukkótt blöð og kuldaþol. Hannað fyrir NV-glugga í íslensku sumri.',
@@ -1142,7 +1192,7 @@ const STRAWBERRIES: StrawberryVariety[] = [
     notes:
       'Dagshlutlaust stóryrki sem ber stór, þétt ber nánast allt árið undir LED. Sjúkdómsþolið og afkastamikið — besta byrjunaryrkið innandyra.',
     matureHeightCm: 30,
-    suitableLocations: ['window', 'tent', 'diy'],
+    suitableLocations: ['window', 'tent', 'diy', 'veritable'],
     care: dayNeutralCare(
       'Dagshlutlaust (day-neutral) stóryrki. Stór, þétt og sæt ber í sífellu undir LED. Sjúkdómsþolið og áreiðanlegt — viðmiðunaryrki fyrir inniræktun á Íslandi.',
     ),
@@ -1161,7 +1211,7 @@ const STRAWBERRIES: StrawberryVariety[] = [
     notes:
       'Dagshlutlaust yrki, snemmbært og gjöfult. Myndar góðar renglur og hentar vel í vatnsrækt.',
     matureHeightCm: 28,
-    suitableLocations: ['window', 'tent', 'diy'],
+    suitableLocations: ['window', 'tent', 'diy', 'veritable'],
     care: dayNeutralCare(
       'Dagshlutlaust yrki — snemmbært, ilmandi og gjöfult. Gefur góðar renglur og þrífst vel í vatnsrækt jafnt sem mold.',
     ),
@@ -1180,7 +1230,7 @@ const STRAWBERRIES: StrawberryVariety[] = [
     notes:
       'Arftaki Albion — stærri og enn þéttari ber. Mjög sjúkdómsþolið og gjöfult dagshlutlaust yrki.',
     matureHeightCm: 30,
-    suitableLocations: ['window', 'tent', 'diy'],
+    suitableLocations: ['window', 'tent', 'diy', 'veritable'],
     care: dayNeutralCare(
       'Dagshlutlaust yrki — arftaki Albion með stærri, mjög þétt ber og frábært bragð. Sjúkdómsþolið og afkastamikið.',
     ),
@@ -1199,7 +1249,7 @@ const STRAWBERRIES: StrawberryVariety[] = [
     notes:
       'Dagshlutlaust yrki með langt geymsluþol og mikla uppskeru. Vinsælt í atvinnuræktun.',
     matureHeightCm: 30,
-    suitableLocations: ['window', 'tent', 'diy'],
+    suitableLocations: ['window', 'tent', 'diy', 'veritable'],
     care: dayNeutralCare(
       'Dagshlutlaust yrki — sætt með mildri sýru, langt geymsluþol og mikil uppskera. Vinsælt í atvinnuræktun.',
     ),
@@ -1217,9 +1267,9 @@ const STRAWBERRIES: StrawberryVariety[] = [
     daysToGerminate: [14, 28],
     daysToHarvest: [84, 120],
     notes:
-      'Villt skógarjarðarber — smá en ákaflega bragðmikil ber í sífellu. Myndar engar renglur, þolir minni birtu og hentar fullkomlega á gluggakistu.',
+      'Villt skógarjarðarber — smá en ákaflega bragðmikil ber í sífellu. Myndar engar renglur, þolir minni birtu og hentar fullkomlega á gluggakistu eða í Véritable.',
     matureHeightCm: 20,
-    suitableLocations: ['window', 'tent', 'diy'],
+    suitableLocations: ['window', 'tent', 'diy', 'veritable'],
     care: ALPINE_CARE,
   }),
 ];
@@ -1402,9 +1452,9 @@ const TOMATOES: TomatoVariety[] = [
     daysToGerminate: [6, 12],
     daysToHarvest: [45, 55],
     notes:
-      'Sígilt gluggakistu-dvergyrki, aðeins 30–45 cm. Mjög snemmbært og þarf lítið pláss — fullkomið fyrir litla LED-uppsetningu.',
+      'Sígilt gluggakistu-dvergyrki, aðeins 30–45 cm. Mjög snemmbært og þarf lítið pláss — fullkomið fyrir litla LED-uppsetningu eða Véritable (viðbótarnæring frá viku 8).',
     matureHeightCm: 38,
-    suitableLocations: ['window', 'tent', 'diy'],
+    suitableLocations: ['window', 'tent', 'diy', 'veritable'],
     care: indoorTomatoCare(
       'Ákveðið (determinate) dvergyrki, 30–45 cm — snemmbært og plásslítið. Tilvalið á gluggakistu eða í lítilli tjald-uppsetningu.',
     ),
@@ -1422,9 +1472,9 @@ const TOMATOES: TomatoVariety[] = [
     daysToGerminate: [6, 12],
     daysToHarvest: [55, 60],
     notes:
-      'Þéttvaxið dvergyrki, 25–30 cm — enn minna en Tiny Tim. Hentar í litla potta og þéttar gluggakistur.',
+      'Þéttvaxið dvergyrki, 25–30 cm — enn minna en Tiny Tim. Hentar í litla potta, þéttar gluggakistur og Véritable (viðbótarnæring frá viku 8).',
     matureHeightCm: 28,
-    suitableLocations: ['window', 'tent', 'diy'],
+    suitableLocations: ['window', 'tent', 'diy', 'veritable'],
     care: indoorTomatoCare(
       'Ákveðið dvergyrki, aðeins 25–30 cm — plásssparandi og snemmbært. Frábært í lítinn pott á gluggakistu.',
     ),
@@ -1740,12 +1790,271 @@ const POTATOES: PotatoVariety[] = [
   }),
 ];
 
+/**
+ * Lingot / Véritable hydroponic care — distilled from Véritable research
+ * (Report 05). The plant grows from a pre-seeded, nutrient-charged Lingot pod
+ * fed by capillary wicks from a 2 L tank under a fixed 16/8 LED. There is no
+ * manual watering and no soil: care is mostly tank refills, monthly cleaning
+ * and Lingot/wick replacement. Built-in nutrients last ~12 weeks; only fruiting
+ * crops need supplemental feeding (herbs/leafy almost never do).
+ */
+function lingotCare(summary: string): CropCare {
+  return {
+    summary,
+    targets: [
+      { label: 'Ljós', value: 'Innbyggt LED 16 klst', hint: 'AdaptLight keyrir sjálfvirkt 16/8 — engin stilling þörf' },
+      { label: 'Hiti', value: '18–26°C', hint: 'Borðhiti hentar — yfir 26°C streitir plöntuna' },
+      { label: 'Raki', value: '40–70%', hint: 'Venjulegur inniraki dugar' },
+      { label: 'Vatnstankur', value: '2 L · fylla á 7–14 daga', hint: 'Láttu hann aldrei þorna alveg — kveikir missa sog' },
+      { label: 'Vatnshiti', value: '18–22°C', hint: 'Kalt vatn sjokkerar rætur' },
+      { label: 'Sýrustig (pH)', value: '5,5–6,5', hint: 'Lingot heldur þessu sjálft — létt súrt' },
+      { label: 'Næring', value: 'Innbyggð í Lingot ~12 vikur', hint: 'Kryddjurtir og salat þurfa enga viðbót' },
+      { label: 'Grisjun', value: '1–3 plöntur á Lingot', hint: 'Grisjaðu 1–2 vikum eftir spírun' },
+    ],
+    watering: [
+      'Engin handvökvun — kveikir (wicks) draga vatn upp úr tankinum með háræðasogi.',
+      'Fylltu á tankinn að hámarkslínu þegar flotvísirinn fellur, á 7–14 daga fresti (oftar með aldinplöntum).',
+      'Notaðu vatn við stofuhita (18–22°C); kalt vatn sjokkerar rætur, heitt skemmir þær.',
+      'Skiptu alveg um vatn á 2–3 vikna fresti frekar en að fylla bara á — kemur í veg fyrir þörunga og útfellingar.',
+      'Láttu tankinn aldrei tæmast: þurrir kveikir missa háræðasogið og ná því stundum ekki aftur.',
+    ],
+    fertilizer: [
+      { stage: 'Vikur 0–12', npk: 'Innbyggð Lingot-næring (~4,3-2,1-6,6)', freq: 'Engin viðbót', note: 'Lingot inniheldur alla næringu fyrstu ~12 vikurnar' },
+      { stage: 'Vikur 12+', npk: 'Lífrænn vökvaáburður 2-4 ml/L (valfrjálst)', freq: 'Á 2–3 vikna fresti', note: 'Aðeins ef plantan dofnar þegar Lingot eldist — kryddjurtir þurfa það sjaldan' },
+    ],
+    troubleshooting: [
+      { problem: 'Renglulegar, háar kímplöntur', cause: 'Ófullnægjandi ljós eða samkeppni við gluggabirtu', fix: 'Tryggðu að LED logi í 16 klst; færðu garðinn frá sterkri hliðarbirtu' },
+      { problem: 'Gulnandi neðri blöð', cause: 'Næring að klárast (Lingot eldra en 8 vikur)', fix: 'Byrjaðu væga viðbótarnæringu í tankinn' },
+      { problem: 'Þörungar í tanki', cause: 'Ljós kemst að vatninu', fix: 'Ekki offylla, þrífðu tankinn vikulega, haltu frá sterkri birtu' },
+      { problem: 'Kveikir draga ekki vatn', cause: 'Loft læst í kveik eða stífla', fix: 'Leggðu kveikina í bleyti í 30 mín; skiptu um ef vandinn er viðvarandi' },
+      { problem: 'Mygla á yfirborði Lingot', cause: 'Of mikill raki og lélegt loftflæði', fix: 'Lækkaðu raka, settu litla viftu nálægt fyrir loftflæði' },
+    ],
+    normal: [
+      'Plantan vex þétt og hratt undir LED — uppskeru má hefja eftir nokkrar vikur.',
+      'Klipptu reglulega (mest 1/3 í einu) — það örvar nýjan vöxt og lengir líftíma Lingot.',
+      'Elstu ytri blöð gulna með aldri — fjarlægðu þau.',
+    ],
+    concern: [
+      'Tankurinn tæmist ítrekað á fáum dögum — athugaðu hvort aldinplöntur séu að drekka mikið eða leki sé til staðar.',
+      'Öll plantan gulnar og staðnar þrátt fyrir vatn — Lingot líklega uppurið, skiptu um.',
+      'Slímkenndir eða mislitir kveikir — skiptu um þá strax.',
+    ],
+  };
+}
+
+interface HInput {
+  id: string;
+  category: 'herb' | 'leafy';
+  commonName: string;
+  glyph: HerbGlyph;
+  scientificName?: string;
+  flavor: string;
+  origin: string;
+  daysToGerminate: [number, number];
+  daysToHarvest: [number, number];
+  notes: string;
+  matureHeightCm: number;
+  lifespanDays: number;
+  harvestFrequency: string;
+  suitableLocations: LocationKey[];
+  care?: CropCare;
+}
+
+function h(input: HInput): HerbVariety | LeafyVariety {
+  return {
+    id: input.id,
+    commonName: input.commonName,
+    scientificName: input.scientificName,
+    category: input.category,
+    glyph: input.glyph,
+    flavor: input.flavor,
+    origin: input.origin,
+    daysToGerminate: input.daysToGerminate,
+    daysToHarvest: input.daysToHarvest,
+    notes: input.notes,
+    isBuiltIn: true,
+    matureHeightCm: input.matureHeightCm,
+    lifespanDays: input.lifespanDays,
+    harvestFrequency: input.harvestFrequency,
+    suitableLocations: input.suitableLocations,
+    care: input.care,
+  } as HerbVariety | LeafyVariety;
+}
+
+/**
+ * Lingot herb & leafy-green presets for the Véritable hydroponic garden,
+ * distilled from Report 05 §9.3. Herbs also grow in a sunny window or DIY
+ * setup; the day/harvest figures come straight from the Lingot crop table.
+ */
+const HERBS: (HerbVariety | LeafyVariety)[] = [
+  h({
+    id: 'herb-basil',
+    category: 'herb',
+    commonName: 'Basilíka',
+    glyph: 'sprig',
+    scientificName: 'Ocimum basilicum',
+    flavor: 'Sætt, ilmandi — klassísk ítölsk krydd',
+    origin: 'Suður-Asía — víða ræktuð',
+    daysToGerminate: [7, 14],
+    daysToHarvest: [28, 28],
+    notes:
+      'Vinsælasta Lingot-kryddjurtin. Spírar á 1–2 vikum, fyrsta uppskera eftir ~4 vikur og gefur í ~150 daga. Klipptu efstu blaðpör reglulega til að halda henni þéttri.',
+    matureHeightCm: 30,
+    lifespanDays: 150,
+    harvestFrequency: 'Á 7 daga fresti',
+    suitableLocations: ['veritable', 'window', 'diy'],
+    care: lingotCare(
+      'Sæt basilíka í Véritable vatnsræktun. Spírar á 1–2 vikum, uppskeru má hefja eftir ~4 vikur og hún gefur í ~150 daga. Innbyggð Lingot-næring dugar — engin handvökvun, engin viðbótarnæring.',
+    ),
+  }),
+  h({
+    id: 'herb-parsley',
+    category: 'herb',
+    commonName: 'Steinselja',
+    glyph: 'frond',
+    scientificName: 'Petroselinum crispum',
+    flavor: 'Ferskt, grösugt — slétt steinselja',
+    origin: 'Miðjarðarhafssvæðið',
+    daysToGerminate: [14, 21],
+    daysToHarvest: [35, 35],
+    notes:
+      'Sein að spíra (2–3 vikur) en ákaflega ending — gefur í allt að 180 daga. Klipptu ystu stilka fyrst svo miðjan haldi áfram að vaxa.',
+    matureHeightCm: 25,
+    lifespanDays: 180,
+    harvestFrequency: 'Á 10 daga fresti',
+    suitableLocations: ['veritable', 'window', 'diy'],
+  }),
+  h({
+    id: 'herb-cilantro',
+    category: 'herb',
+    commonName: 'Kóríander',
+    glyph: 'frond',
+    scientificName: 'Coriandrum sativum',
+    flavor: 'Sítrusríkt, ferskt — asísk og mexíkósk krydd',
+    origin: 'Suður-Evrópa / Vestur-Asía',
+    daysToGerminate: [7, 14],
+    daysToHarvest: [28, 28],
+    notes:
+      'Fljót: spírar á 1–2 vikum og uppskeru má hefja eftir ~4 vikur. Skemmri líftími (~120 dagar) — tínd ung gefur hún best bragð áður en hún fer í blóm.',
+    matureHeightCm: 25,
+    lifespanDays: 120,
+    harvestFrequency: 'Á 7 daga fresti',
+    suitableLocations: ['veritable', 'window', 'diy'],
+  }),
+  h({
+    id: 'herb-mint',
+    category: 'herb',
+    commonName: 'Minta',
+    glyph: 'sprig',
+    scientificName: 'Mentha',
+    flavor: 'Svalandi, sætt — te og eftirréttir',
+    origin: 'Evrópa / Asía',
+    daysToGerminate: [10, 14],
+    daysToHarvest: [30, 30],
+    notes:
+      'Harðger og langlíf (~180 dagar). Vex kröftuglega — klipptu reglulega til að halda henni í skefjum og örva nýjan vöxt.',
+    matureHeightCm: 30,
+    lifespanDays: 180,
+    harvestFrequency: 'Á 7 daga fresti',
+    suitableLocations: ['veritable', 'window', 'diy'],
+  }),
+  h({
+    id: 'herb-chives',
+    category: 'herb',
+    commonName: 'Graslaukur',
+    glyph: 'frond',
+    scientificName: 'Allium schoenoprasum',
+    flavor: 'Mildur laukur — salöt og sósur',
+    origin: 'Evrópa / Norður-Ameríka',
+    daysToGerminate: [14, 21],
+    daysToHarvest: [35, 35],
+    notes:
+      'Sein til (2–3 vikur) en mjög ending (~180 dagar). Klipptu stilka 2–3 cm yfir grunni; þeir vaxa aftur hvað eftir annað.',
+    matureHeightCm: 25,
+    lifespanDays: 180,
+    harvestFrequency: 'Á 14 daga fresti',
+    suitableLocations: ['veritable', 'window', 'diy'],
+  }),
+  h({
+    id: 'leafy-baby-kale',
+    category: 'leafy',
+    commonName: 'Grænkál baby',
+    glyph: 'leafy',
+    scientificName: 'Brassica oleracea',
+    flavor: 'Milt, hnetukennt — ung blöð í salat',
+    origin: 'Evrópa',
+    daysToGerminate: [7, 14],
+    daysToHarvest: [35, 35],
+    notes:
+      'Næringarríkt babyblað í salat og smoothie. Spírar á 1–2 vikum, fyrsta klipping eftir ~5 vikur og gefur í ~120 daga. Tíndu ystu blöð („cut-and-come-again").',
+    matureHeightCm: 25,
+    lifespanDays: 120,
+    harvestFrequency: 'Á 10 daga fresti',
+    suitableLocations: ['veritable', 'window', 'diy'],
+  }),
+  h({
+    id: 'leafy-arugula',
+    category: 'leafy',
+    commonName: 'Klettasalat',
+    glyph: 'leafy',
+    scientificName: 'Eruca vesicaria',
+    flavor: 'Piprað, hnetukennt — kröftugt salatblað',
+    origin: 'Miðjarðarhafssvæðið',
+    daysToGerminate: [5, 10],
+    daysToHarvest: [25, 25],
+    notes:
+      'Eitt fljótasta salatblaðið — spírar á 5–10 dögum og uppskeru má hefja eftir ~25 daga. Skemmri líftími (~90 dagar); tíndu ystu blöð reglulega áður en hún fer í blóm.',
+    matureHeightCm: 20,
+    lifespanDays: 90,
+    harvestFrequency: 'Á 7 daga fresti',
+    suitableLocations: ['veritable', 'window', 'diy'],
+    care: lingotCare(
+      'Piprað klettasalat í Véritable vatnsræktun — eitt fljótasta blaðið. Spírar á 5–10 dögum og fyrsta klipping eftir ~25 daga. Tíndu ystu blöð reglulega; innbyggð Lingot-næring dugar allan ~90 daga líftímann.',
+    ),
+  }),
+  h({
+    id: 'leafy-pea-shoots',
+    category: 'leafy',
+    commonName: 'Ertuspírur',
+    glyph: 'frond',
+    scientificName: 'Pisum sativum',
+    flavor: 'Sætt, ertukennt — stökkar spírur',
+    origin: 'Víða ræktað',
+    daysToGerminate: [3, 7],
+    daysToHarvest: [14, 14],
+    notes:
+      'Örsmáréttur sem er tilbúinn á ~2 vikum. Stuttur líftími (~45 dagar) — klipptu spírurnar þegar þær eru 8–10 cm og leyfðu þeim að vaxa aftur einu sinni.',
+    matureHeightCm: 15,
+    lifespanDays: 45,
+    harvestFrequency: 'Á 7 daga fresti',
+    suitableLocations: ['veritable', 'window', 'diy'],
+  }),
+  h({
+    id: 'leafy-radish-micro',
+    category: 'leafy',
+    commonName: 'Radísuspírur',
+    glyph: 'frond',
+    scientificName: 'Raphanus sativus',
+    flavor: 'Piprað, skarpt — smáréttur með biti',
+    origin: 'Víða ræktað',
+    daysToGerminate: [3, 5],
+    daysToHarvest: [10, 10],
+    notes:
+      'Fljótasti smárétturinn — tilbúinn á ~10 dögum. Mjög stuttur líftími (~35 dagar); klipptu spírurnar í einu lagi þegar kímblöðin opnast.',
+    matureHeightCm: 15,
+    lifespanDays: 35,
+    harvestFrequency: 'Á 5 daga fresti',
+    suitableLocations: ['veritable', 'window', 'diy'],
+  }),
+];
+
 export const BUILT_IN_VARIETIES: Variety[] = [
   ...PEPPERS,
   STEINUNN,
   ...TOMATOES,
   ...STRAWBERRIES,
   ...POTATOES,
+  ...HERBS,
 ];
 
 export function chiliForVarietyId(id?: string): ChiliVariety {

@@ -12,6 +12,7 @@ import {
   Bookmark,
   CalendarDays,
   Camera,
+  Container,
   Droplet,
   Flower,
   Flower2,
@@ -19,13 +20,16 @@ import {
   Leaf,
   Lightbulb,
   Mountain,
+  Package,
   RefreshCw,
   Scissors,
   Send,
   Snowflake,
   Sparkles,
+  SprayCan,
   Sprout,
   Thermometer,
+  Waves,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -93,6 +97,12 @@ const KIND_ICON: Record<RosInsightKind, LucideIcon> = {
   season: CalendarDays,
   mulch: Leaf,
   env: Thermometer,
+  // — Véritable SMART (vatnsrækt) —
+  tank: Container,
+  clean: SprayCan,
+  wick: Waves,
+  thin: Scissors,
+  lingot: Package,
   info: Sparkles,
 };
 
@@ -675,6 +685,11 @@ const SUGGESTION_BY_KIND: Partial<Record<RosInsightKind, string>> = {
   top: 'Hvernig toppa ég plöntuna rétt?',
   frost: 'Hvernig ver ég plönturnar gegn frosti?',
   hill: 'Hvernig hreyki ég rétt að kartöflunum?',
+  tank: 'Hvenær á ég að fylla á Véritable-tankinn?',
+  clean: 'Hvernig hreinsa ég Véritable-tankinn?',
+  wick: 'Hvernig veit ég hvort skipta þurfi um hárpípu-dúkana?',
+  thin: 'Hvernig grisja ég ungplönturnar í Lingot?',
+  lingot: 'Hvenær á ég að skipta um Lingot?',
 };
 
 /** Almenn vara-tillaga ef of fáar innsýnir gefa spurningu. */

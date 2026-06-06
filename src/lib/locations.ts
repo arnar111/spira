@@ -1,8 +1,8 @@
 import type { LucideIcon } from 'lucide-react';
-import { Home, Tent, Droplets, Hammer, Trees } from 'lucide-react';
+import { Home, Tent, Droplets, Hammer, Trees, Sprout } from 'lucide-react';
 import type { GrowEnvironment } from './db';
 
-export type LocationKey = 'window' | 'tent' | 'shower' | 'diy' | 'garden';
+export type LocationKey = 'window' | 'tent' | 'shower' | 'diy' | 'garden' | 'veritable';
 
 export interface LocationCategory {
   key: LocationKey;
@@ -128,6 +128,26 @@ export const LOCATIONS: LocationCategory[] = [
       spaceHeightCm: 0,
       targetTempC: 12,
       fixture: 'Náttúrubirta',
+    },
+  },
+  {
+    key: 'veritable',
+    label: 'Véritable SMART',
+    short: 'Vatnsræktun',
+    description:
+      'Borðvatnsræktun með Lingot-hylkjum, innbyggðu LED-ljósi og sjálfvökvandi kveikjum. Fullkomið fyrir kryddjurtir, salat og smáaldin allan íslenska veturinn — nánast viðhaldsfrítt.',
+    icon: Sprout,
+    environment: 'indoor',
+    maxHeightCm: 30,
+    lightScore: 1,
+    humidityControl: false,
+    defaults: {
+      growName: 'Véritable garðurinn',
+      spaceWidthCm: 33,
+      spaceDepthCm: 19,
+      spaceHeightCm: 39,
+      targetTempC: 21,
+      fixture: 'Véritable AdaptLight LED 10,5W — 16 klst sjálfvirkt',
     },
   },
 ];

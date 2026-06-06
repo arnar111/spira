@@ -5,11 +5,13 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  Droplet,
   Filter,
   Flame,
   Leaf,
   Lightbulb,
   MapPin,
+  Package,
   Sprout,
   Thermometer,
 } from 'lucide-react';
@@ -32,9 +34,12 @@ import {
   COLOR_LABEL,
   MOTHER_SPECIES,
   formatShu,
+  isHerb,
+  isLeafy,
   isPepper,
   isPotato,
   isStrawberry,
+  isTomato,
   suggestForLocation,
   type MotherSpecies,
   type PepperColor,
@@ -102,6 +107,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   // Útiræktun (garður): sleppum LED-skrefinu og sýnum árstíðayfirlit í staðinn.
   const outdoor =
     LOCATIONS.find((l) => l.key === state.locationKey)?.environment === 'outdoor';
+  // Véritable: innbyggt LED — sleppum lampaskrefinu og sýnum upplýsingaskref í staðinn.
+  const veritable = state.locationKey === 'veritable';
 
   function pickLocation(key: LocationKey) {
     const cat = LOCATIONS.find((l) => l.key === key)!;
@@ -156,7 +163,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         spaceDepthCm: parseNum(state.spaceDepthCm),
         spaceHeightCm: parseNum(state.spaceHeightCm),
         targetTempC: parseNum(state.targetTempC),
-        lightOnHours: 18,
+        // Véritable AdaptLight keyrir fast 16/8 prógramm.
+        lightOnHours: veritable ? 16 : 18,
         archived: false,
         createdAt: now,
         updatedAt: now,
@@ -269,6 +277,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
             {step === 2 &&
               (outdoor ? (
                 <StepSeason key="step-2" />
+              ) : veritable ? (
+                <StepVeritable key="step-2" />
               ) : (
                 <StepLight key="step-2" state={state} set={set} />
               ))}
@@ -507,6 +517,54 @@ function StepSeason() {
   );
 }
 
+function StepVeritable() {
+  const facts: { icon: typeof Lightbulb; title: string; body: string }[] = [
+    {
+      icon: Lightbulb,
+      title: 'Innbyggt AdaptLight LED',
+      body: 'Fast 16/8 prógramm sem kviknar og slokknar sjálfkrafa — engin aukaljós þarf, jafnvel um hávetur.',
+    },
+    {
+      icon: Droplet,
+      title: 'Hárpípu-sjálfvökvun',
+      body: '2 lítra tankur með kveikjum sem draga vatn upp í ræturnar. Fylltu á 7–14 daga fresti eftir plöntuálagi.',
+    },
+    {
+      icon: Package,
+      title: 'Lingot-hylki',
+      body: 'Lífbrjótanleg hylki með fræjum og innbyggðri næringu sem dugar í u.þ.b. 12 vikur — skiptu þá um Lingot.',
+    },
+  ];
+  return (
+    <StepWrap>
+      <StepHeader
+        eyebrow="Véritable"
+        title="Nánast viðhaldsfrítt"
+        hint="Véritable SMART sér um ljós og vökvun sjálft — þú þarft bara að fylla á tank og skipta um Lingot."
+      />
+      <Card className="space-y-4">
+        {facts.map((f) => {
+          const Icon = f.icon;
+          return (
+            <div key={f.title} className="flex items-start gap-3">
+              <div className="shrink-0 rounded-xl p-2.5 bg-moss-800/60 text-moss-300">
+                <Icon size={18} />
+              </div>
+              <div className="min-w-0">
+                <div className="heading text-base font-semibold text-cream-50">{f.title}</div>
+                <p className="text-sm text-cream-300/70 leading-snug mt-0.5">{f.body}</p>
+              </div>
+            </div>
+          );
+        })}
+      </Card>
+      <p className="text-[11.5px] text-cream-300/70 leading-snug">
+        Rós minnir þig á áfyllingu, tankhreinsun og kveikjaskoðun þegar þar að kemur.
+      </p>
+    </StepWrap>
+  );
+}
+
 function StepLight({
   state,
   set,
@@ -691,7 +749,9 @@ function VarietyRow({
     ? v.color
     : isPotato(v)
       ? v.skinColor
-      : v.fruitColor;
+      : isTomato(v) || isStrawberry(v)
+        ? v.fruitColor
+        : 'green';
   return (
     <button
       type="button"
@@ -733,7 +793,11 @@ function VarietyRow({
                 ? 'Jarðarber'
                 : isPotato(v)
                   ? 'Kartafla'
-                  : 'Tómatur'}
+                  : isHerb(v)
+                    ? 'Kryddjurt'
+                    : isLeafy(v)
+                      ? 'Salat'
+                      : 'Tómatur'}
           </span>
           <span
             className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full"
@@ -774,9 +838,11 @@ function VarietyRow({
                 ? 'Jarðarber'
                 : isPotato(v)
                   ? v.use
-                  : v.growthHabit === 'determinate'
-                    ? 'Ákveðinn'
-                    : 'Óákveðinn'}
+                  : isHerb(v) || isLeafy(v)
+                    ? v.harvestFrequency
+                    : v.growthHabit === 'determinate'
+                      ? 'Ákveðinn'
+                      : 'Óákveðinn'}
             </span>
           )}
         </div>

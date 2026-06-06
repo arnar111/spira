@@ -9,6 +9,7 @@ import { Sparkline } from '@/components/ui/Sparkline';
 import { Button } from '@/components/ui/Button';
 import { DaylightCard } from '@/components/DaylightCard';
 import { SeasonCard } from '@/components/SeasonCard';
+import { VeritableCard } from '@/components/VeritableCard';
 import { db, newId } from '@/lib/db';
 import { growIsOutdoor } from '@/lib/season';
 import { cn } from '@/lib/cn';
@@ -16,9 +17,10 @@ import { cn } from '@/lib/cn';
 export function Environment() {
   const env = useLiveQuery(() => db.environment.toArray());
   const allGrows = useLiveQuery(() => db.grows.toArray());
+  const allPlants = useLiveQuery(() => db.plants.toArray());
   const [openGrowId, setOpenGrowId] = useState<string | null>(null);
 
-  if (!allGrows || !env) return null;
+  if (!allGrows || !env || !allPlants) return null;
   const active = allGrows.filter((g) => !g.archived);
   const anyOutdoor = active.some((g) => growIsOutdoor(g));
   const anyIndoor = active.length === 0 || active.some((g) => !growIsOutdoor(g));
@@ -69,6 +71,17 @@ export function Environment() {
               : 0;
           const tempPoints = samples.map((s) => s.tempC ?? 0);
           const humPoints = samples.map((s) => s.humidityPct ?? 0);
+          if (g.locationKey === 'veritable') {
+            const growPlants = allPlants.filter((p) => p.growId === g.id);
+            return (
+              <VeritableCard
+                key={g.id}
+                growId={g.id}
+                startDate={g.startDate}
+                plants={growPlants}
+              />
+            );
+          }
           return (
             <Card key={g.id} tone="strong" radius={18} padding={16}>
               <div className="flex items-baseline justify-between mb-3">

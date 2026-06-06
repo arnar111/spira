@@ -18,6 +18,7 @@ import { Pill } from '@/components/ui/Pill';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { PhaseBar } from '@/components/ui/PhaseBar';
 import { SeasonCard } from '@/components/SeasonCard';
+import { VeritableCard } from '@/components/VeritableCard';
 import { growIsOutdoor } from '@/lib/season';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -213,6 +214,12 @@ export function GrowDetail() {
       {growIsOutdoor(grow) && (
         <div className="mt-4">
           <SeasonCard />
+        </div>
+      )}
+
+      {grow.locationKey === 'veritable' && (
+        <div className="mt-4">
+          <VeritableCard growId={grow.id} startDate={grow.startDate} plants={plants} />
         </div>
       )}
 
