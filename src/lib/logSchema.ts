@@ -61,6 +61,21 @@ export const LOG_FIELDS: Partial<Record<LogType, LogField[]>> = {
   transplant: [
     { key: 'detail', label: 'Smáatriði', kind: 'text', placeholder: 't.d. í 7L pott' },
   ],
+  maintenance: [
+    {
+      key: 'task',
+      label: 'Verk',
+      kind: 'select',
+      options: [
+        { value: 'clean_tank', label: 'Hreinsa vatnstank' },
+        { value: 'inspect_wicks', label: 'Skoða kveiki' },
+        { value: 'replace_wicks', label: 'Skipta um kveiki' },
+        { value: 'clean_led', label: 'Hreinsa LED' },
+        { value: 'thin_seedlings', label: 'Grisja kímplöntur' },
+        { value: 'replace_lingot', label: 'Skipta um Lingot' },
+      ],
+    },
+  ],
   note: [],
   photo: [],
   phase_change: [],
@@ -85,6 +100,7 @@ export const LOG_TYPE_META: {
   { id: 'top', label: 'Toppað', icon: 'Sparkles' },
   { id: 'harvest', label: 'Uppskera', icon: 'Sprout' },
   { id: 'transplant', label: 'Umpotta', icon: 'Move' },
+  { id: 'maintenance', label: 'Viðhald', icon: 'Wrench' },
 ];
 
 function asNumber(value: unknown): number | undefined {
@@ -172,6 +188,14 @@ export function formatLogData(
     case 'transplant': {
       const detail = asText(data.detail);
       if (detail !== undefined) chips.push(detail);
+      break;
+    }
+    case 'maintenance': {
+      const task = asText(data.task);
+      if (task !== undefined) {
+        const opt = LOG_FIELDS.maintenance?.[0]?.options?.find((o) => o.value === task);
+        chips.push(opt?.label ?? task);
+      }
       break;
     }
     default:

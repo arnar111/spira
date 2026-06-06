@@ -3,6 +3,7 @@ import { Chili } from './Chili';
 import { Tomato } from './Tomato';
 import { Strawberry } from './Strawberry';
 import { Potato } from './Potato';
+import { Herb } from './Herb';
 import { chiliForVarietyName, varietyByName, type Variety } from '@/lib/varieties';
 
 interface PlantGlyphProps {
@@ -34,6 +35,9 @@ export function PlantGlyph({ variety, name, ...rest }: PlantGlyphProps) {
   }
   if (v?.category === 'potato') {
     return <Potato variety={v.glyph} {...rest} />;
+  }
+  if (v?.category === 'herb' || v?.category === 'leafy') {
+    return <Herb variety={v.glyph} {...rest} />;
   }
   if (v?.category === 'pepper') {
     return <Chili variety={v.chili} {...rest} />;

@@ -15,7 +15,8 @@ import type { CaredVariety } from '@/lib/varieties';
  * Renders a crop variety's structured care guide — targets, watering,
  * pollination/seasonal steps, feeding schedule and troubleshooting — distilled
  * from its sheet. Works for any variety with a `care` block (tomato,
- * strawberry, potato). Pollination and the seasonal checklist are optional.
+ * strawberry, potato, hydroponic herbs/leafy). Pollination and the seasonal
+ * checklist are optional.
  */
 export function CareGuide({ variety }: { variety: CaredVariety }) {
   const c = variety.care;

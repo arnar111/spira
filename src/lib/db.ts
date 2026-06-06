@@ -40,7 +40,8 @@ export type LogType =
   | 'environment'
   | 'harvest'
   | 'pest'
-  | 'disease';
+  | 'disease'
+  | 'maintenance';
 
 export type StartedFrom = 'seed' | 'seedling' | 'clone' | 'purchased';
 

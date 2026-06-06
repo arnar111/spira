@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Activity,
   CalendarDays,
+  Container,
   Droplet,
   FileText,
   Flower,
@@ -12,12 +13,15 @@ import {
   Leaf,
   Lightbulb,
   Mountain,
+  Package,
   Scissors,
   Snowflake,
   Sparkles,
+  SprayCan,
   Sprout,
   Thermometer,
   Trash2,
+  Waves,
   type LucideIcon,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -52,6 +56,12 @@ const KIND_ICON: Record<RosInsightKind, LucideIcon> = {
   season: CalendarDays,
   mulch: Leaf,
   env: Thermometer,
+  // — Véritable SMART (vatnsrækt) —
+  tank: Container,
+  clean: SprayCan,
+  wick: Waves,
+  thin: Scissors,
+  lingot: Package,
   info: Sparkles,
 };
 

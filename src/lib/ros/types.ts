@@ -19,6 +19,17 @@ export type RosInsightKind =
   | 'season'
   | 'mulch'
   | 'env'
+  // — Véritable SMART (vatnsrækt) —
+  /** Vatnsstaða/áfylling tanks. */
+  | 'tank'
+  /** Hreinsun tanks (kalk/þörungar). */
+  | 'clean'
+  /** Skoðun/skipti á hárpípu-dúkum (wicks). */
+  | 'wick'
+  /** Grisjun ungplantna í Lingot. */
+  | 'thin'
+  /** Lingot að renna sitt skeið — skipulagðu skipti. */
+  | 'lingot'
   | 'info';
 
 /** Forgangur: 'due' = tímabært núna, 'soon' = innan dags, 'info' = til upplýsingar. */

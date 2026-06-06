@@ -11,6 +11,7 @@ import {
   Sprout,
   StickyNote,
   Thermometer,
+  Wrench,
   X,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
@@ -44,6 +45,7 @@ const ICONS: Record<string, IconComponent> = {
   Sparkles,
   Sprout,
   Move,
+  Wrench,
 };
 
 function iconFor(name: string): IconComponent {
