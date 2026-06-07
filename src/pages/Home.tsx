@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
@@ -71,11 +70,12 @@ interface ViewProps {
 function MobileHome({ active, plants, archivedCount }: ViewProps) {
   const navigate = useNavigate();
   const today = new Date();
-  const dayOfYear = useMemo(() => {
-    const start = new Date(today.getFullYear(), 0, 0);
-    const diff = today.getTime() - start.getTime();
-    return Math.floor(diff / (1000 * 60 * 60 * 24));
-  }, [today]);
+  // Ekkert useMemo — `today` er nýtt í hverri umferð svo memo héldi aldrei,
+  // og útreikningurinn er hvort eð er ódýr.
+  const startOfYear = new Date(today.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor(
+    (today.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24),
+  );
 
   const monthName = today
     .toLocaleDateString('is-IS', { month: 'short' })

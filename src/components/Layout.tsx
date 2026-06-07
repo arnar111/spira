@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
+import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import {
   Cloud,
   CloudAlert,
@@ -18,6 +18,7 @@ import { Logo, Wordmark } from './Logo';
 import { cn } from '@/lib/cn';
 import { clearCurrentAccount, type Account } from '@/lib/account';
 import { clearLocalData, syncManager, type SyncStatus } from '@/lib/sync';
+import { ErrorBoundary } from './ErrorBoundary';
 
 const navItems = [
   { to: '/home', label: 'Heim', icon: Home, available: true },
@@ -45,6 +46,7 @@ interface LayoutProps {
 }
 
 export function Layout({ account, onSignOut }: LayoutProps) {
+  const location = useLocation();
   return (
     <div className="sp-bg min-h-screen md:flex">
       <aside
@@ -111,7 +113,9 @@ export function Layout({ account, onSignOut }: LayoutProps) {
       </header>
 
       <main className="flex-1 min-w-0 pb-nav-safe md:pb-0">
-        <Outlet />
+        <ErrorBoundary resetKey={location.pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
 
       <nav
