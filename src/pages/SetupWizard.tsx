@@ -343,11 +343,25 @@ function StepWrap({ children }: { children: React.ReactNode }) {
   );
 }
 
-function StepHeader({ eyebrow, title, hint }: { eyebrow: string; title: string; hint?: string }) {
+function StepHeader({
+  eyebrow,
+  title,
+  hint,
+  why,
+}: {
+  eyebrow: string;
+  title: string;
+  hint?: string;
+  /** Skýrir AF HVERJU þetta skref birtist (1.4) — út frá vali notandans. */
+  why?: string;
+}) {
   return (
     <div>
       <p className="text-xs uppercase tracking-[0.2em] text-moss-300 mb-2">{eyebrow}</p>
       <h2 className="heading text-3xl sm:text-4xl font-semibold text-cream-50 mb-2">{title}</h2>
+      {why && (
+        <p className="text-[12px] text-moss-300/90 mb-1.5">{why}</p>
+      )}
       {hint && <p className="text-cream-300/70 leading-relaxed">{hint}</p>}
     </div>
   );
@@ -505,6 +519,7 @@ function StepSeason() {
       <StepHeader
         eyebrow="Árstíð"
         title="Vaxtartíminn úti"
+        why="Af því að þú valdir útiræktun sýnum við árstíðar- og frostráð í stað gróðurljósa."
         hint="Útiræktun stýrist af árstíð og frosti — engin gróðurljós þarf."
       />
       <SeasonCard />
@@ -540,6 +555,7 @@ function StepVeritable() {
       <StepHeader
         eyebrow="Véritable"
         title="Nánast viðhaldsfrítt"
+        why="Af því að þú valdir Véritable SMART sleppum við ljósa-uppsetningu og sýnum tækisfróðleik."
         hint="Véritable SMART sér um ljós og vökvun sjálft — þú þarft bara að fylla á tank og skipta um Lingot."
       />
       <Card className="space-y-4">
@@ -577,6 +593,7 @@ function StepLight({
       <StepHeader
         eyebrow="Ljós"
         title="Hvaða lampa ertu með?"
+        why="Af því að þú valdir innirækt notum við lampann til að gefa ljósráð eftir birtu mánaðarins."
         hint="Valkvætt — þú getur bætt við síðar."
       />
       <Card className="space-y-5">

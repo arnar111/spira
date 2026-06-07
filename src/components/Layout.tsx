@@ -10,6 +10,7 @@ import {
   Layers,
   Leaf,
   LogOut,
+  MoreHorizontal,
   RefreshCw,
   Scale,
   Sprout,
@@ -36,13 +37,20 @@ const navItems = [
   { to: '/history', label: 'Safn', icon: History, available: true },
 ];
 
+// Fimm aðalflipar fyrir þumalfingur; afgangurinn fer í „Meira"-blað (1.4).
 const mobileNav = [
   { to: '/home', label: 'Heim', icon: Home, available: true },
   { to: '/ros', label: 'Rós', icon: Flower2, available: true },
-  { to: '/plants', label: 'Plöntur', icon: Sprout, available: true },
   { to: '/grows', label: 'Ræktanir', icon: Layers, available: true },
-  { to: '/varieties', label: 'Afbrigði', icon: Leaf, available: true },
+  { to: '/plants', label: 'Plöntur', icon: Sprout, available: true },
   { to: '/harvest', label: 'Uppskera', icon: Scale, available: true },
+];
+
+// Áfangastaðir sem komast ekki fyrir í þumalröðinni — opnast í „Meira"-blaði.
+const mobileMore = [
+  { to: '/environment', label: 'Umhverfi', icon: Thermometer },
+  { to: '/varieties', label: 'Afbrigði', icon: Leaf },
+  { to: '/history', label: 'Safn', icon: History },
 ];
 
 interface LayoutProps {
@@ -123,6 +131,19 @@ export function Layout({ account, onSignOut }: LayoutProps) {
         </ErrorBoundary>
       </main>
 
+      <MobileNav />
+
+      <AnnounceRegion />
+    </div>
+  );
+}
+
+function MobileNav() {
+  const location = useLocation();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreActive = mobileMore.some((m) => location.pathname.startsWith(m.to));
+  return (
+    <>
       <nav
         aria-label="Aðalvalmynd"
         className="md:hidden fixed bottom-0 left-0 right-0 z-30"
@@ -146,7 +167,6 @@ export function Layout({ account, onSignOut }: LayoutProps) {
                 cn(
                   'flex flex-col items-center gap-0.5 transition-colors',
                   isActive ? 'text-[var(--cream-50)]' : 'text-[rgba(231,217,168,.45)]',
-                  !item.available && 'opacity-60 pointer-events-none',
                 )
               }
             >
@@ -166,24 +186,68 @@ export function Layout({ account, onSignOut }: LayoutProps) {
                   >
                     <item.icon size={20} />
                   </div>
-                  <span
-                    style={{
-                      fontSize: 9.5,
-                      fontWeight: 500,
-                      letterSpacing: '0.02em',
-                    }}
-                  >
+                  <span style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: '0.02em' }}>
                     {item.label}
                   </span>
                 </>
               )}
             </NavLink>
           ))}
+
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            aria-label="Fleiri síður"
+            className={cn(
+              'flex flex-col items-center gap-0.5 transition-colors',
+              moreActive ? 'text-[var(--cream-50)]' : 'text-[rgba(231,217,168,.45)]',
+            )}
+          >
+            <div
+              className="flex items-center justify-center"
+              style={{
+                width: 48,
+                height: 32,
+                borderRadius: 999,
+                background: moreActive ? 'rgba(84,130,85,.35)' : 'transparent',
+                border: moreActive ? '1px solid rgba(159,191,157,.4)' : '1px solid transparent',
+              }}
+            >
+              <MoreHorizontal size={20} />
+            </div>
+            <span style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: '0.02em' }}>
+              Meira
+            </span>
+          </button>
         </div>
       </nav>
 
-      <AnnounceRegion />
-    </div>
+      <Modal open={moreOpen} onClose={() => setMoreOpen(false)} eyebrow="Fleiri síður" title="Meira">
+        <div className="flex flex-col gap-1.5">
+          {mobileMore.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              onClick={() => setMoreOpen(false)}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'text-[var(--cream-50)]'
+                    : 'text-[rgba(231,217,168,.8)] hover:bg-[rgba(84,130,85,.12)]',
+                )
+              }
+              style={({ isActive }) =>
+                isActive ? { background: 'rgba(84,130,85,.18)' } : undefined
+              }
+            >
+              <item.icon size={18} color="var(--moss-300)" />
+              {item.label}
+            </NavLink>
+          ))}
+        </div>
+      </Modal>
+    </>
   );
 }
 

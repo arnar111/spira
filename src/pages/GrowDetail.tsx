@@ -8,11 +8,13 @@ import {
   Droplet,
   Flame,
   Leaf,
+  Pencil,
   Plus,
   Scissors,
   Sparkles,
   StickyNote,
   Thermometer,
+  Trash2,
 } from 'lucide-react';
 import { Pill } from '@/components/ui/Pill';
 import { Eyebrow } from '@/components/ui/Eyebrow';
@@ -46,7 +48,7 @@ import {
   type LogType,
   type Plant,
 } from '@/lib/db';
-import { usePhotoUrl } from '@/lib/photos';
+import { deletePhoto, usePhotoUrl } from '@/lib/photos';
 import { announce } from '@/lib/announce';
 import {
   daysSince,
@@ -114,6 +116,9 @@ export function GrowDetail() {
   const [rosEverOpened, setRosEverOpened] = useState(false);
   const [openAddPlant, setOpenAddPlant] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
+  // Breyta/eyða skráningu (1.4).
+  const [editingLog, setEditingLog] = useState<LogEntry | null>(null);
+  const [deletingLog, setDeletingLog] = useState<LogEntry | null>(null);
   // Síun á skráningum (1.3) — allt reiknað í minni úr þegar hlöðnum logs.
   const [logTypeFilter, setLogTypeFilter] = useState<LogType | 'all'>('all');
   const [logPlantFilter, setLogPlantFilter] = useState<string>('all');
@@ -153,6 +158,19 @@ export function GrowDetail() {
     await db.grows.update(grow.id, { archived: true, endDate: Date.now(), updatedAt: Date.now() });
     announce('Ræktun lokað');
     navigate('/grows');
+  }
+
+  async function deleteLog(log: LogEntry) {
+    // Eyddu tengdri mynd ef engin önnur skráning vísar í hana. photoId er ekki
+    // index-aður, svo við skönnum logs töfluna (filter) frekar en .where.
+    if (log.photoId) {
+      const others = await db.logs
+        .filter((l) => l.id !== log.id && l.photoId === log.photoId)
+        .count();
+      if (others === 0) await deletePhoto(log.photoId).catch(() => undefined);
+    }
+    await db.logs.delete(log.id);
+    announce('Skráningu eytt');
   }
 
   return (
@@ -300,7 +318,13 @@ export function GrowDetail() {
 
         <div className="flex flex-col gap-2">
           {filteredLogs.slice(0, 50).map((l) => (
-            <LogRow key={l.id} log={l} plants={plants} />
+            <LogRow
+              key={l.id}
+              log={l}
+              plants={plants}
+              onEdit={setEditingLog}
+              onDelete={setDeletingLog}
+            />
           ))}
           {logs.length === 0 ? (
             <div className="text-sm text-cream-300/60 border border-dashed border-moss-800/40 rounded-2xl p-5 text-center">
@@ -341,6 +365,28 @@ export function GrowDetail() {
         plants={plants}
         open={openLog}
         onClose={() => setOpenLog(false)}
+      />
+
+      {editingLog && (
+        <LogComposer
+          growId={grow.id}
+          plants={plants}
+          open={editingLog !== null}
+          existing={editingLog}
+          onClose={() => setEditingLog(null)}
+        />
+      )}
+
+      <ConfirmDialog
+        open={deletingLog !== null}
+        onClose={() => setDeletingLog(null)}
+        onConfirm={() => {
+          if (deletingLog) void deleteLog(deletingLog);
+        }}
+        title="Eyða skráningu"
+        body="Viltu eyða þessari skráningu? Þetta er ekki hægt að afturkalla."
+        confirmLabel="Eyða skráningu"
+        destructive
       />
 
       <AddPlantDialog
@@ -555,14 +601,26 @@ function LogChip({
   );
 }
 
-function LogRow({ log, plants }: { log: LogEntry; plants: Plant[] }) {
+function LogRow({
+  log,
+  plants,
+  onEdit,
+  onDelete,
+}: {
+  log: LogEntry;
+  plants: Plant[];
+  onEdit: (log: LogEntry) => void;
+  onDelete: (log: LogEntry) => void;
+}) {
   const meta = LOG_TYPES.find((t) => t.id === log.type);
   const Icon = meta?.icon ?? StickyNote;
   const plant = plants.find((p) => p.id === log.plantId);
   const date = new Date(log.timestamp);
   const [viewerOpen, setViewerOpen] = useState(false);
+  // Sjálfvirkar fasaskráningar eru ekki ritstýranlegar (búnar til af kerfinu).
+  const editable = log.type !== 'phase_change';
   return (
-    <div className="flex items-start gap-3 rounded-xl p-2.5 border bg-moss-900/30 border-moss-800/30">
+    <div className="group flex items-start gap-3 rounded-xl p-2.5 border bg-moss-900/30 border-moss-800/30">
       <div
         className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
         style={{ background: 'rgba(231,217,168,.08)', color: 'var(--cream-300)' }}
@@ -582,6 +640,26 @@ function LogRow({ log, plants }: { log: LogEntry; plants: Plant[] }) {
           <span className="text-[10px] text-cream-400/60 ml-auto sp-mono">
             {date.toLocaleDateString('is-IS', { day: 'numeric', month: 'short' })}
           </span>
+          <div className="flex items-center gap-0.5">
+            {editable && (
+              <button
+                type="button"
+                onClick={() => onEdit(log)}
+                aria-label="Breyta skráningu"
+                className="text-cream-400/50 hover:text-cream-100 transition-colors p-1 rounded-md"
+              >
+                <Pencil size={12} />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => onDelete(log)}
+              aria-label="Eyða skráningu"
+              className="text-cream-400/50 hover:text-terra-300 transition-colors p-1 rounded-md"
+            >
+              <Trash2 size={12} />
+            </button>
+          </div>
         </div>
         <LogDataChips
           type={log.type}

@@ -36,10 +36,13 @@ export function Welcome() {
           <GrowingPlant size={260} delay={0.3} stage={3} />
         </motion.div>
 
+        {/* Textinn og „Byrja"-hnappurinn birtast snemma (innan ~0.8s) svo
+            notandi geti haldið áfram strax — plöntu-hreyfingin heldur áfram á bak
+            við (1.4). */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 2.0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
           className="flex items-center gap-2 mb-3 text-xs uppercase tracking-[0.2em] text-moss-300"
         >
           <Sparkles size={14} />
@@ -49,7 +52,7 @@ export function Welcome() {
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 2.1 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
           className="heading text-5xl sm:text-6xl font-semibold text-cream-50 mb-4"
         >
           Spíra
@@ -58,7 +61,7 @@ export function Welcome() {
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 2.25 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
           className="text-cream-200/80 text-lg leading-relaxed mb-10"
         >
           Grow-dagbók fyrir piparræktun og aðra inniræktun á Íslandi. Skráðu fasa,
@@ -68,7 +71,7 @@ export function Welcome() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 2.4 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
           className="flex flex-col items-center gap-3 w-full"
         >
           <Button

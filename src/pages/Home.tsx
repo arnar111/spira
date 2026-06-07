@@ -29,6 +29,18 @@ interface DerivedGrow extends Grow {
   timeline: CropTimeline;
 }
 
+/** Stutt íslensk afstæð tímasetning fyrir nýjustu umhverfismælingu (1.4). */
+function relativeTime(ts: number): string {
+  const diff = Date.now() - ts;
+  if (diff < 60_000) return 'núna';
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 60) return `fyrir ${mins} mín`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `fyrir ${hours} klst`;
+  const days = Math.floor(hours / 24);
+  return `fyrir ${days} d`;
+}
+
 function deriveGrow(g: Grow, plants: Plant[]): DerivedGrow {
   const day = daysSince(g.startDate);
   const gp = plants.filter((p) => p.growId === g.id);
@@ -374,6 +386,18 @@ function EmptyGrowsCard({ onCreate }: { onCreate: () => void }) {
 
 function DesktopHome({ active, plants, archivedCount }: ViewProps) {
   const navigate = useNavigate();
+  // Nýjasta umhverfismæling aðalræktunarinnar (1.4) — kemur í stað gervikorts.
+  const primaryGrow = active[0];
+  const primaryGrowId = primaryGrow?.id;
+  const latestEnv = useLiveQuery(async () => {
+    if (!primaryGrowId) return undefined;
+    const rows = await db.environment
+      .where('growId')
+      .equals(primaryGrowId)
+      .reverse()
+      .sortBy('timestamp');
+    return rows[0];
+  }, [primaryGrowId]);
   const today = new Date();
   const weekday = today.toLocaleDateString('is-IS', { weekday: 'long' });
   const dateLabel = today.toLocaleDateString('is-IS', {
@@ -512,7 +536,7 @@ function DesktopHome({ active, plants, archivedCount }: ViewProps) {
                 marginBottom: 14,
               }}
             >
-              <Eyebrow>Umhverfi · BIÐ</Eyebrow>
+              <Eyebrow>Umhverfi</Eyebrow>
               <span
                 style={{
                   display: 'inline-flex',
@@ -522,62 +546,68 @@ function DesktopHome({ active, plants, archivedCount }: ViewProps) {
                   color: 'var(--cream-400)',
                 }}
               >
-                tengja skynjara (Fasi 3)
+                {latestEnv
+                  ? `${primaryGrow?.name ?? ''} · ${relativeTime(latestEnv.timestamp)}`
+                  : 'engin mæling enn'}
               </span>
             </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: 14,
-                opacity: 0.55,
-              }}
-            >
-              <Stat label="HITI" value="—" unit="°C" tone="cream" />
-              <Stat label="RAKI" value="—" unit="%" tone="moss" />
-              <Stat label="VPD" value="—" unit="kPa" tone="terra" />
-            </div>
-            <div style={{ marginTop: 14, opacity: 0.3 }}>
-              <Sparkline points={[1, 1, 1, 1, 1]} width={300} height={36} color="var(--terra-400)" />
-            </div>
+            {latestEnv ? (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: 14,
+                }}
+              >
+                <Stat
+                  label="HITI"
+                  value={latestEnv.tempC != null ? String(latestEnv.tempC) : '—'}
+                  unit="°C"
+                  tone="cream"
+                />
+                <Stat
+                  label="RAKI"
+                  value={latestEnv.humidityPct != null ? String(latestEnv.humidityPct) : '—'}
+                  unit="%"
+                  tone="moss"
+                />
+                <Stat
+                  label="LJÓS"
+                  value={latestEnv.lightHours != null ? String(latestEnv.lightHours) : '—'}
+                  unit="klst"
+                  tone="terra"
+                />
+              </div>
+            ) : (
+              <p style={{ fontSize: 13, color: 'var(--cream-300)', lineHeight: 1.5 }}>
+                Skráðu umhverfismælingu (hita, raka, ljóstíma) á ræktun til að sjá
+                nýjustu töluna hér.
+              </p>
+            )}
           </Card>
 
           <Card tone="glass" padding={16} radius={18} style={{ flex: 1 }}>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'baseline',
-                marginBottom: 10,
-              }}
-            >
-              <Eyebrow>Næstu skref</Eyebrow>
-              <span
-                className="sp-mono"
-                style={{
-                  fontSize: 10,
-                  color: 'var(--cream-400)',
-                  letterSpacing: '0.12em',
-                }}
-              >
-                FASAR 2–4 BRÁTT
-              </span>
+            <div style={{ marginBottom: 10 }}>
+              <Eyebrow>Flýtileiðir</Eyebrow>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <NextStepRow
-                eyebrow="Fasi 2"
-                title="Daglegt log + mynda-tímalína"
-                description="Skrá vökvun, næringu, photo per plant."
+                eyebrow="Rós"
+                title="Spyrðu Rós ráða"
+                description="Fáðu áminningar og svör um ræktunina þína."
+                onClick={() => navigate('/ros')}
               />
               <NextStepRow
-                eyebrow="Fasi 3"
-                title="Umhverfi + greiningar"
-                description="Hiti/raki/VPD log, áminningar."
+                eyebrow="Uppskera"
+                title="Skráðu tínslu"
+                description="Haltu utan um þyngd og fjölda eftir plöntum."
+                onClick={() => navigate('/harvest')}
               />
               <NextStepRow
-                eyebrow="Fasi 4"
-                title="Uppskera + sósu-ledger"
-                description="Þyngd per pod, ár-til-árs."
+                eyebrow="Afbrigði"
+                title="Skoðaðu umhirðu"
+                description="Ræktunarleiðbeiningar fyrir hvert afbrigði."
+                onClick={() => navigate('/varieties')}
               />
             </div>
           </Card>
@@ -751,23 +781,15 @@ function NextStepRow({
   eyebrow,
   title,
   description,
+  onClick,
 }: {
   eyebrow: string;
   title: string;
   description: string;
+  onClick?: () => void;
 }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '10px 12px',
-        borderRadius: 10,
-        background: 'rgba(18,31,20,.4)',
-        border: '1px solid rgba(64,104,67,.25)',
-      }}
-    >
+  const inner = (
+    <>
       <div
         style={{
           width: 28,
@@ -782,7 +804,7 @@ function NextStepRow({
       >
         <Sparkles size={14} />
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
         <div className="sp-mono" style={{ fontSize: 9, color: 'var(--terra-300)', letterSpacing: '0.16em' }}>
           {eyebrow.toUpperCase()}
         </div>
@@ -791,8 +813,27 @@ function NextStepRow({
           {description}
         </div>
       </div>
-    </div>
+      {onClick && <ChevronRight size={14} color="rgba(231,217,168,.4)" />}
+    </>
   );
+  const style = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '10px 12px',
+    borderRadius: 10,
+    background: 'rgba(18,31,20,.4)',
+    border: '1px solid rgba(64,104,67,.25)',
+    width: '100%',
+  } as const;
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} style={{ ...style, cursor: 'pointer' }}>
+        {inner}
+      </button>
+    );
+  }
+  return <div style={style}>{inner}</div>;
 }
 
 function categoryLabel(c: Grow['category']): string {
