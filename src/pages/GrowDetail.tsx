@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -8,11 +8,13 @@ import {
   Droplet,
   Flame,
   Leaf,
+  Pencil,
   Plus,
   Scissors,
   Sparkles,
   StickyNote,
   Thermometer,
+  Trash2,
 } from 'lucide-react';
 import { Pill } from '@/components/ui/Pill';
 import { Eyebrow } from '@/components/ui/Eyebrow';
@@ -24,6 +26,7 @@ import { Card } from '@/components/ui/Card';
 import { HeroCard } from '@/components/ui/HeroCard';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { PlantGlyph } from '@/components/PlantGlyph';
 import { GrowDetailSkeleton } from '@/components/PageSkeletons';
 import { useDelayedFlag } from '@/lib/useDelayedFlag';
@@ -48,7 +51,8 @@ import {
   type LogType,
   type Plant,
 } from '@/lib/db';
-import { usePhotoUrl } from '@/lib/photos';
+import { deletePhoto, usePhotoUrl } from '@/lib/photos';
+import { announce } from '@/lib/announce';
 import {
   daysSince,
   getPhaseForDay,
@@ -88,6 +92,11 @@ const LOG_TYPES: { id: LogType; label: string; icon: typeof Droplet }[] = [
   { id: 'environment', label: 'Umhverfi', icon: Thermometer },
 ];
 
+/** Merki (tákn + heiti) fyrir logtegund; fellur aftur á tegundarstrenginn. */
+function logTypeMeta(type: LogType): { label: string; icon: typeof Droplet } {
+  return LOG_TYPES.find((t) => t.id === type) ?? { label: type, icon: StickyNote };
+}
+
 export function GrowDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -109,6 +118,33 @@ export function GrowDetail() {
   const [rosOpen, setRosOpen] = useState(false);
   const [rosEverOpened, setRosEverOpened] = useState(false);
   const [openAddPlant, setOpenAddPlant] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  // Breyta/eyða skráningu (1.4).
+  const [editingLog, setEditingLog] = useState<LogEntry | null>(null);
+  const [deletingLog, setDeletingLog] = useState<LogEntry | null>(null);
+  // Síun á skráningum (1.3) — allt reiknað í minni úr þegar hlöðnum logs.
+  const [logTypeFilter, setLogTypeFilter] = useState<LogType | 'all'>('all');
+  const [logPlantFilter, setLogPlantFilter] = useState<string>('all');
+  const [logRange, setLogRange] = useState<7 | 30 | 0>(0);
+
+  // Tegundir sem koma fyrir í þessari ræktun, í birtingarröð LOG_TYPES.
+  const presentTypes = useMemo(() => {
+    const set = new Set((logs ?? []).map((l) => l.type));
+    const ordered = LOG_TYPES.filter((t) => set.has(t.id)).map((t) => t.id);
+    // Tegundir sem LOG_TYPES þekkir ekki (t.d. phase_change) fara aftast.
+    const extra = [...set].filter((t) => !ordered.includes(t as LogType));
+    return [...ordered, ...extra] as LogType[];
+  }, [logs]);
+
+  const filteredLogs = useMemo(() => {
+    const cutoff = logRange ? Date.now() - logRange * 24 * 60 * 60 * 1000 : 0;
+    return (logs ?? []).filter((l) => {
+      if (logTypeFilter !== 'all' && l.type !== logTypeFilter) return false;
+      if (logPlantFilter !== 'all' && l.plantId !== logPlantFilter) return false;
+      if (cutoff && l.timestamp < cutoff) return false;
+      return true;
+    });
+  }, [logs, logTypeFilter, logPlantFilter, logRange]);
 
   const loading = !grow || !plants || !logs;
   const showSkeleton = useDelayedFlag(loading);
@@ -124,9 +160,22 @@ export function GrowDetail() {
 
   async function archiveGrow() {
     if (!grow) return;
-    if (!confirm(`Loka ræktun "${grow.name}"?`)) return;
     await db.grows.update(grow.id, { archived: true, endDate: Date.now(), updatedAt: Date.now() });
+    announce('Ræktun lokað');
     navigate('/grows');
+  }
+
+  async function deleteLog(log: LogEntry) {
+    // Eyddu tengdri mynd ef engin önnur skráning vísar í hana. photoId er ekki
+    // index-aður, svo við skönnum logs töfluna (filter) frekar en .where.
+    if (log.photoId) {
+      const others = await db.logs
+        .filter((l) => l.id !== log.id && l.photoId === log.photoId)
+        .count();
+      if (others === 0) await deletePhoto(log.photoId).catch(() => undefined);
+    }
+    await db.logs.delete(log.id);
+    announce('Skráningu eytt');
   }
 
   return (
@@ -230,21 +279,47 @@ export function GrowDetail() {
             <Plus size={14} /> Skrá
           </Button>
         </div>
+
+        {logs.length > 0 && (
+          <LogFilters
+            presentTypes={presentTypes}
+            plants={plants}
+            typeFilter={logTypeFilter}
+            onType={setLogTypeFilter}
+            plantFilter={logPlantFilter}
+            onPlant={setLogPlantFilter}
+            range={logRange}
+            onRange={setLogRange}
+          />
+        )}
+
         <div className="flex flex-col gap-2">
-          {(logs ?? []).slice(0, 30).map((l) => (
-            <LogRow key={l.id} log={l} plants={plants} />
+          {filteredLogs.slice(0, 50).map((l) => (
+            <LogRow
+              key={l.id}
+              log={l}
+              plants={plants}
+              onEdit={setEditingLog}
+              onDelete={setDeletingLog}
+            />
           ))}
-          {(logs ?? []).length === 0 && (
+          {logs.length === 0 ? (
             <div className="text-sm text-cream-300/60 border border-dashed border-moss-800/40 rounded-2xl p-5 text-center">
               Engar skráningar enn. Smelltu „Skrá" til að bæta við.
             </div>
+          ) : (
+            filteredLogs.length === 0 && (
+              <div className="text-sm text-cream-300/60 border border-dashed border-moss-800/40 rounded-2xl p-5 text-center">
+                Engar skráningar passa við síurnar.
+              </div>
+            )
           )}
         </div>
       </section>
 
       {!grow.archived && (
         <button
-          onClick={archiveGrow}
+          onClick={() => setConfirmArchive(true)}
           className="mt-8 flex items-center justify-center gap-1.5 text-cream-300/60 text-sm hover:text-cream-100 transition-colors w-full py-3 rounded-xl border border-dashed border-moss-800/40"
         >
           <Archive size={14} />
@@ -252,11 +327,43 @@ export function GrowDetail() {
         </button>
       )}
 
+      <ConfirmDialog
+        open={confirmArchive}
+        onClose={() => setConfirmArchive(false)}
+        onConfirm={archiveGrow}
+        title="Loka ræktun"
+        body={`Viltu loka ræktuninni „${grow.name}"? Hún færist í safnið og þú getur opnað hana aftur þaðan.`}
+        confirmLabel="Loka ræktun"
+        destructive
+      />
+
       <LogComposer
         growId={grow.id}
         plants={plants}
         open={openLog}
         onClose={() => setOpenLog(false)}
+      />
+
+      {editingLog && (
+        <LogComposer
+          growId={grow.id}
+          plants={plants}
+          open={editingLog !== null}
+          existing={editingLog}
+          onClose={() => setEditingLog(null)}
+        />
+      )}
+
+      <ConfirmDialog
+        open={deletingLog !== null}
+        onClose={() => setDeletingLog(null)}
+        onConfirm={() => {
+          if (deletingLog) void deleteLog(deletingLog);
+        }}
+        title="Eyða skráningu"
+        body="Viltu eyða þessari skráningu? Þetta er ekki hægt að afturkalla."
+        confirmLabel="Eyða skráningu"
+        destructive
       />
 
       <AddPlantDialog
@@ -363,7 +470,8 @@ function PlantRow({ plant, day }: { plant: Plant; day: number }) {
         <select
           value={plant.currentPhase}
           onChange={(e) => setPhase(e.target.value as GrowPhase)}
-          className="mt-1 bg-moss-950/60 border border-moss-800 rounded-md px-2 py-0.5 text-[11px] text-cream-100 outline-none focus:border-moss-400"
+          aria-label={`Fasi fyrir ${plant.nickname || plant.variety}`}
+          className="mt-1 min-h-[40px] bg-moss-950/60 border border-moss-800 rounded-lg px-2.5 py-2 text-sm text-cream-100 outline-none focus:border-moss-400"
         >
           {PHASE_OPTIONS.map((p) => (
             <option key={p.id} value={p.id}>
@@ -379,14 +487,117 @@ function PlantRow({ plant, day }: { plant: Plant; day: number }) {
   );
 }
 
-function LogRow({ log, plants }: { log: LogEntry; plants: Plant[] }) {
+function LogFilters({
+  presentTypes,
+  plants,
+  typeFilter,
+  onType,
+  plantFilter,
+  onPlant,
+  range,
+  onRange,
+}: {
+  presentTypes: LogType[];
+  plants: Plant[];
+  typeFilter: LogType | 'all';
+  onType: (t: LogType | 'all') => void;
+  plantFilter: string;
+  onPlant: (p: string) => void;
+  range: 7 | 30 | 0;
+  onRange: (r: 7 | 30 | 0) => void;
+}) {
+  return (
+    <div className="mb-3 flex flex-col gap-2">
+      <div className="flex flex-wrap gap-1.5">
+        <LogChip active={typeFilter === 'all'} onClick={() => onType('all')}>
+          Allt
+        </LogChip>
+        {presentTypes.map((t) => {
+          const { label, icon: Icon } = logTypeMeta(t);
+          return (
+            <LogChip key={t} active={typeFilter === t} onClick={() => onType(t)}>
+              <Icon size={11} />
+              {label}
+            </LogChip>
+          );
+        })}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {plants.length > 0 && (
+          <select
+            value={plantFilter}
+            onChange={(e) => onPlant(e.target.value)}
+            aria-label="Sía skráningar eftir plöntu"
+            className="rounded-lg bg-moss-950/60 border border-moss-800 px-2.5 py-1.5 text-xs text-cream-100 outline-none focus:border-moss-400"
+          >
+            <option value="all">Allar plöntur</option>
+            {plants.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nickname || p.variety}
+              </option>
+            ))}
+          </select>
+        )}
+        <div className="flex gap-1.5">
+          {([
+            { v: 7, label: '7 dagar' },
+            { v: 30, label: '30 dagar' },
+            { v: 0, label: 'Allt' },
+          ] as const).map((r) => (
+            <LogChip key={r.v} active={range === r.v} onClick={() => onRange(r.v)}>
+              {r.label}
+            </LogChip>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LogChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
+        active
+          ? 'bg-moss-500 border-moss-400 text-cream-50'
+          : 'bg-moss-900/40 border-moss-800/40 text-cream-300 hover:border-moss-600'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function LogRow({
+  log,
+  plants,
+  onEdit,
+  onDelete,
+}: {
+  log: LogEntry;
+  plants: Plant[];
+  onEdit: (log: LogEntry) => void;
+  onDelete: (log: LogEntry) => void;
+}) {
   const meta = LOG_TYPES.find((t) => t.id === log.type);
   const Icon = meta?.icon ?? StickyNote;
   const plant = plants.find((p) => p.id === log.plantId);
   const date = new Date(log.timestamp);
   const [viewerOpen, setViewerOpen] = useState(false);
+  // Sjálfvirkar fasaskráningar eru ekki ritstýranlegar (búnar til af kerfinu).
+  const editable = log.type !== 'phase_change';
   return (
-    <div className="flex items-start gap-3 rounded-xl p-2.5 border bg-moss-900/30 border-moss-800/30">
+    <div className="group flex items-start gap-3 rounded-xl p-2.5 border bg-moss-900/30 border-moss-800/30">
       <div
         className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
         style={{ background: 'rgba(231,217,168,.08)', color: 'var(--cream-300)' }}
@@ -406,6 +617,26 @@ function LogRow({ log, plants }: { log: LogEntry; plants: Plant[] }) {
           <span className="text-[10px] text-cream-400/60 ml-auto sp-mono">
             {date.toLocaleDateString('is-IS', { day: 'numeric', month: 'short' })}
           </span>
+          <div className="flex items-center gap-0.5">
+            {editable && (
+              <button
+                type="button"
+                onClick={() => onEdit(log)}
+                aria-label="Breyta skráningu"
+                className="text-cream-400/50 hover:text-cream-100 transition-colors p-1 rounded-md"
+              >
+                <Pencil size={12} />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => onDelete(log)}
+              aria-label="Eyða skráningu"
+              className="text-cream-400/50 hover:text-terra-300 transition-colors p-1 rounded-md"
+            >
+              <Trash2 size={12} />
+            </button>
+          </div>
         </div>
         <LogDataChips
           type={log.type}

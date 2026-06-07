@@ -20,6 +20,7 @@ import { ActionTile } from '@/components/ui/ActionTile';
 import {
   db,
   newId,
+  type LogEntry,
   type LogType,
   type Plant,
 } from '@/lib/db';
@@ -30,6 +31,7 @@ import {
   type LogField,
 } from '@/lib/logSchema';
 import { addPhotoFromFile, deletePhoto, usePhotoUrl } from '@/lib/photos';
+import { announce } from '@/lib/announce';
 import { cn } from '@/lib/cn';
 
 type IconComponent = ComponentType<{ size?: number | string }>;
@@ -53,6 +55,17 @@ function iconFor(name: string): IconComponent {
   return ICONS[name] ?? StickyNote;
 }
 
+/** Breytir vistuðum log-gögnum í strengjaformið sem formið notar (1.4). */
+function stringifyLogData(data?: Record<string, unknown>): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!data) return out;
+  for (const [key, value] of Object.entries(data)) {
+    if (value === undefined || value === null) continue;
+    out[key] = String(value);
+  }
+  return out;
+}
+
 const inputClass =
   'w-full rounded-xl bg-moss-950/60 border border-moss-800 px-3 py-2 text-sm text-cream-100 outline-none focus:border-moss-400 placeholder:text-cream-400/40';
 
@@ -62,12 +75,15 @@ export function LogComposer({
   open,
   onClose,
   defaultType,
+  existing,
 }: {
   growId: string;
   plants: Plant[];
   open: boolean;
   onClose: () => void;
   defaultType?: LogType;
+  /** Þegar sett: gluggi opnast forfylltur og vistar með put() (1.4 — breyta skráningu). */
+  existing?: LogEntry;
 }): JSX.Element {
   const [type, setType] = useState<LogType>(defaultType ?? 'water');
   const [note, setNote] = useState('');
@@ -76,18 +92,44 @@ export function LogComposer({
   const [photoId, setPhotoId] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Sjálfvirkur fókus á fyrsta merkingarbæra reitinn (1.1) — sett þegar
+  // gerð er valin svo við opnum ekki lyklaborð á tegundavalskjánum að óþörfu.
+  const firstFieldRef = useRef<HTMLInputElement | HTMLSelectElement>(null);
+  const noteRef = useRef<HTMLTextAreaElement>(null);
 
-  // Reset transient state whenever the dialog (re)opens.
+  const isEdit = !!existing;
+
+  // Reset transient state whenever the dialog (re)opens. Í breytingarham
+  // forfyllum við úr fyrirliggjandi skráningu.
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    if (existing) {
+      setType(existing.type);
+      setNote(existing.note ?? '');
+      setSel(existing.plantId ?? 'all');
+      setData(stringifyLogData(existing.data));
+      setPhotoId(existing.photoId);
+    } else {
       setType(defaultType ?? 'water');
       setNote('');
       setSel('all');
       setData({});
       setPhotoId(undefined);
-      setBusy(false);
     }
-  }, [open, defaultType]);
+    setBusy(false);
+  }, [open, defaultType, existing]);
+
+  // Þegar gluggi opnast eða gerð er valin: settu fókus á fyrsta reitinn
+  // (eða athugasemd ef gerðin hefur enga reiti). Sleppum mynd — hún opnar
+  // skráarvalið beint. Lítill biðtími svo Modal-hreyfingin nái að teikna.
+  useEffect(() => {
+    if (!open || type === 'photo') return;
+    const id = window.setTimeout(() => {
+      const target = firstFieldRef.current ?? noteRef.current;
+      target?.focus();
+    }, 80);
+    return () => window.clearTimeout(id);
+  }, [open, type]);
 
   // Clear structured field values when switching log type.
   function selectType(next: LogType) {
@@ -151,17 +193,30 @@ export function LogComposer({
     if (photoId) {
       await db.photos.update(photoId, { plantId }).catch(() => undefined);
     }
-    await db.logs.add({
-      id: newId(),
-      growId,
-      plantId,
-      timestamp: Date.now(),
-      type,
-      note: note.trim() || undefined,
-      data: builtData,
-      photoId,
-    });
+    if (existing) {
+      await db.logs.put({
+        ...existing,
+        growId,
+        plantId,
+        type,
+        note: note.trim() || undefined,
+        data: builtData,
+        photoId,
+      });
+    } else {
+      await db.logs.add({
+        id: newId(),
+        growId,
+        plantId,
+        timestamp: Date.now(),
+        type,
+        note: note.trim() || undefined,
+        data: builtData,
+        photoId,
+      });
+    }
     setBusy(false);
+    announce(existing ? 'Skráning uppfærð' : 'Skráning vistuð');
     onClose();
   }
 
@@ -170,7 +225,12 @@ export function LogComposer({
   const fields = LOG_FIELDS[type] ?? [];
 
   return (
-    <Modal open={open} onClose={onClose} eyebrow="Ný skráning" title="Skrá viðburð">
+    <Modal
+      open={open}
+      onClose={onClose}
+      eyebrow={isEdit ? 'Breyta skráningu' : 'Ný skráning'}
+      title={isEdit ? 'Breyta viðburði' : 'Skrá viðburð'}
+    >
       {/* Quick actions */}
       <div className="grid grid-cols-4 gap-1.5 mb-4">
         {quick.map((m) => {
@@ -229,12 +289,13 @@ export function LogComposer({
       {/* Structured fields */}
       {fields.length > 0 && (
         <div className="grid grid-cols-2 gap-2 mb-3">
-          {fields.map((field) => (
+          {fields.map((field, i) => (
             <Field
               key={field.key}
               field={field}
               value={data[field.key] ?? ''}
               onChange={(v) => setField(field.key, v)}
+              inputRef={i === 0 ? firstFieldRef : undefined}
             />
           ))}
         </div>
@@ -277,6 +338,7 @@ export function LogComposer({
       {/* Freeform note */}
       <label className="text-xs text-cream-300/80 mb-1.5 block">Athugasemd</label>
       <textarea
+        ref={noteRef}
         value={note}
         onChange={(e) => setNote(e.target.value)}
         rows={2}
@@ -301,10 +363,12 @@ function Field({
   field,
   value,
   onChange,
+  inputRef,
 }: {
   field: LogField;
   value: string;
   onChange: (value: string) => void;
+  inputRef?: React.Ref<HTMLInputElement | HTMLSelectElement>;
 }): JSX.Element {
   const isFullWidth = field.kind === 'text' || field.kind === 'select';
   return (
@@ -315,6 +379,7 @@ function Field({
       </label>
       {field.kind === 'select' ? (
         <select
+          ref={inputRef as React.Ref<HTMLSelectElement>}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className={inputClass}
@@ -329,6 +394,7 @@ function Field({
       ) : (
         <div className="relative">
           <input
+            ref={inputRef as React.Ref<HTMLInputElement>}
             type={field.kind === 'number' ? 'number' : 'text'}
             inputMode={field.kind === 'number' ? 'decimal' : undefined}
             value={value}
@@ -406,6 +472,7 @@ export function LogThumbnail({
       type="button"
       onClick={onOpen}
       disabled={!onOpen}
+      aria-label="Skoða skráða mynd"
       className="mt-1.5 block w-16 h-16 rounded-xl overflow-hidden border border-moss-800/50 bg-moss-950/60 disabled:cursor-default"
     >
       {url ? (
