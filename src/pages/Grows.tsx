@@ -42,16 +42,7 @@ export function Grows() {
       <header className="flex items-end justify-between mb-5">
         <div>
           <Eyebrow color="var(--terra-300)">Allar ræktanir</Eyebrow>
-          <h1
-            className="sp-display"
-            style={{
-              fontSize: 30,
-              fontWeight: 500,
-              color: 'var(--cream-50)',
-              lineHeight: 1.05,
-              marginTop: 6,
-            }}
-          >
+          <h1 className="sp-h1" style={{ marginTop: 6 }}>
             Ræktanir
           </h1>
         </div>
@@ -105,10 +96,7 @@ export function Grows() {
                   <Pill tone="cap" size="sm">D{day}</Pill>
                   {g.archived && <Pill tone="dark" size="sm">Lokið</Pill>}
                 </div>
-                <div
-                  className="sp-display"
-                  style={{ fontSize: 18, fontWeight: 500, color: 'var(--cream-50)', lineHeight: 1.15 }}
-                >
+                <div className="sp-h3" style={{ fontSize: 18 }}>
                   {g.name}
                 </div>
                 <div style={{ fontSize: 11, color: 'rgba(231,217,168,.55)', marginBottom: 10 }}>
@@ -122,7 +110,7 @@ export function Grows() {
                 />
                 <ChevronRight
                   size={16}
-                  color="rgba(231,217,168,.4)"
+                  color="var(--cream-300)"
                   style={{ position: 'absolute', right: 10, bottom: 10 }}
                 />
               </div>

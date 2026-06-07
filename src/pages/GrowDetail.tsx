@@ -160,17 +160,7 @@ export function GrowDetail() {
           {grow.archived && <Pill tone="dark" size="sm">Lokað</Pill>}
         </div>
         <Eyebrow>{grow.location}</Eyebrow>
-        <div
-          className="sp-display"
-          style={{
-            fontSize: 24,
-            fontWeight: 500,
-            color: 'var(--cream-50)',
-            lineHeight: 1.1,
-            marginTop: 4,
-            marginBottom: 10,
-          }}
-        >
+        <div className="sp-h2" style={{ marginTop: 4, marginBottom: 10 }}>
           {grow.name}
         </div>
         <PhaseBar phases={timeline.phases} currentDay={stageDay} totalDays={timeline.totalDays} />
@@ -225,9 +215,7 @@ export function GrowDetail() {
 
       <section className="mt-6">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="sp-display text-cream-50" style={{ fontSize: 20, fontWeight: 500 }}>
-            Plöntur
-          </h2>
+          <h2 className="sp-h3">Plöntur</h2>
           <Button size="sm" variant="primary" onClick={() => setOpenAddPlant(true)}>
             <Plus size={14} /> Bæta við
           </Button>
@@ -246,9 +234,7 @@ export function GrowDetail() {
 
       <section className="mt-6">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="sp-display text-cream-50" style={{ fontSize: 20, fontWeight: 500 }}>
-            Skráningar
-          </h2>
+          <h2 className="sp-h3">Skráningar</h2>
           <Button size="sm" variant="primary" onClick={() => setOpenLog(true)}>
             <Plus size={14} /> Skrá
           </Button>
@@ -301,7 +287,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <Card tone="strong" padding={12} radius={14}>
       <Eyebrow>{label}</Eyebrow>
-      <div className="sp-display text-cream-50" style={{ fontSize: 22, fontWeight: 500 }}>
+      <div className="sp-stat text-cream-50" style={{ fontSize: 22 }}>
         {value}
       </div>
     </Card>

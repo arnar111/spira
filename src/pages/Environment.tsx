@@ -34,16 +34,7 @@ export function Environment() {
     >
       <header className="mb-5">
         <Eyebrow color="var(--terra-300)">Umhverfis-skrá</Eyebrow>
-        <h1
-          className="sp-display"
-          style={{
-            fontSize: 30,
-            fontWeight: 500,
-            color: 'var(--cream-50)',
-            lineHeight: 1.05,
-            marginTop: 6,
-          }}
-        >
+        <h1 className="sp-h1" style={{ marginTop: 6 }}>
           Hiti & raki
         </h1>
       </header>
@@ -87,10 +78,7 @@ export function Environment() {
               <div className="flex items-baseline justify-between mb-3">
                 <div>
                   <Eyebrow>{g.location}</Eyebrow>
-                  <div
-                    className="sp-display"
-                    style={{ fontSize: 18, color: 'var(--cream-50)', fontWeight: 500 }}
-                  >
+                  <div className="sp-h3" style={{ fontSize: 18 }}>
                     {g.name}
                   </div>
                 </div>
@@ -178,10 +166,7 @@ function EnvDialog({ growId, onClose }: { growId: string; onClose: () => void })
         onClick={(e) => e.stopPropagation()}
       >
         <Eyebrow>Ný umhverfis-lestur</Eyebrow>
-        <h3
-          className="sp-display"
-          style={{ fontSize: 22, color: 'var(--cream-50)', fontWeight: 500, marginTop: 4 }}
-        >
+        <h3 className="sp-h3" style={{ marginTop: 4 }}>
           <Thermometer size={18} className="inline-block mr-1" />
           Skrá hita og raka
         </h3>

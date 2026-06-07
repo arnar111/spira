@@ -189,12 +189,7 @@ function MobileHome({ active, plants, archivedCount }: ViewProps) {
           marginBottom: 12,
         }}
       >
-        <div
-          className="sp-display"
-          style={{ fontSize: 22, fontWeight: 500, color: 'var(--cream-50)' }}
-        >
-          Ræktanir
-        </div>
+        <div className="sp-h3">Ræktanir</div>
         <span
           className="sp-mono"
           style={{ fontSize: 10, color: 'var(--cream-400)', letterSpacing: '0.16em' }}
@@ -251,10 +246,7 @@ function QuickStat({
         {label.toUpperCase()}
       </div>
       <div style={{ marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 3 }}>
-        <span
-          className="sp-display"
-          style={{ fontSize: 24, color: map.fg, fontWeight: 500, lineHeight: 1 }}
-        >
+        <span className="sp-stat" style={{ fontSize: 24, color: map.fg }}>
           {value}
         </span>
         {unit && <span className="sp-mono" style={{ fontSize: 10, color: map.acc }}>{unit}</span>}
@@ -305,17 +297,7 @@ function GrowGlassCard({ grow, plants }: { grow: DerivedGrow; plants: Plant[] })
           D{grow.day}
         </Pill>
       </div>
-      <div
-        className="sp-display"
-        style={{
-          fontSize: 20,
-          fontWeight: 500,
-          color: 'var(--cream-50)',
-          letterSpacing: '-0.01em',
-          marginBottom: 4,
-          lineHeight: 1.1,
-        }}
-      >
+      <div className="sp-h3" style={{ marginBottom: 4 }}>
         {grow.name}
       </div>
       <div style={{ fontSize: 11, color: 'rgba(231,217,168,.55)', marginBottom: 12 }}>
@@ -482,12 +464,7 @@ function DesktopHome({ active, plants, archivedCount }: ViewProps) {
               alignItems: 'baseline',
             }}
           >
-            <div
-              className="sp-display"
-              style={{ fontSize: 20, color: 'var(--cream-50)', fontWeight: 500 }}
-            >
-              Virkar ræktanir
-            </div>
+            <div className="sp-h3">Virkar ræktanir</div>
             <Tabs tabs={['Allar', 'Pipur', 'Krydd']} active={0} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -617,15 +594,7 @@ function KPICard({
     >
       <Eyebrow>{label}</Eyebrow>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-        <span
-          className="sp-display"
-          style={{
-            fontSize: 30,
-            color: map[tone],
-            fontWeight: 500,
-            lineHeight: 1.05,
-          }}
-        >
+        <span className="sp-stat" style={{ fontSize: 30, color: map[tone], lineHeight: 1.05 }}>
           {value}
         </span>
         {unit && (
@@ -730,19 +699,11 @@ function DesktopGrowRow({ grow, plants }: { grow: DerivedGrow; plants: Plant[] }
         >
           DAGUR
         </div>
-        <div
-          className="sp-display"
-          style={{
-            fontSize: 26,
-            color: grow.phaseObj.color,
-            fontWeight: 500,
-            lineHeight: 1,
-          }}
-        >
+        <div className="sp-stat" style={{ fontSize: 26, color: grow.phaseObj.color }}>
           {grow.day}
         </div>
       </div>
-      <ChevronRight size={16} color="rgba(231,217,168,.4)" />
+      <ChevronRight size={16} color="var(--cream-300)" />
     </Link>
   );
 }

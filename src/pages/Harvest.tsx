@@ -50,16 +50,7 @@ export function Harvest() {
       <header className="flex items-end justify-between mb-5">
         <div>
           <Eyebrow color="var(--terra-300)">Uppskera</Eyebrow>
-          <h1
-            className="sp-display"
-            style={{
-              fontSize: 30,
-              fontWeight: 500,
-              color: 'var(--cream-50)',
-              lineHeight: 1.05,
-              marginTop: 6,
-            }}
-          >
+          <h1 className="sp-h1" style={{ marginTop: 6 }}>
             <Scale size={22} className="inline-block mr-1" /> {stats.total.toFixed(0)}g
           </h1>
         </div>
@@ -71,19 +62,19 @@ export function Harvest() {
       <div className="grid grid-cols-3 gap-2 mb-5">
         <Card tone="strong" padding={12} radius={14}>
           <Eyebrow>POD ALLS</Eyebrow>
-          <div className="sp-display text-cream-50" style={{ fontSize: 22, fontWeight: 500 }}>
+          <div className="sp-stat text-cream-50" style={{ fontSize: 22 }}>
             {stats.pods}
           </div>
         </Card>
         <Card tone="strong" padding={12} radius={14}>
           <Eyebrow>TÍNSLUR</Eyebrow>
-          <div className="sp-display text-cream-50" style={{ fontSize: 22, fontWeight: 500 }}>
+          <div className="sp-stat text-cream-50" style={{ fontSize: 22 }}>
             {stats.count}
           </div>
         </Card>
         <Card tone="strong" padding={12} radius={14}>
           <Eyebrow>MEÐAL/POD</Eyebrow>
-          <div className="sp-display text-cream-50" style={{ fontSize: 22, fontWeight: 500 }}>
+          <div className="sp-stat text-cream-50" style={{ fontSize: 22 }}>
             {stats.pods > 0 ? (stats.total / stats.pods).toFixed(1) : '—'}
             <span className="sp-mono text-cream-400" style={{ fontSize: 11 }}>g</span>
           </div>
@@ -125,10 +116,7 @@ export function Harvest() {
                 </div>
               </div>
               <div className="text-right">
-                <div
-                  className="sp-display"
-                  style={{ fontSize: 22, fontWeight: 500, color: 'var(--cap-400)' }}
-                >
+                <div className="sp-stat" style={{ fontSize: 22, color: 'var(--cap-400)' }}>
                   {total.toFixed(0)}
                   <span className="sp-mono text-cream-400 ml-1" style={{ fontSize: 11 }}>
                     g
@@ -196,10 +184,7 @@ function HarvestDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <Eyebrow>Ný uppskera</Eyebrow>
-        <h3
-          className="sp-display"
-          style={{ fontSize: 22, color: 'var(--cream-50)', fontWeight: 500, marginTop: 4 }}
-        >
+        <h3 className="sp-h3" style={{ marginTop: 4 }}>
           Skrá tínslu
         </h3>
 

@@ -32,16 +32,7 @@ export function History() {
     >
       <header className="mb-5">
         <Eyebrow color="var(--terra-300)">Safn</Eyebrow>
-        <h1
-          className="sp-display"
-          style={{
-            fontSize: 30,
-            fontWeight: 500,
-            color: 'var(--cream-50)',
-            lineHeight: 1.05,
-            marginTop: 6,
-          }}
-        >
+        <h1 className="sp-h1" style={{ marginTop: 6 }}>
           <Archive size={22} className="inline-block mr-1" />
           Lokaðar ræktanir
         </h1>
