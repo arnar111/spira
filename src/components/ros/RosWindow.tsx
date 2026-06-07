@@ -11,9 +11,11 @@ import {
   Activity,
   Bookmark,
   CalendarDays,
+  Bug,
   Camera,
   Container,
   Droplet,
+  FlaskConical,
   Flower,
   Flower2,
   ImagePlus,
@@ -36,6 +38,7 @@ import {
 import { Modal } from '@/components/ui/Modal';
 import { Tabs } from '@/components/ui/Tabs';
 import { Eyebrow } from '@/components/ui/Eyebrow';
+import { Sparkline } from '@/components/ui/Sparkline';
 import { RosAvatar } from '@/components/ros/RosAvatar';
 import { DiagnosisTab } from '@/components/ros/DiagnosisWizard';
 import {
@@ -97,6 +100,9 @@ const KIND_ICON: Record<RosInsightKind, LucideIcon> = {
   season: CalendarDays,
   mulch: Leaf,
   env: Thermometer,
+  envBand: Thermometer,
+  ph: FlaskConical,
+  pest: Bug,
   // — Véritable SMART (vatnsrækt) —
   tank: Container,
   clean: SprayCan,
@@ -403,13 +409,19 @@ function HeilsaTab({
   }, [grow.id, logs]);
 
   // Vistuð heilsumöt (lifandi) — kort uppfærist um leið og nýtt mat er skrifað.
+  // Frá db v5 SAFNAST þau upp; við hópum eftir plöntu og röðum nýjast fyrst.
   const assessmentRows = useLiveQuery(
     () => db.rosAssessments.where('growId').equals(grow.id).toArray(),
     [grow.id],
   );
-  const assessmentByPlant = useMemo(() => {
-    const map = new Map<string, RosAssessment>();
-    for (const a of assessmentRows ?? []) map.set(a.plantId, a);
+  const historyByPlant = useMemo(() => {
+    const map = new Map<string, RosAssessment[]>();
+    for (const a of assessmentRows ?? []) {
+      const list = map.get(a.plantId);
+      if (list) list.push(a);
+      else map.set(a.plantId, [a]);
+    }
+    for (const list of map.values()) list.sort((x, y) => y.createdAt - x.createdAt);
     return map;
   }, [assessmentRows]);
 
@@ -452,6 +464,7 @@ function HeilsaTab({
         if (!text) throw new Error('Rós skilaði engu mati. Reyndu aftur.');
 
         const assessment: RosAssessment = {
+          id: newId(),
           plantId: plant.id,
           growId: grow.id,
           photoId: photo.id,
@@ -460,7 +473,8 @@ function HeilsaTab({
           text,
           createdAt: Date.now(),
         };
-        await db.rosAssessments.put(assessment);
+        // v5: bætum við (söfnun) í stað þess að yfirskrifa.
+        await db.rosAssessments.add(assessment);
       } catch (err) {
         const msg =
           err instanceof Error && err.message
@@ -509,7 +523,7 @@ function HeilsaTab({
           key={plant.id}
           plant={plant}
           photo={latestByPlant?.get(plant.id)}
-          assessment={assessmentByPlant.get(plant.id)}
+          history={historyByPlant.get(plant.id) ?? []}
           busy={!!busy[plant.id]}
           error={errors[plant.id]}
           onRun={runAssessment}
@@ -522,21 +536,31 @@ function HeilsaTab({
 function PlantHealthCard({
   plant,
   photo,
-  assessment,
+  history,
   busy,
   error,
   onRun,
 }: {
   plant: Plant;
   photo?: LatestPhoto;
-  assessment?: RosAssessment;
+  /** Öll heilsumöt plöntunnar, nýjast fyrst (db v5 söfnun). */
+  history: RosAssessment[];
   busy: boolean;
   error?: string;
   onRun: (plant: Plant, photo: LatestPhoto) => void | Promise<void>;
 }) {
+  const [showHistory, setShowHistory] = useState(false);
+  const assessment = history[0];
   const thumbUrl = usePhotoUrl(photo?.id);
   const score = assessment?.score ?? null;
   const edge = scoreColor(score);
+  // Eldri möt (fyrir utan það nýjasta) fyrir samfellda sögu.
+  const older = history.slice(1);
+  // Einkunnaröð fyrir litla þróunar-sparkline (elst → nýjast).
+  const scoreTrend = [...history]
+    .reverse()
+    .map((a) => a.score)
+    .filter((s): s is number => s !== null);
 
   // Ný mynd komin eftir síðasta mat? (annar id eða nýrri tímastimpill)
   const hasNewerPhoto =
@@ -635,6 +659,53 @@ function PlantHealthCard({
             Smelltu á „Greina mynd" til að fá heilsumat Rósar á nýjustu myndinni.
           </p>
         )
+      )}
+
+      {/* Saga heilsumata (db v5 söfnun): þróunarlína + samfelld eldri möt. */}
+      {history.length > 1 && (
+        <div className="mb-2">
+          {scoreTrend.length > 1 && (
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[10px] uppercase tracking-[0.16em] text-cream-400/55">
+                Þróun
+              </span>
+              <Sparkline points={scoreTrend} width={120} height={24} color={edge} />
+              <span className="sp-mono text-[10px] text-cream-400/60">
+                {scoreTrend[0]} → {scoreTrend[scoreTrend.length - 1]}
+              </span>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowHistory((v) => !v)}
+            className="text-[11px] text-cream-300/70 hover:text-cream-100 transition-colors inline-flex items-center gap-1"
+          >
+            {showHistory ? 'Fela sögu' : `Sýna sögu (${older.length})`}
+          </button>
+          {showHistory && (
+            <div className="mt-2 flex flex-col gap-2">
+              {older.map((a) => (
+                <div
+                  key={a.id}
+                  className="rounded-lg p-2 text-[11px]"
+                  style={{ background: 'rgba(18,31,20,.45)', border: '1px solid rgba(64,104,67,.3)' }}
+                >
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="sp-mono text-cream-400/65">
+                      {photoDate(a.createdAt)}
+                    </span>
+                    {a.score !== null && (
+                      <span className="sp-mono" style={{ color: scoreColor(a.score) }}>
+                        {a.score}/{MAX_HEALTH_SCORE}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-cream-300/75 line-clamp-3">{a.text}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {error && (

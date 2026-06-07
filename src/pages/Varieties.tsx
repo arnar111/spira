@@ -11,7 +11,7 @@ import {
   COLOR_LABEL,
   MOTHER_SPECIES,
   formatShu,
-  hasCare,
+  resolveCare,
   isHerb,
   isLeafy,
   isPepper,
@@ -183,6 +183,7 @@ export function Varieties() {
 
 function VarietyCard({ v }: { v: Variety }) {
   const [open, setOpen] = useState(false);
+  const care = resolveCare(v);
   const swatch: PepperColor = isPepper(v)
     ? v.color
     : isPotato(v)
@@ -260,13 +261,13 @@ function VarietyCard({ v }: { v: Variety }) {
           <div className="mb-1.5">
             <span className="text-cream-400/70">Uppruni:</span> {v.origin}
           </div>
-          <div className={hasCare(v) ? 'mb-3' : 'mb-1.5'}>
+          <div className={care ? 'mb-3' : 'mb-1.5'}>
             <span className="text-cream-400/70">Spírar á:</span>{' '}
             {v.daysToGerminate[0]}–{v.daysToGerminate[1]}d ·{' '}
             <span className="text-cream-400/70">tilbúin á:</span>{' '}
             {v.daysToHarvest[0]}–{v.daysToHarvest[1]}d
           </div>
-          {hasCare(v) ? <CareGuide variety={v} /> : <div>{v.notes}</div>}
+          {care ? <CareGuide care={care} /> : <div>{v.notes}</div>}
         </div>
       )}
     </button>

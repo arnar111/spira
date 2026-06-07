@@ -9,17 +9,18 @@ import {
   Target,
   Wind,
 } from 'lucide-react';
-import type { CaredVariety } from '@/lib/varieties';
+import type { CropCare } from '@/lib/varieties';
 
 /**
- * Renders a crop variety's structured care guide — targets, watering,
+ * Renders a structured crop care guide — targets, watering,
  * pollination/seasonal steps, feeding schedule and troubleshooting — distilled
- * from its sheet. Works for any variety with a `care` block (tomato,
- * strawberry, potato, hydroponic herbs/leafy). Pollination and the seasonal
- * checklist are optional.
+ * from its sheet. Takes a resolved `CropCare` block (use `resolveCare(variety)`)
+ * so it works for tomato/strawberry/potato/herb/leafy inline guides AND the
+ * pepper mother-species tier guides. Pollination and the seasonal checklist are
+ * optional.
  */
-export function CareGuide({ variety }: { variety: CaredVariety }) {
-  const c = variety.care;
+export function CareGuide({ care }: { care: CropCare }) {
+  const c = care;
   return (
     <div className="flex flex-col gap-4">
       <p className="text-[12px] leading-relaxed text-cream-300/80">{c.summary}</p>

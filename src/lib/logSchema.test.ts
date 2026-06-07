@@ -104,10 +104,32 @@ describe('formatLogData', () => {
   });
 
   it('gerðir án skipulagðra sviða skila alltaf tómu', () => {
-    const freeform: LogType[] = ['note', 'photo', 'phase_change', 'pest', 'disease'];
+    const freeform: LogType[] = ['note', 'photo', 'phase_change'];
     for (const type of freeform) {
       expect(formatLogData(type, { anything: 123, note: 'x' })).toEqual([]);
     }
+  });
+
+  // 3.4: meindýr/sjúkdómar fá skipulögð svið (tegund + umfang + nánar).
+  describe('meindýr/sjúkdómar (3.4)', () => {
+    it('meindýr þýðir tegund og umfang í íslensk merki', () => {
+      expect(
+        formatLogData('pest', { kind: 'spunamitill', severity: 'midlungs', detail: 'á bakhlið' }),
+      ).toEqual(['Spunamítill', 'Miðlungs', 'á bakhlið']);
+    });
+
+    it('sjúkdómur sömuleiðis, óþekkt gildi falla á hrátt gildi', () => {
+      expect(formatLogData('disease', { kind: 'gramygla', severity: 'mikil' })).toEqual([
+        'Grámygla',
+        'Mikið',
+      ]);
+      expect(formatLogData('pest', { kind: 'óþekkt' })).toEqual(['óþekkt']);
+    });
+
+    it('tóm gögn → engin merki', () => {
+      expect(formatLogData('pest', {})).toEqual([]);
+      expect(formatLogData('disease', undefined)).toEqual([]);
+    });
   });
 
   it('snyrtir aukastafi (200.00 → 200, 6.999 → 7)', () => {

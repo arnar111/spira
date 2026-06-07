@@ -19,6 +19,7 @@ import type {
 } from '@/lib/db';
 import { needsGrowLight, daylightForMonth } from '@/lib/daylight';
 import { seasonForMonth, frostRisk } from '@/lib/season';
+import { envTargetForPhase, bandStatus, formatBand } from '@/lib/envTargets';
 import {
   varietyByName,
   varietyById,
@@ -125,6 +126,68 @@ function lastMaintenanceTs(
 function plantsInPhase(plants: Plant[], phase: GrowPhase): Plant[] {
   return plants.filter((p) => !p.archived && p.currentPhase === phase);
 }
+
+/** Tölu úr unknown (number eða tölulegur strengur), annars undefined. */
+function asNum(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return undefined;
+}
+
+/** Nýjasta log-færsla af tiltekinni gerð (ekki bara tímastimpill). */
+function lastLogOfType(logs: LogEntry[], type: LogEntry['type']): LogEntry | undefined {
+  let latest: LogEntry | undefined;
+  for (const l of logs) {
+    if (l.type !== type) continue;
+    if (latest === undefined || l.timestamp > latest.timestamp) latest = l;
+  }
+  return latest;
+}
+
+/** Nýjasta pH-gildi úr vökvun/áburði ásamt tímastimpli, eða undefined. */
+function lastPh(logs: LogEntry[]): { value: number; ts: number } | undefined {
+  let best: { value: number; ts: number } | undefined;
+  for (const l of logs) {
+    if (l.type !== 'water' && l.type !== 'feed') continue;
+    const ph = asNum(l.data?.ph);
+    if (ph === undefined) continue;
+    if (best === undefined || l.timestamp > best.ts) best = { value: ph, ts: l.timestamp };
+  }
+  return best;
+}
+
+/** Lengst kominn virkur fasi (fyrir umhverfis-markgildi). */
+const PHASE_PROGRESS: GrowPhase[] = [
+  'planning',
+  'germinating',
+  'seedling',
+  'vegetative',
+  'flowering',
+  'fruiting',
+  'ripening',
+  'harvest',
+];
+function furthestPhase(plants: Plant[]): GrowPhase {
+  let best: GrowPhase = 'vegetative';
+  let rank = -1;
+  for (const p of plants) {
+    const r = PHASE_PROGRESS.indexOf(p.currentPhase);
+    if (r > rank) {
+      rank = r;
+      best = p.currentPhase;
+    }
+  }
+  return best;
+}
+
+/** Ráðlagt pH-bil innandyra (mold/vatnsrækt) — utan þess læsist næring. */
+const PH_MIN = 5.5;
+const PH_MAX = 6.8;
+/** Umhverfis-lestur telst „nýlegur" innan þessa glugga (ms). */
+const ENV_FRESH_MS = 48 * 60 * 60 * 1000;
 
 /** Sækir afbrigði fyrir plöntu — fyrst eftir id, svo eftir nafni. */
 function plantVariety(p: Plant) {
@@ -939,6 +1002,62 @@ export function computeInsights(input: EngineInput): RosInsight[] {
     }
   }
 
+  // — HITI/RAKI UTAN FASA-MARKA (aðeins innidyra) —
+  // Nýleg 'environment' skráning (innan 48 klst) borin saman við fasa-markgildi
+  // (envTargets, 3.3). Lendi hiti eða raki utan bands fyrir lengst komna fasann
+  // -> 'soon' hnippur með gildinu og bilinu. Aðeins ef raunlestur er til.
+  if (growActive && !outdoor && !veritable) {
+    const envLog = lastLogOfType(logs, 'environment');
+    if (envLog && now - envLog.timestamp <= ENV_FRESH_MS) {
+      const phase = furthestPhase(activePlants);
+      const target = envTargetForPhase(phase);
+      const temp = asNum(envLog.data?.tempC);
+      const humidity = asNum(envLog.data?.humidityPct);
+
+      if (temp !== undefined) {
+        const status = bandStatus(temp, target.tempC);
+        if (status !== 'in') {
+          insights.push({
+            id: `envband-temp-${grow.id}`,
+            kind: 'envBand',
+            severity: 'soon',
+            title: status === 'low' ? 'Hiti undir marki' : 'Hiti yfir marki',
+            detail: `Mældur hiti ${num(temp)}°C er ${status === 'low' ? 'undir' : 'yfir'} ráðlögðu bili (${formatBand(target.tempC, '°C')}) á þessum fasa. ${target.note}`,
+          });
+        }
+      }
+      if (humidity !== undefined) {
+        const status = bandStatus(humidity, target.humidityPct);
+        if (status !== 'in') {
+          insights.push({
+            id: `envband-hum-${grow.id}`,
+            kind: 'envBand',
+            severity: 'soon',
+            title: status === 'low' ? 'Raki undir marki' : 'Raki yfir marki',
+            detail: `Mældur raki ${num(humidity)}% er ${status === 'low' ? 'undir' : 'yfir'} ráðlögðu bili (${formatBand(target.humidityPct, '%')}) á þessum fasa. ${target.note}`,
+          });
+        }
+      }
+    }
+  }
+
+  // — SÝRUSTIG (pH) UTAN BILS —
+  // Síðasta vökvun/áburður með skráð pH utan 5,5–6,8 -> upplýsing með gildinu.
+  // Á við bæði mold og vatnsrækt (Véritable líka): utan bilsins læsist næring.
+  if (growActive && !outdoor) {
+    const ph = lastPh(logs);
+    if (ph && (ph.value < PH_MIN || ph.value > PH_MAX)) {
+      const lowSide = ph.value < PH_MIN;
+      insights.push({
+        id: `ph-${grow.id}`,
+        kind: 'ph',
+        severity: 'info',
+        title: lowSide ? 'pH of lágt' : 'pH of hátt',
+        detail: `Síðasta skráða pH var ${num(ph.value)} — ${lowSide ? 'undir' : 'yfir'} ráðlögðu bili (${PH_MIN}–${PH_MAX}). Utan þess læsist upptaka næringarefna (t.d. járn/kalk). Leiðréttu vatnið/næringarlausnina að næsta sinni.`,
+      });
+    }
+  }
+
   // — SPÍRUN SEINKAR —
   // Planta enn í spírun en aldur (frá sáningu/stofnun) hefur farið vel fram úr
   // efra spírunarmarki afbrigðis (+5 daga svigrúm). Líklega vandi með raka/hita.
@@ -988,17 +1107,33 @@ export function computeInsights(input: EngineInput): RosInsight[] {
   }
 
   // — SPUNAMAUR-VAKT (aðeins innidyra) —
-  // Þurrt vetrarloft innandyra (nóv–mars) er kjörlendi spunamaurs. Vægur hnippur
-  // um vikulega skoðun á bakhlið blaða og að halda rakanum uppi.
-  if (growActive && !outdoor && (month >= 11 || month <= 3)) {
-    insights.push({
-      id: `pest-${grow.id}`,
-      kind: 'info',
-      severity: 'info',
-      title: 'Spunamaur-vakt',
-      detail:
-        'Þurrt vetrarloft innandyra ýtir undir spunamaur. Skoðaðu bakhlið blaða vikulega (fínn vefur, ljósir doppóttir blettir) og haltu rakanum uppi með úðun eða rakatæki.',
-    });
+  // Þurrt loft innandyra er kjörlendi spunamaurs. Grunnvaktin er árstíðabundin
+  // (þurrt vetrarloft nóv–mars). 3.4: ef NÝLEGUR rakalestur (innan 48 klst) sýnir
+  // mjög þurrt loft (< 45%) hækkum við í 'soon' og nefnum gildið — óháð mánuði.
+  if (growActive && !outdoor && !veritable) {
+    const envLog = lastLogOfType(logs, 'environment');
+    const humidity =
+      envLog && now - envLog.timestamp <= ENV_FRESH_MS ? asNum(envLog.data?.humidityPct) : undefined;
+    const veryDry = humidity !== undefined && humidity < 45;
+    const winterDry = month >= 11 || month <= 3;
+    if (veryDry) {
+      insights.push({
+        id: `pest-${grow.id}`,
+        kind: 'pest',
+        severity: 'soon',
+        title: 'Þurrt loft — spunamaurhætta',
+        detail: `Mældur raki er aðeins ${num(humidity)}% — þurrt loft ýtir undir spunamaur. Skoðaðu bakhlið blaða (fínn vefur, ljósir doppóttir blettir) og hækkaðu rakann með úðun eða rakatæki upp í a.m.k. 50%.`,
+      });
+    } else if (winterDry) {
+      insights.push({
+        id: `pest-${grow.id}`,
+        kind: 'pest',
+        severity: 'info',
+        title: 'Spunamaur-vakt',
+        detail:
+          'Þurrt vetrarloft innandyra ýtir undir spunamaur. Skoðaðu bakhlið blaða vikulega (fínn vefur, ljósir doppóttir blettir) og haltu rakanum uppi með úðun eða rakatæki.',
+      });
+    }
   }
 
   // Stöðug röðun: 'due' -> 'soon' -> 'info'. Innan sömu severity helst upphafleg röð.
@@ -1019,6 +1154,11 @@ function stableSortBySeverity(items: RosInsight[]): RosInsight[] {
 /** Íslensk fleirtölu-/eintölumeðferð fyrir „dag(a)". */
 function dayWord(n: number): string {
   return Math.abs(n) === 1 ? 'dag' : 'daga';
+}
+
+/** Snyrtir tölu: skerður óþarfa aukastafi (sama og formatLogData). */
+function num(value: number): string {
+  return String(Number(value.toFixed(2)));
 }
 
 /**

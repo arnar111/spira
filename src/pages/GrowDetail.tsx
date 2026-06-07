@@ -5,8 +5,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Archive,
+  BookOpen,
   Droplet,
   Flame,
+  Images,
   Leaf,
   Pencil,
   Plus,
@@ -21,6 +23,10 @@ import { Eyebrow } from '@/components/ui/Eyebrow';
 import { PhaseBar } from '@/components/ui/PhaseBar';
 import { SeasonCard } from '@/components/SeasonCard';
 import { VeritableCard } from '@/components/VeritableCard';
+import { GrowMetricsSection } from '@/components/charts/GrowMetricsSection';
+import { GrowHarvestSection } from '@/components/charts/GrowHarvestSection';
+import { EnvBand } from '@/components/charts/EnvBand';
+import { PhotoGallery } from '@/components/gallery/PhotoGallery';
 import { growIsOutdoor } from '@/lib/season';
 import { Card } from '@/components/ui/Card';
 import { HeroCard } from '@/components/ui/HeroCard';
@@ -67,8 +73,10 @@ import {
   isPotato,
   isStrawberry,
   isTomato,
+  resolveCare,
   varietyByName,
 } from '@/lib/varieties';
+import { CareGuide } from '@/components/CareGuide';
 import { LOCATIONS } from '@/lib/locations';
 
 const PHASE_OPTIONS: { id: GrowPhase; label: string }[] = [
@@ -97,6 +105,33 @@ function logTypeMeta(type: LogType): { label: string; icon: typeof Droplet } {
   return LOG_TYPES.find((t) => t.id === type) ?? { label: type, icon: StickyNote };
 }
 
+/** Röðun fasa eftir framvindu — fyrir „lengst kominn" fulltrúa-fasa. */
+const PHASE_ORDER: GrowPhase[] = [
+  'planning',
+  'germinating',
+  'seedling',
+  'vegetative',
+  'flowering',
+  'fruiting',
+  'ripening',
+  'harvest',
+];
+
+/** Lengst kominn virkur plöntufasi (fyrir umhverfis-markgildi). */
+function pickRepresentativePhase(plants: Plant[]): GrowPhase {
+  let best: GrowPhase = 'vegetative';
+  let bestRank = -1;
+  for (const p of plants) {
+    if (p.archived) continue;
+    const rank = PHASE_ORDER.indexOf(p.currentPhase);
+    if (rank > bestRank) {
+      bestRank = rank;
+      best = p.currentPhase;
+    }
+  }
+  return best;
+}
+
 export function GrowDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -113,6 +148,11 @@ export function GrowDetail() {
     () => (id ? db.harvests.where('growId').equals(id).toArray() : []),
     [id],
   );
+  const latestEnv = useLiveQuery(async () => {
+    if (!id) return undefined;
+    const rows = await db.environment.where('growId').equals(id).reverse().sortBy('timestamp');
+    return rows[0];
+  }, [id]);
 
   const [openLog, setOpenLog] = useState(false);
   const [rosOpen, setRosOpen] = useState(false);
@@ -126,6 +166,8 @@ export function GrowDetail() {
   const [logTypeFilter, setLogTypeFilter] = useState<LogType | 'all'>('all');
   const [logPlantFilter, setLogPlantFilter] = useState<string>('all');
   const [logRange, setLogRange] = useState<7 | 30 | 0>(0);
+  const [photosPlant, setPhotosPlant] = useState<Plant | null>(null);
+  const [carePlant, setCarePlant] = useState<Plant | null>(null);
 
   // Tegundir sem koma fyrir í þessari ræktun, í birtingarröð LOG_TYPES.
   const presentTypes = useMemo(() => {
@@ -157,6 +199,8 @@ export function GrowDetail() {
   const loc = LOCATIONS.find((l) => l.key === grow.locationKey);
   const heroVariety = plants[0]?.variety ?? 'Habanero Helios';
   const totalHarvest = (harvests ?? []).reduce((s, h) => s + (h.weightG ?? 0), 0);
+  // Fulltrúa-fasi fyrir umhverfis-markgildi: lengst kominn virkur fasi.
+  const representativePhase = pickRepresentativePhase(plants);
 
   async function archiveGrow() {
     if (!grow) return;
@@ -253,6 +297,18 @@ export function GrowDetail() {
         </div>
       )}
 
+      {!growIsOutdoor(grow) &&
+        latestEnv &&
+        (latestEnv.tempC !== undefined || latestEnv.humidityPct !== undefined) && (
+          <Card tone="strong" radius={18} padding={16} className="mt-4">
+            <EnvBand
+              phase={representativePhase}
+              tempC={latestEnv.tempC}
+              humidityPct={latestEnv.humidityPct}
+            />
+          </Card>
+        )}
+
       <section className="mt-6">
         <div className="flex items-center justify-between mb-2">
           <h2 className="sp-h3">Plöntur</h2>
@@ -262,7 +318,13 @@ export function GrowDetail() {
         </div>
         <div className="flex flex-col gap-2">
           {plants.map((p) => (
-            <PlantRow key={p.id} plant={p} day={day} />
+            <PlantRow
+              key={p.id}
+              plant={p}
+              day={day}
+              onOpenPhotos={setPhotosPlant}
+              onOpenCare={setCarePlant}
+            />
           ))}
           {plants.length === 0 && (
             <div className="text-sm text-cream-300/60 border border-dashed border-moss-800/40 rounded-2xl p-5 text-center">
@@ -271,6 +333,22 @@ export function GrowDetail() {
           )}
         </div>
       </section>
+
+      <GrowMetricsSection growId={grow.id} logs={logs} className="mt-6" />
+
+      <GrowHarvestSection
+        plants={plants}
+        harvests={harvests ?? []}
+        now={Date.now()}
+        className="mt-6"
+      />
+
+      <PhotoGallery
+        growId={grow.id}
+        plants={plants}
+        logs={logs}
+        className="mt-6"
+      />
 
       <section className="mt-6">
         <div className="flex items-center justify-between mb-2">
@@ -372,6 +450,28 @@ export function GrowDetail() {
         onClose={() => setOpenAddPlant(false)}
       />
 
+      <Modal
+        open={photosPlant !== null}
+        onClose={() => setPhotosPlant(null)}
+        title={photosPlant ? `Myndir — ${photosPlant.nickname || photosPlant.variety}` : 'Myndir'}
+        size="lg"
+        fullHeight
+      >
+        {photosPlant && (
+          <PerPlantGallery growId={grow.id} plant={photosPlant} plants={plants} logs={logs} />
+        )}
+      </Modal>
+
+      <Modal
+        open={carePlant !== null}
+        onClose={() => setCarePlant(null)}
+        title={carePlant ? `Umhirða — ${carePlant.nickname || carePlant.variety}` : 'Umhirða'}
+        size="lg"
+        fullHeight
+      >
+        {carePlant && <PlantCareGuide plant={carePlant} />}
+      </Modal>
+
       {rosEverOpened && (
         <Suspense fallback={null}>
           <RosWindow grow={grow} open={rosOpen} onClose={() => setRosOpen(false)} />
@@ -392,9 +492,20 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PlantRow({ plant, day }: { plant: Plant; day: number }) {
+function PlantRow({
+  plant,
+  day,
+  onOpenPhotos,
+  onOpenCare,
+}: {
+  plant: Plant;
+  day: number;
+  onOpenPhotos: (plant: Plant) => void;
+  onOpenCare: (plant: Plant) => void;
+}) {
   const variety = varietyByName(plant.variety);
   const phase = PHASE_OPTIONS.find((p) => p.id === plant.currentPhase);
+  const hasCareGuide = resolveCare(variety) !== undefined;
 
   async function setPhase(p: GrowPhase) {
     await db.plants.update(plant.id, { currentPhase: p, updatedAt: Date.now() });
@@ -480,9 +591,33 @@ function PlantRow({ plant, day }: { plant: Plant; day: number }) {
           ))}
         </select>
       </div>
-      <span className="text-[10px] text-cream-300/60 uppercase tracking-wider">
-        {phase?.label ?? plant.currentPhase}
-      </span>
+      <div className="flex flex-col items-end gap-1.5 shrink-0">
+        <span className="text-[10px] text-cream-300/60 uppercase tracking-wider">
+          {phase?.label ?? plant.currentPhase}
+        </span>
+        <div className="flex gap-1">
+          {hasCareGuide && (
+            <button
+              type="button"
+              onClick={() => onOpenCare(plant)}
+              aria-label={`Umhirða fyrir ${plant.nickname || plant.variety}`}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-cream-300/70 hover:text-cream-100 transition-colors"
+              style={{ background: 'rgba(231,217,168,.08)' }}
+            >
+              <BookOpen size={13} />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onOpenPhotos(plant)}
+            aria-label={`Myndir af ${plant.nickname || plant.variety}`}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-cream-300/70 hover:text-cream-100 transition-colors"
+            style={{ background: 'rgba(231,217,168,.08)' }}
+          >
+            <Images size={13} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -656,6 +791,43 @@ function LogRow({
       </div>
     </div>
   );
+}
+
+function PlantCareGuide({ plant }: { plant: Plant }) {
+  const care = resolveCare(varietyByName(plant.variety));
+  if (!care) {
+    return (
+      <div className="text-sm text-cream-300/65 border border-dashed border-moss-800/40 rounded-2xl p-6 text-center">
+        Engin skipulögð umhirðuleiðsögn fyrir þetta afbrigði enn.
+      </div>
+    );
+  }
+  return <CareGuide care={care} />;
+}
+
+function PerPlantGallery({
+  growId,
+  plant,
+  plants,
+  logs,
+}: {
+  growId: string;
+  plant: Plant;
+  plants: Plant[];
+  logs: LogEntry[];
+}) {
+  const photoCount = useLiveQuery(
+    () => db.photos.where('growId').equals(growId).filter((p) => p.plantId === plant.id).count(),
+    [growId, plant.id],
+  );
+  if (photoCount === 0) {
+    return (
+      <div className="text-sm text-cream-300/65 border border-dashed border-moss-800/40 rounded-2xl p-6 text-center">
+        Engar myndir af þessari plöntu enn. Skráðu mynd (📷) í dagbókina til að safna þeim hér.
+      </div>
+    );
+  }
+  return <PhotoGallery growId={growId} plantId={plant.id} plants={plants} logs={logs} />;
 }
 
 function PhotoViewer({

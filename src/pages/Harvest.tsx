@@ -10,6 +10,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Chili } from '@/components/Chili';
 import { HarvestSkeleton } from '@/components/PageSkeletons';
 import { useDelayedFlag } from '@/lib/useDelayedFlag';
+import { VarietyYieldList } from '@/components/charts/VarietyYieldList';
 import { db, newId, type Plant } from '@/lib/db';
 import { announce } from '@/lib/announce';
 import { chiliForVarietyName, formatShu, varietyByName } from '@/lib/varieties';
@@ -133,6 +134,8 @@ export function Harvest() {
           );
         })}
       </div>
+
+      <VarietyYieldList className="mt-4" />
 
       {open && (
         <HarvestDialog
