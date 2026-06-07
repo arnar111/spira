@@ -4,7 +4,9 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 
 export default tseslint.config(
   {
-    ignores: ['dist/', 'node_modules/', '.netlify/', 'research/'],
+    // .claude/ geymir m.a. teymis-worktrees (.claude/worktrees/*) sem hafa
+    // sína eigin lint-keyrslu — aðal-keyrslan á ekki að skanna þau.
+    ignores: ['dist/', 'node_modules/', '.netlify/', 'research/', '.claude/'],
   },
   tseslint.configs.recommended,
   {
