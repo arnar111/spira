@@ -8,6 +8,8 @@ import {
   isPotato,
   isStrawberry,
   isTomato,
+  pepperCareTier,
+  resolveCare,
   varietyById,
   varietyByName,
 } from '@/lib/varieties';
@@ -84,10 +86,34 @@ describe('hasCare', () => {
     }
   });
 
-  it('paprikur hafa (enn) enga skipulagða umhirðu — 3.4 bætir tier-leiðsögn', () => {
+  // 3.4: paprika ber ekki innbyggt `care` (hasCare helst false fyrir hana), EN
+  // resolveCare leysir hana upp í móðurtegunda-þrep (PEPPER_CARE). Viljandi
+  // breyting frá fyrri hegðun — hasCare-vörðurinn á áfram aðeins við innbyggt
+  // `care`, en umhirða paprikunnar fæst nú gegnum resolveCare.
+  it('paprikur: hasCare false en resolveCare gefur þeim þrep-leiðsögn', () => {
     for (const v of BUILT_IN_VARIETIES) {
-      if (isPepper(v)) expect(hasCare(v), v.id).toBe(false);
+      if (!isPepper(v)) continue;
+      expect(hasCare(v), v.id).toBe(false);
+      const care = resolveCare(v);
+      expect(care, v.id).toBeDefined();
+      expect(care?.summary.length ?? 0, v.id).toBeGreaterThan(0);
+      expect(care?.targets.length ?? 0, v.id).toBeGreaterThan(0);
+      expect(care?.watering.length ?? 0, v.id).toBeGreaterThan(0);
     }
+  });
+
+  it('paprikuþrep ræðst af tegund og styrk', () => {
+    for (const v of BUILT_IN_VARIETIES) {
+      if (!isPepper(v)) continue;
+      const tier = pepperCareTier(v);
+      if (v.scientificName === 'Capsicum baccatum') expect(tier, v.id).toBe('baccatum');
+      else if (v.scientificName === 'Capsicum chinense') expect(tier, v.id).toBe('chinense');
+      else expect(tier, v.id).toBe(v.shu > 0 ? 'annuum-hot' : 'annuum-mild');
+    }
+  });
+
+  it('resolveCare skilar undefined fyrir undefined', () => {
+    expect(resolveCare(undefined)).toBeUndefined();
   });
 
   it('kartöflu-care notar seasonal-gátlista og sleppir frjóvgun', () => {

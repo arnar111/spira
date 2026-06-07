@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react';
 import {
+  Bug,
   Camera,
   ChevronRight,
   Droplet,
@@ -7,6 +8,7 @@ import {
   Leaf,
   Move,
   Scissors,
+  ShieldAlert,
   Sparkles,
   Sprout,
   StickyNote,
@@ -46,6 +48,8 @@ const ICONS: Record<string, IconComponent> = {
   Sprout,
   Move,
   Wrench,
+  Bug,
+  ShieldAlert,
 };
 
 function iconFor(name: string): IconComponent {

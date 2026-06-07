@@ -246,6 +246,19 @@ export function hasCare(v?: Variety): v is CaredVariety {
   return (isHerb(v) || isLeafy(v)) && v.care !== undefined;
 }
 
+/**
+ * Leysir upp umhirðuleiðsögn fyrir afbrigði (3.4). Tómatar/jarðarber/kartöflur
+ * og þær kryddjurtir/lauf sem bera `care` skila sínu eigin korti; PAPRIKA leysist
+ * upp í móðurtegunda-þrep (sjá pepperCareTier / PEPPER_CARE). Skilar undefined ef
+ * ekkert kort á við. Ólíkt `hasCare`-verðinum (sem á aðeins við innbyggt `care`)
+ * nær þetta líka yfir paprikuna gegnum þrepin.
+ */
+export function resolveCare(v?: Variety): CropCare | undefined {
+  if (hasCare(v)) return v.care;
+  if (isPepper(v)) return PEPPER_CARE[pepperCareTier(v)];
+  return undefined;
+}
+
 interface VInput {
   id: string;
   commonName: string;
@@ -2047,6 +2060,148 @@ const HERBS: (HerbVariety | LeafyVariety)[] = [
     suitableLocations: ['veritable', 'window', 'diy'],
   }),
 ];
+
+/**
+ * Umhirðuleiðsögn fyrir papriku á MÓÐURTEGUNDA-stigi (3.4). Paprikuyrkin í
+ * vörulistanum eru ~70 og bera ekki hvert sitt `care`-kort; í staðinn leysum við
+ * hvert yrki upp í eitt af fjórum þrepum eftir tegund (annuum/chinense/baccatum)
+ * og styrk (SHU). Innihaldið er sniðið að íslenskri innirækt og samræmist
+ * heuristíkum reglu-vélarinnar (toppun ~15 cm, spírun 26–28°C, pH 6,0–6,8).
+ */
+export type PepperCareTier = 'annuum-mild' | 'annuum-hot' | 'chinense' | 'baccatum';
+
+/** Sameiginleg bilanaleit/eðlilegt/varúð fyrir allar paprikur innandyra. */
+const PEPPER_TROUBLE: TroubleItem[] = [
+  { problem: 'Blóm detta án aldins', cause: 'Of heitt (>32°C), of þurrt loft eða léleg frjóvgun', fix: 'Lækkaðu hita, haltu 50–65% raka og hristu plöntuna létt daglega' },
+  { problem: 'Gulnandi neðri blöð', cause: 'Ofvökvun eða köfnunarefnisskortur', fix: 'Leyfðu moldinni að þorna milli vökvana; gefðu vægan áburð' },
+  { problem: 'Krulluð blöð / fínn vefur undir blöðum', cause: 'Spunamaur í þurru lofti', fix: 'Hækkaðu rakann, skoðaðu bakhlið blaða, úðaðu með neem' },
+  { problem: 'Svört dæld á botni aldins', cause: 'Kálbotnsfúi (óregluleg vökvun / kalkskortur)', fix: 'Vökvaðu jafnt og tryggðu kalk í áburði' },
+  { problem: 'Hæg eða engin spírun', cause: 'Of kalt — paprika spírar best við 26–28°C', fix: 'Notaðu hitamottu/hlýjan stað; mold rök en ekki blaut' },
+];
+const PEPPER_NORMAL: string[] = [
+  'Fyrstu blóm (kóróublómið) má fjarlægja til að beina orku í vöxt.',
+  'Aldin skipta um lit við þroska (grænt → endalitur) — eðlilegt.',
+  'Plantan vex hægar fyrstu vikurnar og tekur svo kipp — eðlilegt.',
+];
+const PEPPER_CONCERN: string[] = [
+  'Öll blöð gulna eða visna samtímis — vatns- eða næringarvandi.',
+  'Mjúkir, dökkir blettir á stöngli við mold — mögulegur rótar-/stöngulfúi.',
+  'Þéttur vefur og doppóttir blettir út um alla plöntu — útbreiddur spunamaur.',
+];
+
+/** Vökvunar-/áburðarþrep eftir styrk; deilt milli tiers með smá tilbrigðum. */
+const PEPPER_WATERING: string[] = [
+  'Fingurpróf: stingdu fingri 2–3 cm í moldina; vökvaðu þegar yfirborðið er þurrt þar til rennur úr botni.',
+  'Vökvaðu að morgni svo plantan þorni yfir daginn — minnkar sveppahættu.',
+  'Á blóma- og aldinfasa eykst vatnsþörfin; forðastu þó stöðugt blauta mold (rótarfúi).',
+];
+const PEPPER_FERT: FertStage[] = [
+  { stage: 'Vöxtur (veg)', npk: 'Jafnvægt, t.d. 10-10-10', freq: 'Á ~7 daga fresti', note: 'Hóflegt N meðan plantan byggir upp blöð og greinar' },
+  { stage: 'Blómgun', npk: 'Lægra N, hærra P-K (t.d. 5-10-10)', freq: 'Á ~7 daga fresti', note: 'Styður blóm og aldinsetningu' },
+  { stage: 'Aldinþroski', npk: 'Hátt K (t.d. 4-6-10)', freq: 'Á 7–10 daga fresti', note: 'Kalí gefur þéttari, bragðmeiri aldin' },
+];
+
+function pepperTargets(extra: CareTarget[]): CareTarget[] {
+  return [
+    { label: 'Ljós', value: 'LED 14–16 klst', hint: 'Innandyra á Íslandi þarf gróðurljós stóran hluta árs' },
+    { label: 'Spírunarhiti', value: '26–28°C', hint: 'Paprika spírar hægt í kulda' },
+    { label: 'Hiti (vöxtur)', value: 'Dagur 20–26°C · Nótt 16–20°C', hint: 'Yfir 32°C fella blómin' },
+    { label: 'Raki', value: '50–65%', hint: 'Of þurrt → spunamaur; of rakt → sveppir' },
+    { label: 'Sýrustig (pH)', value: '6,0–6,8', hint: 'Utan 5,5–6,8 læsist næring' },
+    { label: 'Pottur', value: '7–11 L fyrir fullvaxta', hint: 'Stærri pottur = stærri planta og uppskera' },
+    ...extra,
+  ];
+}
+
+const PEPPER_CARE: Record<PepperCareTier, CropCare> = {
+  'annuum-mild': {
+    summary:
+      'Mild annuum-paprika (t.d. Bell/Padrón): kröftug, tiltölulega fljót og fyrirgefandi byrjenda-paprika innandyra. Toppun við ~15 cm gefur þéttari plöntu.',
+    targets: pepperTargets([
+      { label: 'Toppun', value: 'Já — við ~15 cm', hint: 'Klíptu vaxtarbroddinn fyrir greinóttari plöntu' },
+      { label: 'Uppskera', value: '~70–95 dagar', hint: 'Má tína græn eða fulllituð' },
+    ]),
+    watering: PEPPER_WATERING,
+    pollination: [
+      'Paprika er að mestu sjálffrjóvgandi — léttur daglegur hristingur eða vifta bætir aldinsetningu innandyra.',
+      'Frjóvgaðu/hristu um miðjan dag þegar blómin eru full opin.',
+    ],
+    fertilizer: PEPPER_FERT,
+    troubleshooting: PEPPER_TROUBLE,
+    normal: PEPPER_NORMAL,
+    concern: PEPPER_CONCERN,
+  },
+  'annuum-hot': {
+    summary:
+      'Sterk annuum-paprika (t.d. Jalapeño/Serrano/Cayenne): kröftug og afkastamikil. Svipuð umhirða og mild annuum en þolir hærri hita og gefur meiri styrk í þurrari aðstæðum.',
+    targets: pepperTargets([
+      { label: 'Toppun', value: 'Já — við ~15 cm', hint: 'Eykur greinafjölda og uppskeru' },
+      { label: 'Uppskera', value: '~75–100 dagar', hint: 'Styrkur eykst með fullum þroska' },
+    ]),
+    watering: PEPPER_WATERING,
+    pollination: [
+      'Sjálffrjóvgandi — daglegur léttur hristingur eða vifta tryggir aldinsetningu innandyra.',
+      'Lítið vatnsálag undir lok þroska getur aukið styrk (capsaicin).',
+    ],
+    fertilizer: PEPPER_FERT,
+    troubleshooting: PEPPER_TROUBLE,
+    normal: PEPPER_NORMAL,
+    concern: PEPPER_CONCERN,
+  },
+  chinense: {
+    summary:
+      'Chinense-ofurpaprika (t.d. Habanero/Bhut Jolokia/Reaper): mjög sterk, ávaxtarík og HÆGVAXANDI. Spírar seint og þarf langan, hlýjan vaxtartíma — þolinmæði og stöðugur hiti skipta öllu innandyra.',
+    targets: pepperTargets([
+      { label: 'Spírun', value: 'Allt að 14–28 dagar', hint: 'Ofurpaprikur spíra seint — ekki gefast upp' },
+      { label: 'Toppun', value: 'Valkvætt', hint: 'Hægvaxandi; toppaðu aðeins kröftugar plöntur' },
+      { label: 'Uppskera', value: '~100–140+ dagar', hint: 'Langur þroskatími — byrjaðu snemma árs' },
+    ]),
+    watering: [
+      ...PEPPER_WATERING,
+      'Ofurpaprikur þola illa kalt vatn og kuldakast — haltu rótarhita stöðugum.',
+    ],
+    pollination: [
+      'Sjálffrjóvgandi en gisin aldinsetning er algeng innandyra — hristu daglega eða notaðu viftu.',
+      'Hár hiti (>32°C) eða mjög þurrt loft fellir blómin; haltu 50–65% raka.',
+    ],
+    fertilizer: [
+      { stage: 'Vöxtur (veg)', npk: 'Jafnvægt, lágur skammtur', freq: 'Á ~7–10 daga fresti', note: 'Ofurpaprikur eru viðkvæmar fyrir ofáburði — gefðu vægt' },
+      { stage: 'Blómgun', npk: '5-10-10', freq: 'Á ~7–10 daga fresti', note: 'Lágt N heldur plöntunni í aldinsetningu' },
+      { stage: 'Aldinþroski', npk: 'Hátt K', freq: 'Á 10 daga fresti', note: 'Þroski tekur langan tíma — haltu stöðugri næringu' },
+    ],
+    troubleshooting: PEPPER_TROUBLE,
+    normal: [
+      ...PEPPER_NORMAL,
+      'Mjög hægur vöxtur fyrstu 6–8 vikurnar er eðlilegur hjá ofurpaprikum.',
+    ],
+    concern: PEPPER_CONCERN,
+  },
+  baccatum: {
+    summary:
+      'Baccatum-paprika (Ají, t.d. Amarillo/Limón): háar, ávaxtaríkar perúskar paprikur með milt-til-miðlungs styrk. Verða stórar — þurfa rými og stuðning innandyra.',
+    targets: pepperTargets([
+      { label: 'Hæð', value: 'Getur orðið 100–150 cm', hint: 'Þarf staur/stuðning og háan ræktunarstað' },
+      { label: 'Toppun', value: 'Já — snemma', hint: 'Heldur háu plöntunni viðráðanlegri' },
+      { label: 'Uppskera', value: '~95–130 dagar', hint: 'Ávaxtaríkt bragð við fullan þroska' },
+    ]),
+    watering: PEPPER_WATERING,
+    pollination: [
+      'Sjálffrjóvgandi — daglegur hristingur eða vifta bætir aldinsetningu á hávöxnu plöntunum.',
+    ],
+    fertilizer: PEPPER_FERT,
+    troubleshooting: PEPPER_TROUBLE,
+    normal: PEPPER_NORMAL,
+    concern: PEPPER_CONCERN,
+  },
+};
+
+/** Flokkar paprikuyrki í umhirðu-þrep eftir tegund og styrk. */
+export function pepperCareTier(v: PepperVariety): PepperCareTier {
+  if (v.scientificName === 'Capsicum baccatum') return 'baccatum';
+  if (v.scientificName === 'Capsicum chinense') return 'chinense';
+  // Annuum (og annað) — skipt eftir styrk.
+  return v.shu > 0 ? 'annuum-hot' : 'annuum-mild';
+}
 
 export const BUILT_IN_VARIETIES: Variety[] = [
   ...PEPPERS,

@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Archive,
+  BookOpen,
   Droplet,
   Flame,
   Images,
@@ -65,8 +66,10 @@ import {
   isPotato,
   isStrawberry,
   isTomato,
+  resolveCare,
   varietyByName,
 } from '@/lib/varieties';
+import { CareGuide } from '@/components/CareGuide';
 import { LOCATIONS } from '@/lib/locations';
 
 const PHASE_OPTIONS: { id: GrowPhase; label: string }[] = [
@@ -144,6 +147,7 @@ export function GrowDetail() {
   const [rosEverOpened, setRosEverOpened] = useState(false);
   const [openAddPlant, setOpenAddPlant] = useState(false);
   const [photosPlant, setPhotosPlant] = useState<Plant | null>(null);
+  const [carePlant, setCarePlant] = useState<Plant | null>(null);
 
   if (!grow || !plants || !logs) return null;
 
@@ -286,7 +290,13 @@ export function GrowDetail() {
         </div>
         <div className="flex flex-col gap-2">
           {plants.map((p) => (
-            <PlantRow key={p.id} plant={p} day={day} onOpenPhotos={setPhotosPlant} />
+            <PlantRow
+              key={p.id}
+              plant={p}
+              day={day}
+              onOpenPhotos={setPhotosPlant}
+              onOpenCare={setCarePlant}
+            />
           ))}
           {plants.length === 0 && (
             <div className="text-sm text-cream-300/60 border border-dashed border-moss-800/40 rounded-2xl p-5 text-center">
@@ -368,6 +378,16 @@ export function GrowDetail() {
         )}
       </Modal>
 
+      <Modal
+        open={carePlant !== null}
+        onClose={() => setCarePlant(null)}
+        title={carePlant ? `Umhirða — ${carePlant.nickname || carePlant.variety}` : 'Umhirða'}
+        size="lg"
+        fullHeight
+      >
+        {carePlant && <PlantCareGuide plant={carePlant} />}
+      </Modal>
+
       {rosEverOpened && (
         <Suspense fallback={null}>
           <RosWindow grow={grow} open={rosOpen} onClose={() => setRosOpen(false)} />
@@ -392,13 +412,16 @@ function PlantRow({
   plant,
   day,
   onOpenPhotos,
+  onOpenCare,
 }: {
   plant: Plant;
   day: number;
   onOpenPhotos: (plant: Plant) => void;
+  onOpenCare: (plant: Plant) => void;
 }) {
   const variety = varietyByName(plant.variety);
   const phase = PHASE_OPTIONS.find((p) => p.id === plant.currentPhase);
+  const hasCareGuide = resolveCare(variety) !== undefined;
 
   async function setPhase(p: GrowPhase) {
     await db.plants.update(plant.id, { currentPhase: p, updatedAt: Date.now() });
@@ -487,15 +510,28 @@ function PlantRow({
         <span className="text-[10px] text-cream-300/60 uppercase tracking-wider">
           {phase?.label ?? plant.currentPhase}
         </span>
-        <button
-          type="button"
-          onClick={() => onOpenPhotos(plant)}
-          aria-label={`Myndir af ${plant.nickname || plant.variety}`}
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-cream-300/70 hover:text-cream-100 transition-colors"
-          style={{ background: 'rgba(231,217,168,.08)' }}
-        >
-          <Images size={13} />
-        </button>
+        <div className="flex gap-1">
+          {hasCareGuide && (
+            <button
+              type="button"
+              onClick={() => onOpenCare(plant)}
+              aria-label={`Umhirða fyrir ${plant.nickname || plant.variety}`}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-cream-300/70 hover:text-cream-100 transition-colors"
+              style={{ background: 'rgba(231,217,168,.08)' }}
+            >
+              <BookOpen size={13} />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onOpenPhotos(plant)}
+            aria-label={`Myndir af ${plant.nickname || plant.variety}`}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-cream-300/70 hover:text-cream-100 transition-colors"
+            style={{ background: 'rgba(231,217,168,.08)' }}
+          >
+            <Images size={13} />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -547,6 +583,18 @@ function LogRow({ log, plants }: { log: LogEntry; plants: Plant[] }) {
       </div>
     </div>
   );
+}
+
+function PlantCareGuide({ plant }: { plant: Plant }) {
+  const care = resolveCare(varietyByName(plant.variety));
+  if (!care) {
+    return (
+      <div className="text-sm text-cream-300/65 border border-dashed border-moss-800/40 rounded-2xl p-6 text-center">
+        Engin skipulögð umhirðuleiðsögn fyrir þetta afbrigði enn.
+      </div>
+    );
+  }
+  return <CareGuide care={care} />;
 }
 
 function PerPlantGallery({

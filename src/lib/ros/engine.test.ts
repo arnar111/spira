@@ -415,6 +415,97 @@ describe('Véritable SMART', () => {
   });
 });
 
+describe('umhverfis-bönd (3.4)', () => {
+  const envLog = (over: Partial<LogEntry> = {}) =>
+    mkLog({ type: 'environment', timestamp: NOW - 12 * 3600 * 1000, ...over });
+
+  it('hiti yfir marki á blómgun (18–24) með nýlegum lestri → envBand soon', () => {
+    const insights = run({
+      plants: [mkPlant({ currentPhase: 'flowering' })],
+      logs: [envLog({ data: { tempC: 30, humidityPct: 55 } })],
+    });
+    expect(byId(insights, 'envband-temp-g1')?.severity).toBe('soon');
+    // raki 55% er innan blómgunar-bands (50–65) → ekkert raka-hnipp.
+    expect(byId(insights, 'envband-hum-g1')).toBeUndefined();
+  });
+
+  it('raki undir marki → envBand soon', () => {
+    const insights = run({
+      plants: [mkPlant({ currentPhase: 'vegetative' })],
+      logs: [envLog({ data: { tempC: 23, humidityPct: 30 } })],
+    });
+    expect(byId(insights, 'envband-hum-g1')?.severity).toBe('soon');
+  });
+
+  it('gildi innan marka → engin envBand-hnippur', () => {
+    const insights = run({
+      plants: [mkPlant({ currentPhase: 'vegetative' })],
+      logs: [envLog({ data: { tempC: 23, humidityPct: 60 } })],
+    });
+    expect(byId(insights, 'envband-temp-g1')).toBeUndefined();
+    expect(byId(insights, 'envband-hum-g1')).toBeUndefined();
+  });
+
+  it('gamall lestur (> 48 klst) telur ekki', () => {
+    const insights = run({
+      plants: [mkPlant({ currentPhase: 'flowering' })],
+      logs: [mkLog({ type: 'environment', timestamp: NOW - 3 * DAY_MS, data: { tempC: 30 } })],
+    });
+    expect(byId(insights, 'envband-temp-g1')).toBeUndefined();
+  });
+
+  it('útiræktun fær engin envBand-hnipp', () => {
+    const insights = run({
+      grow: { locationKey: 'garden' },
+      plants: [mkPlant({ category: 'potato', variety: 'Prófkartafla', currentPhase: 'flowering' })],
+      logs: [envLog({ data: { tempC: 30 } })],
+    });
+    expect(byId(insights, 'envband-temp-g1')).toBeUndefined();
+  });
+});
+
+describe('pH utan bils (3.4)', () => {
+  it('pH 5.0 í síðustu vökvun → ph info', () => {
+    const insights = run({
+      logs: [mkLog({ type: 'water', timestamp: NOW - 1 * DAY_MS, data: { ph: 5.0 } })],
+    });
+    expect(byId(insights, 'ph-g1')?.severity).toBe('info');
+  });
+
+  it('pH 7.5 → ph info; pH 6.2 (innan 5.5–6.8) → ekkert', () => {
+    expect(
+      byId(run({ logs: [mkLog({ type: 'feed', data: { ph: 7.5 } })] }), 'ph-g1')?.severity,
+    ).toBe('info');
+    expect(
+      byId(run({ logs: [mkLog({ type: 'water', data: { ph: 6.2 } })] }), 'ph-g1'),
+    ).toBeUndefined();
+  });
+});
+
+describe('spunamaur með raunraka (3.4)', () => {
+  it('mjög þurrt loft (< 45%) í júní → soon óháð mánuði', () => {
+    const insights = run({
+      logs: [
+        mkLog({ type: 'environment', timestamp: NOW - 6 * 3600 * 1000, data: { humidityPct: 35 } }),
+      ],
+    });
+    expect(byId(insights, 'pest-g1')?.severity).toBe('soon');
+  });
+
+  it('rakt loft í júní → engin spunamaur-vakt (júní er ekki vetur)', () => {
+    const insights = run({
+      logs: [
+        mkLog({ type: 'environment', timestamp: NOW - 6 * 3600 * 1000, data: { humidityPct: 60 } }),
+      ],
+    });
+    expect(byId(insights, 'pest-g1')).toBeUndefined();
+  });
+
+  it('vetur (desember) án lesturs → info árstíðavakt', () => {
+    expect(byId(run({ month: 12 }), 'pest-g1')?.severity).toBe('info');
+  });
+});
+
 describe('röðun og samhengi', () => {
   it('due raðast á undan soon, soon á undan info', () => {
     const insights = run(); // óvökvuð veg-paprika: due (vökvun/áburður), soon (toppun), info (ljós …)

@@ -76,11 +76,58 @@ export const LOG_FIELDS: Partial<Record<LogType, LogField[]>> = {
       ],
     },
   ],
+  pest: [
+    {
+      key: 'kind',
+      label: 'Tegund',
+      kind: 'select',
+      options: [
+        { value: 'lus', label: 'Lús' },
+        { value: 'spunamitill', label: 'Spunamítill' },
+        { value: 'hvitfluga', label: 'Hvítfluga' },
+        { value: 'annad', label: 'Annað' },
+      ],
+    },
+    {
+      key: 'severity',
+      label: 'Umfang',
+      kind: 'select',
+      options: [
+        { value: 'litil', label: 'Lítið' },
+        { value: 'midlungs', label: 'Miðlungs' },
+        { value: 'mikil', label: 'Mikið' },
+      ],
+    },
+    { key: 'detail', label: 'Nánar', kind: 'text', placeholder: 't.d. á bakhlið neðri blaða' },
+  ],
+  disease: [
+    {
+      key: 'kind',
+      label: 'Tegund',
+      kind: 'select',
+      options: [
+        { value: 'gramygla', label: 'Grámygla' },
+        { value: 'dunmygla', label: 'Dúnmygla' },
+        { value: 'rotarfui', label: 'Rótarfúi' },
+        { value: 'blettir', label: 'Blaðblettir' },
+        { value: 'annad', label: 'Annað' },
+      ],
+    },
+    {
+      key: 'severity',
+      label: 'Umfang',
+      kind: 'select',
+      options: [
+        { value: 'litil', label: 'Lítið' },
+        { value: 'midlungs', label: 'Miðlungs' },
+        { value: 'mikil', label: 'Mikið' },
+      ],
+    },
+    { key: 'detail', label: 'Nánar', kind: 'text', placeholder: 't.d. brúnir blettir með gulum jaðri' },
+  ],
   note: [],
   photo: [],
   phase_change: [],
-  pest: [],
-  disease: [],
 };
 
 /** Lucide icon names referenced by string so this module stays React-free. */
@@ -101,6 +148,8 @@ export const LOG_TYPE_META: {
   { id: 'harvest', label: 'Uppskera', icon: 'Sprout' },
   { id: 'transplant', label: 'Umpotta', icon: 'Move' },
   { id: 'maintenance', label: 'Viðhald', icon: 'Wrench' },
+  { id: 'pest', label: 'Meindýr', icon: 'Bug' },
+  { id: 'disease', label: 'Sjúkdómur', icon: 'ShieldAlert' },
 ];
 
 function asNumber(value: unknown): number | undefined {
@@ -196,6 +245,25 @@ export function formatLogData(
         const opt = LOG_FIELDS.maintenance?.[0]?.options?.find((o) => o.value === task);
         chips.push(opt?.label ?? task);
       }
+      break;
+    }
+    case 'pest':
+    case 'disease': {
+      const fields = LOG_FIELDS[type];
+      const kind = asText(data.kind);
+      if (kind !== undefined) {
+        const opt = fields?.find((f) => f.key === 'kind')?.options?.find((o) => o.value === kind);
+        chips.push(opt?.label ?? kind);
+      }
+      const sev = asText(data.severity);
+      if (sev !== undefined) {
+        const opt = fields
+          ?.find((f) => f.key === 'severity')
+          ?.options?.find((o) => o.value === sev);
+        chips.push(opt?.label ?? sev);
+      }
+      const detail = asText(data.detail);
+      if (detail !== undefined) chips.push(detail);
       break;
     }
     default:

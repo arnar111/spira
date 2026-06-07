@@ -4,10 +4,12 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Activity,
+  Bug,
   CalendarDays,
   Container,
   Droplet,
   FileText,
+  FlaskConical,
   Flower,
   Flower2,
   Leaf,
@@ -56,6 +58,9 @@ const KIND_ICON: Record<RosInsightKind, LucideIcon> = {
   season: CalendarDays,
   mulch: Leaf,
   env: Thermometer,
+  envBand: Thermometer,
+  ph: FlaskConical,
+  pest: Bug,
   // — Véritable SMART (vatnsrækt) —
   tank: Container,
   clean: SprayCan,

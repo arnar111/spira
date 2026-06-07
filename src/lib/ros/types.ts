@@ -19,6 +19,12 @@ export type RosInsightKind =
   | 'season'
   | 'mulch'
   | 'env'
+  /** Hiti/raki utan fasa-marka (sjá envTargets). */
+  | 'envBand'
+  /** Sýrustig (pH) utan ráðlagðs bils. */
+  | 'ph'
+  /** Meindýrahætta (t.d. þurrt loft → spunamaur). */
+  | 'pest'
   // — Véritable SMART (vatnsrækt) —
   /** Vatnsstaða/áfylling tanks. */
   | 'tank'
