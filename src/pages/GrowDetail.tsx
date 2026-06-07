@@ -47,6 +47,7 @@ import {
   type Plant,
 } from '@/lib/db';
 import { usePhotoUrl } from '@/lib/photos';
+import { announce } from '@/lib/announce';
 import {
   daysSince,
   getPhaseForDay,
@@ -122,6 +123,7 @@ export function GrowDetail() {
   async function archiveGrow() {
     if (!grow) return;
     await db.grows.update(grow.id, { archived: true, endDate: Date.now(), updatedAt: Date.now() });
+    announce('Ræktun lokað');
     navigate('/grows');
   }
 

@@ -8,6 +8,7 @@ import {
   type AppMeta,
 } from './db';
 import { syncData } from './account';
+import { announce } from './announce';
 
 export interface SnapshotV1 {
   version: 1;
@@ -195,6 +196,7 @@ class SyncManager {
 
   private async run(): Promise<void> {
     if (!this.code) return;
+    const wasError = this.status === 'error' || this.lastError !== null;
     this.setStatus('syncing', this.lastSyncedAt);
     try {
       const snapshot = await exportSnapshot();
@@ -203,6 +205,7 @@ class SyncManager {
       this.lastSyncedAt = now;
       this.lastError = null;
       this.setStatus('idle', now);
+      if (wasError) announce('Samstilling tókst');
     } catch (err) {
       console.error('[sync] failed', err);
       this.lastError =

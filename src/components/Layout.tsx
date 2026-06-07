@@ -23,6 +23,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { subscribeAnnounce } from '@/lib/announce';
 
 const navItems = [
   { to: '/home', label: 'Heim', icon: Home, available: true },
@@ -60,7 +61,7 @@ export function Layout({ account, onSignOut }: LayoutProps) {
         <div className="px-[18px] pt-6 pb-1">
           <Wordmark size={22} />
         </div>
-        <nav className="flex-1 px-[18px] py-5 flex flex-col gap-1">
+        <nav aria-label="Aðalvalmynd" className="flex-1 px-[18px] py-5 flex flex-col gap-1">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -123,6 +124,7 @@ export function Layout({ account, onSignOut }: LayoutProps) {
       </main>
 
       <nav
+        aria-label="Aðalvalmynd"
         className="md:hidden fixed bottom-0 left-0 right-0 z-30"
         style={{
           paddingTop: 10,
@@ -179,6 +181,19 @@ export function Layout({ account, onSignOut }: LayoutProps) {
           ))}
         </div>
       </nav>
+
+      <AnnounceRegion />
+    </div>
+  );
+}
+
+/** Eitt aria-live svæði fyrir alla skjálesara-tilkynningar (1.2). */
+function AnnounceRegion() {
+  const [message, setMessage] = useState('');
+  useEffect(() => subscribeAnnounce(setMessage), []);
+  return (
+    <div aria-live="polite" aria-atomic="true" className="sr-only">
+      {message}
     </div>
   );
 }

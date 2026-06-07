@@ -29,6 +29,7 @@ import {
   type LogField,
 } from '@/lib/logSchema';
 import { addPhotoFromFile, deletePhoto, usePhotoUrl } from '@/lib/photos';
+import { announce } from '@/lib/announce';
 import { cn } from '@/lib/cn';
 
 type IconComponent = ComponentType<{ size?: number | string }>;
@@ -177,6 +178,7 @@ export function LogComposer({
       photoId,
     });
     setBusy(false);
+    announce('Skráning vistuð');
     onClose();
   }
 
@@ -435,6 +437,7 @@ export function LogThumbnail({
       type="button"
       onClick={onOpen}
       disabled={!onOpen}
+      aria-label="Skoða skráða mynd"
       className="mt-1.5 block w-16 h-16 rounded-xl overflow-hidden border border-moss-800/50 bg-moss-950/60 disabled:cursor-default"
     >
       {url ? (

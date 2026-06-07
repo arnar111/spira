@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useScrollLock } from '@/lib/useScrollLock';
@@ -22,6 +22,9 @@ const SIZE_MAX_WIDTH: Record<ModalSize, string> = {
   lg: 'max-w-xl',
 };
 
+const FOCUSABLE =
+  'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
 export function Modal({
   open,
   onClose,
@@ -32,14 +35,58 @@ export function Modal({
   fullHeight = false,
 }: ModalProps) {
   useScrollLock(open);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
 
+  // Fókusgildra (1.2): geymdu fyrri fókus, færðu fókus inn í gluggann við
+  // opnun, haltu Tab/Shift+Tab innan hans, og skilaðu fókus til baka við lokun.
   useEffect(() => {
     if (!open) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    // Færðu fókus inn í gluggann eftir að hann hefur teiknast.
+    const focusTimer = window.setTimeout(() => {
+      const panel = panelRef.current;
+      if (!panel) return;
+      const first = panel.querySelector<HTMLElement>(FOCUSABLE);
+      (first ?? panel).focus();
+    }, 0);
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusables = Array.from(
+        panel.querySelectorAll<HTMLElement>(FOCUSABLE),
+      ).filter((el) => el.offsetParent !== null || el === panel);
+      if (focusables.length === 0) {
+        e.preventDefault();
+        panel.focus();
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey) {
+        if (active === first || active === panel || !panel.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener('keydown', onKeyDown);
+      previouslyFocused?.focus?.();
+    };
   }, [open, onClose]);
 
   if (typeof document === 'undefined') return null;
@@ -57,7 +104,12 @@ export function Modal({
           transition={{ duration: 0.18 }}
         >
           <motion.div
-            className={`w-full ${SIZE_MAX_WIDTH[size]} rounded-2xl p-5 ${
+            ref={panelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={title ? titleId : undefined}
+            tabIndex={-1}
+            className={`w-full ${SIZE_MAX_WIDTH[size]} rounded-2xl p-5 outline-none ${
               fullHeight ? 'flex flex-col' : ''
             }`}
             style={{
@@ -76,6 +128,7 @@ export function Modal({
                 {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
                 {title && (
                   <h3
+                    id={titleId}
                     className="sp-display"
                     style={{
                       fontSize: 22,

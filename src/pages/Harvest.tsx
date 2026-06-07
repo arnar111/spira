@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Chili } from '@/components/Chili';
 import { db, newId, type Plant } from '@/lib/db';
+import { announce } from '@/lib/announce';
 import { chiliForVarietyName, formatShu, varietyByName } from '@/lib/varieties';
 
 export function Harvest() {
@@ -186,6 +187,7 @@ function HarvestDialog({
       note: note.trim() || undefined,
     });
     setBusy(false);
+    announce('Uppskera skráð');
     onClose();
   }
 
