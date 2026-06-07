@@ -19,7 +19,7 @@
 | Category | Ph 1 | Ph 2 | Ph 3 | Ph 4 |
 |---|---|---|---|---|
 | 1. UX | 🔶 | 🔶 | 🔶 | 🔶 |
-| 2. UI | 🔶 | 🔶 | 🔶 | 🔶 |
+| 2. UI | ✅ | ✅ | ✅ | ✅ |
 | 3. Features | 🔶 | 🔶 | 🔶 | 🔶 |
 | 4. Codebase | ✅ | ✅ | ⬜ | ⬜ |
 | 5. Other | ✅ | ✅ | ✅ | ⬜ |
@@ -546,6 +546,13 @@ session.
     vs cat2's ui/Lightbox — pick one; **Layout.tsx sign-out is a known 3-way** (cat1 ConfirmDialog vs
     cat5 ConfirmDialog+export-button — resolve in cat5's favor, it's the superset, but keep cat1's
     sync-error modal).
+- **2026-06-07 — Category 2 done** (cat2-ui, branch `claude/juneimpro-cat2-ui-wt`, commits a277086 /
+  eeb7ff2 / 98ca0e2 / abbd294). Type scale `.sp-h1…sp-label`, extractions (StatCard/HeroCard/GrowRow/
+  ActionTile/TaskRow, segmented Tabs), Skeleton + useDelayedFlag + PageSkeletons, Sparkline upgrade
+  (back-compat: new optional smooth/reference/lastLabel/xLabels/emptyText), ui/RangeToggle
+  (`RangeDays = 7|14|30|null` + `withinRange` in `lib/range.ts`), ui/Lightbox (props: src/date/plantName/
+  note/onPrev/onNext). Deviations: Layout inactive-nav icon keeps rgba (contrast), Environment range
+  labels made honest. 182 tests green per commit.
 - **2026-06-07 — 5.2 + 5.3 done** (cat5-other, branch `claude/juneimpro-cat5-other`, commits 4e671ff +
   5a4c436; on-branch, merged later). Backup export/import (`src/lib/backup.ts`, `BackupControls.tsx`,
   `migrateSnapshot` seam in sync.ts) and PWA revival (vite-plugin-pwa autoUpdate, `manifest: false`
