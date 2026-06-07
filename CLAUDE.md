@@ -4,19 +4,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Spíra is a **local-first grow journal** for growing peppers, tomatoes and strawberries indoors plus potatoes (and outdoor strawberries) in the garden, built as a React PWA that works on mobile and desktop. The UI and all content strings are in **Icelandic** — preserve that when editing text. It is built for the Icelandic climate, with **two advice axes**: indoor grows are driven by the Reykjavík daylight calendar (`daylight.ts` → grow-light recommendations); outdoor grows are driven by the season/frost calendar (`season.ts`). A grow's axis comes from `Grow.environment` (falls back to its `locationKey`/category — `garden` or potatoes ⇒ outdoor). The data model is category-extensible (`PlantCategory` also covers herbs, leafy, fruit, houseplants, etc.).
+Spíra is a **local-first grow journal** for growing peppers, tomatoes and strawberries indoors plus potatoes (and outdoor strawberries) in the garden, built as a React PWA that works on mobile and desktop. The UI and all content strings are in **Icelandic** — preserve that when editing text. It is built for the Icelandic climate, with **two advice axes**: indoor grows are driven by the Reykjavík daylight calendar (`daylight.ts` → grow-light recommendations); outdoor grows are driven by the season/frost calendar (`season.ts`). A grow's axis comes from the unified **`growIsOutdoor(grow, plants?)` in `season.ts`** (environment ?? `locationKey === 'garden'`; with the optional plant list, active potato plants also ⇒ outdoor — that's the variant the Rós engine uses). The data model is category-extensible (`PlantCategory` also covers herbs, leafy, fruit, houseplants, etc.).
 
 ## Commands
 
 ```bash
 npm install
-npm run dev       # Vite dev server on :5173 (host: true, exposed on LAN)
-npm run build     # tsc -b (typecheck/build refs) THEN vite build → dist/
-npm run lint      # tsc --noEmit — this is the ONLY check; there is no ESLint
-npm run preview   # serve the production build locally
+npm run dev          # Vite dev server on :5173 (host: true, exposed on LAN)
+npm run build        # tsc -b THEN vite build → dist/ (incl. PWA service worker)
+npm run lint         # tsc --noEmit
+npm run lint:eslint  # ESLint flat config (typescript-eslint + classic react-hooks rules)
+npm run test         # vitest run (node env; co-located *.test.ts)
+npm run check        # lint + lint:eslint + test — THE gate; must pass before any commit
+# $env:ANALYZE='1'; npm run build  → bundle map at dist/stats.html (never precached)
 ```
 
-There is no test runner and no linter beyond `tsc`. Treat `npm run lint` (and the typecheck inside `npm run build`) as the gate — keep the project type-clean.
+There is no Prettier (deliberate). **`npm run check` is the gate** — keep all three legs green. Tests are co-located `*.test.ts` next to their modules (convention; `fake-indexeddb` powers Dexie tests in node). Vitest/ESLint exclude `.claude/` (agent worktrees may live there).
+
+**Gap to know about:** `tsconfig.json` includes only `src/`, so the Netlify `.mts` functions are NOT covered by `npm run lint`. Typecheck them ad-hoc after editing: `npx tsc --noEmit --strict --target ES2022 --module esnext --moduleResolution bundler --skipLibCheck netlify/functions/*.mts`.
 
 Netlify functions and the Postgres database require the Netlify dev environment / deployment to exercise (`@netlify/vite-plugin` wires functions into the dev server; `getDatabase()` needs Netlify DB env vars). Plain `vite` serves the frontend but `/api/account` and `/api/ros` will not work without it. Rós chat additionally needs **`GEMINI_API_KEY`** (and optional `GEMINI_MODEL`) in the Netlify env — without it the rule-engine "Ráð" tab still works, but chat returns a configured-message error. See `.env.example`.
 
@@ -24,68 +29,81 @@ Netlify functions and the Postgres database require the Netlify dev environment 
 
 ### Local-first: IndexedDB is the source of truth
 
-`src/lib/db.ts` defines a Dexie database (`SpiraDB`, name `'spira'`) with tables: `grows`, `plants`, `logs`, `photos`, `environment`, `harvests`, `varieties`, `meta`. **The app reads and writes IndexedDB directly** (pages use `dexie-react-hooks` `useLiveQuery`); the cloud is only a backup/transport. All domain types (`Grow`, `Plant`, `LogEntry`, `GrowPhase`, `LogType`, etc.) live in `db.ts`. Use `newId()` for IDs. To bump the schema, add a `this.version(n).stores({...})` block — do not edit version 1 in place.
+`src/lib/db.ts` defines a Dexie database (`SpiraDB`, name `'spira'`) with tables: `grows`, `plants`, `logs`, `photos`, `environment`, `harvests`, `varieties`, `meta`, `rosMessages`, `rosAssessments`, `rosReports`. **The app reads and writes IndexedDB directly** (pages use `dexie-react-hooks` `useLiveQuery`); the cloud is only a backup/transport. All domain types live in `db.ts`. Use `newId()` for IDs. To bump the schema, add a `this.version(n).stores({...})` block — never edit an existing version. **Current schema version: 5** (v5 re-keyed `rosAssessments` by `id` with an upgrade migration so health assessments accumulate per plant instead of overwriting).
 
-`BUILT_IN_VARIETIES` (from `src/lib/varieties.ts`) is re-`put` into the `varieties` table on every app load (`App.tsx`), so built-in presets are always current; user-created varieties coexist.
+`BUILT_IN_VARIETIES` (from `src/lib/varieties.ts`) is re-`put` into the `varieties` table on every app load (`App.tsx`).
 
 ### Accounts = a 3-character code (no email, no password)
 
 Auth is a single uppercase 3-char code matching `/^[A-Z0-9]{3}$/`. The code IS the account.
 
-- **Client** (`src/lib/account.ts`): stores the current account in `localStorage` (`spira:account`), normalizes/validates codes, and POSTs to `/api/account?action={signup|signin|sync}`.
-- **Server** (`netlify/functions/account.mts`, path `/api/account`): backed by Netlify Postgres (`@netlify/database`). The `accounts` table (migration in `netlify/database/migrations/`) is `code TEXT PRIMARY KEY, name, data JSONB, created_at, updated_at`. The **entire app dataset is stored as one `data` JSONB blob per code.**
+- **Client** (`src/lib/account.ts`): stores the current account in `localStorage` (`spira:account`). `normalizeCode` is **aligned with the server**: uppercase → strip non-`[A-Z0-9]` → wrong length is invalid (no silent slicing; the Login paste handler slices for UX).
+- **Server** (`netlify/functions/account.mts`, path `/api/account`): Netlify Postgres, whole dataset as one `data` JSONB blob per code. **Hardened (5.1):** per-IP fixed-window rate limiting via the `rate_limits` table (signin/signup 10/5 min, sync 120/5 min → 429; **fails open** if the table is missing), ~5 MB body cap (413), `name` ≤ 64 chars, and server-side `SnapshotV1`-shape validation before writing JSONB. Migrations live in `netlify/database/migrations/` — the `rate_limits` migration must be applied for limiting to take effect.
 
-`normalizeCode` / the code regex exist in **both** client and server — keep them consistent (currently 3 chars, `A–Z0–9`). User-facing error messages from the function are Icelandic and surfaced directly in the UI.
+User-facing error messages from the functions are Icelandic and surfaced directly in the UI.
 
 ### Sync = whole-snapshot, last-write-wins
 
 `src/lib/sync.ts` is the sync engine. There is **no field-level merge** — sync replaces everything:
 
-- `exportSnapshot()` serializes grows/plants/logs/environment/harvests/meta into a `SnapshotV1` (`version: 1`). **Photos are NOT included** — image blobs stay device-local and never sync. The `lastSyncedAt` meta key is stripped.
-- On **sign-in**, the server's `data` blob is `importSnapshot()`ed: it **clears local tables then bulk-adds** the snapshot. So signing in overwrites local data with the cloud copy.
-- `syncManager` (singleton) debounces pushes by `SYNC_DEBOUNCE_MS` (1200ms) and serializes in-flight requests. `installAutoSyncHooks()` (called once in `App.tsx`) attaches Dexie `creating`/`updating`/`deleting` hooks to the synced tables so any mutation schedules a push. Photos table is intentionally not hooked.
-- Because it's whole-snapshot last-write-wins, **two devices on the same code overwrite each other** — there is no conflict resolution. Keep this in mind for any feature touching sync.
+- `exportSnapshot()` → `SnapshotV1`; **photos are NOT included** (device-local). `lastSyncedAt` meta is stripped. `isSnapshot()` is exported; `migrateSnapshot(raw)` is the forward-compat seam (today validates v1, throws on garbage) — route all imports through it.
+- Sign-in `importSnapshot()`s the cloud blob: clears local tables then bulk-adds. Two devices on one code overwrite each other — no conflict resolution (out of scope by decision).
+- `syncManager` debounces pushes (1200 ms), serializes in-flight requests, exposes **`syncNow()`** for the manual retry button and carries **`lastError`** in its state (the "Synci klikkaði" badge is tappable → reason + retry modal). `installAutoSyncHooks()` attaches Dexie hooks; photos/ros tables are not hooked.
+- **Backup UI (5.2):** `src/lib/backup.ts` + `src/components/BackupControls.tsx` (in Layout's account footer/modal) — "Sækja afrit" downloads `spira-afrit-YYYY-MM-DD.json`, "Hlaða inn afriti" validates + imports with a ConfirmDialog, and the sign-out confirm embeds an export button before `clearLocalData()`.
 
-If you add a new synced table, update: the `stores()` schema, `SnapshotV1` + `exportSnapshot`/`importSnapshot`/`isSnapshot`, `clearLocalData`, and the hook list in `installAutoSyncHooks`.
+If you add a new synced table, update: `stores()`, `SnapshotV1`, `exportSnapshot`/`importSnapshot`/`isSnapshot`/`migrateSnapshot`, `clearLocalData`, and `installAutoSyncHooks`. Photos, rosMessages, rosAssessments, rosReports stay **device-local — never add them to the snapshot.**
 
-### Rós — the AI grow helper (v1.1.0)
+### Rós — the AI grow helper
 
-Rós is a per-grow assistant opened from `GrowDetail`. It is **hybrid**:
+Rós is a per-grow assistant opened from `GrowDetail` plus an overview page (`/ros`). Hybrid:
 
-- **Offline rule engine** (`src/lib/ros/engine.ts`, pure/deterministic — takes `now`/`month` as params, no clock calls inside): `computeInsights()` derives watering/feeding/topping/pollination/fruit-ready/grow-light reminders (`RosInsight`, types in `src/lib/ros/types.ts`) from logs + phase + variety + the Reykjavík `daylight.ts` table. `buildContextDigest()` produces the Icelandic context string fed to the LLM. This works with **no API key**.
-- **LLM chat** (`netlify/functions/ros.mts`, path `/api/ros`) proxies to **Google Gemini** (`generateContent`). It tries a **fallback chain** of models in order, advancing to the next on a retryable upstream status (503/429/5xx) or a per-attempt timeout, so a single overloaded model doesn't surface as a 502/504. The chain is `GEMINI_MODEL` (or comma-separated `GEMINI_MODELS`) first, then the built-in `DEFAULT_CHAIN` (`gemini-3.5-flash → gemini-3.1-flash-lite → gemini-2.5-flash`), de-duped; default primary is `gemini-3.5-flash`. Non-retryable statuses (400/403/404) stop the chain immediately. The success response includes which `model` answered. The browser never holds the key — it reads `GEMINI_API_KEY` from the Netlify env (set `GEMINI_API_KEY` as a Netlify env var; see `.env.example`). Client wrapper: `src/lib/ros/chat.ts` (`askRos`, `blobToInlineImage`). **Vision is enabled** — selected plant photos are downscaled and sent as inline base64 (this is the one path where local photos leave the device). UI lives in `src/components/ros/`.
+- **Offline rule engine** — `src/lib/ros/engine/` folder (split 4.4): `index.ts` (computeInsights orchestration), `indoor.ts`, `indoorEnv.ts` (env-band/pH/humidity/germination/photo watches), `outdoor.ts`, `veritable.ts`, `digest.ts` (buildContextDigest), `helpers.ts`. The public API is re-exported from **`src/lib/ros/engine.ts`** — import from there, not the folder. `computeInsights()` is **pure** (`now`/`month` come in as params — keep it that way) and covers watering/feeding/topping/pollination/harvest-ETA/grow-light plus environment-band (vs `envTargets.ts`), pH-out-of-range and humidity-aware pest insights. Works with no API key.
+- **LLM chat** (`netlify/functions/ros.mts`, `/api/ros`) proxies to Google Gemini with a model **fallback chain** (`GEMINI_MODEL`/`GEMINI_MODELS` then `DEFAULT_CHAIN`, de-duped; retryable statuses advance the chain; success reports which `model` answered; streaming via SSE). **Input caps (5.1):** ≤ 40 messages (client truncates too in `src/lib/ros/chat.ts`), ≤ 4 images à ~2 MB, context truncated at 24k chars. Vision sends downscaled plant photos as base64 — the one path where photos leave the device.
+- **UI** — `src/components/ros/`: `RosWindow.tsx` is a thin shell over `InsightsTab` / `HealthTab` (assessment history with score trend) / `DiagnosisWizard` / `ChatTab`, sharing `rosWindowState.ts` + `RosMarkdown.tsx`. `RosOverview` (weekly reports) deliberately keeps local copies of mapping/colors — don't unify without reading its comments.
+- `predict.ts` (harvest windows) and `assessment.ts` are pure/deterministic. Chat history (`rosMessages`), assessments and reports are device-local, NOT synced.
 
-Chat history is stored in the **`rosMessages`** Dexie table (db schema **v2**) and, like photos, is **device-local — NOT added to the sync snapshot.**
+### PWA / service worker (re-enabled in 5.3)
 
-### Modals & the scroll-lock rule
+The app **uses a service worker again** (`vite-plugin-pwa`, autoUpdate). Registration lives in `src/lib/sw.ts`, started from `PwaUpdateToast`: it one-time-unregisters legacy "ghost" SWs (the old bug — see git history), respects the **kill-switch `localStorage['spira:disable-sw']`**, and shows a "Ný útgáfa í boði — Endurhlaða" toast instead of silently swapping. **`/api/*` is never cached** (NetworkOnly + navigateFallbackDenylist). One manifest only: `public/manifest.webmanifest` (`manifest: false` in the plugin). Layout shows an offline pill and flushes sync on the `online` event.
 
-All overlays use `src/components/ui/Modal.tsx` (portal + framer-motion + Escape-to-close), which calls `useScrollLock` (`src/lib/useScrollLock.ts`, ref-counted, iOS-safe). **Use `<Modal>` for any new dialog/window** — opening a bare `fixed inset-0` overlay reintroduces the bug where the page scrolls behind the window.
+### Modals & overlays
 
-### Logs are structured
+All overlays use `src/components/ui/Modal.tsx` (portal + framer-motion + Escape + **focus trap + dialog ARIA**) — never a bare `fixed inset-0` div. Confirmations use `ui/ConfirmDialog.tsx` (title/body/confirmLabel, destructive tone; the confirm button names the action). Full-screen photo viewing uses `ui/Lightbox.tsx` (near-black, arrows/swipe/counter/delete) — `gallery/PhotoLightbox.tsx` is a thin data adapter over it. Screen-reader announcements go through `src/lib/announce.ts` → the single aria-live region in Layout.
 
-Log entries are composed via `src/components/LogComposer.tsx` using the field schema in `src/lib/logSchema.ts` (`LOG_FIELDS`, `LOG_TYPE_META`, `formatLogData`). Per-type inputs (e.g. water → ml/EC/pH) are written into `LogEntry.data` (`Record<string, unknown>`, already part of the synced snapshot). Photos attach via `src/lib/photos.ts` (`addPhotoFromFile`, `usePhotoUrl`) → `db.photos` (local-only). When adding a log type, extend `logSchema.ts` rather than hardcoding fields in the UI.
+### Logs are structured & typed
+
+Log entries are composed via `src/components/LogComposer.tsx` (auto-focus, edit via `existing?: LogEntry`) using `src/lib/logSchema.ts` (`LOG_FIELDS`, `LOG_TYPE_META`, `formatLogData` — includes pest/disease since 3.4). **`LogEntry.data` stays a loose `Record<string, unknown>` in storage, but all reads go through the typed `logData<T>(type, data)` helper** (per-type interfaces `WaterLogData` etc.) — never duck-type `data.key` directly. When adding a log type, extend `logSchema.ts` (fields + interface + `logData` branch + `formatLogData`). Photos attach via `src/lib/photos.ts` → `db.photos` (local-only).
+
+### Pure domain modules in `src/lib/`
+
+- `phases.ts` — per-crop grow-cycle display timelines (pepper/tomato/strawberry/potato; distinct from the `GrowPhase` enum in `db.ts`).
+- `daylight.ts` / `season.ts` — the two Reykjavík advice calendars; `season.ts` owns the unified `growIsOutdoor`.
+- `dates.ts` — **the** Icelandic date formatting module (`shortDate`, `longDate`, `relativeTime`, `dayWord`). Don't re-implement `toLocaleDateString('is-IS', …)` locally.
+- `series.ts` — chart series from logs/samples (pH, EC, light hours, watering intervals). `range.ts` — `RangeDays` + `withinRange` for `ui/RangeToggle`.
+- `envTargets.ts` — per-phase indoor temp/humidity bands (+ `bandStatus`) feeding the Environment/GrowDetail band cards AND the engine.
+- `harvestStats.ts` — yield analytics (g/day, g/pod, per-variety ranking). `photoGallery.ts` — gallery grouping helpers.
+- `varietyFilter.ts` — pure SetupWizard variety filtering (tested).
+- `varieties.ts` — the catalog (data file; exempt from the 500-line rule). Tomatoes/strawberries/potatoes carry `CropCare`; **peppers resolve to mother-species tier guides via `resolveCare(v)`/`pepperCareTier(v)`** (`hasCare` still means "has inline care"). `CareGuide.tsx` takes a `care: CropCare` prop — pass `resolveCare(variety)`.
+- `locations.ts` (use `getLocation(key)`, it has a fallback), `account.ts`, `sync.ts`, `backup.ts`, `demo.ts`, `cn.ts`, `announce.ts`, `useDelayedFlag.ts`, `useScrollLock.ts`, `sw.ts`.
+
+### Split page/component layout (4.4)
+
+Big screens are folders with a thin shell keeping the import path stable: `pages/Home.tsx` → `pages/home/` (useHomeData/HomeMobile/HomeDesktop), `pages/SetupWizard.tsx` → `pages/setup/` (steps + useSetupState), `components/ros/RosWindow.tsx` → tab modules, `lib/ros/engine.ts` → `lib/ros/engine/`. Aim to keep files ≤ ~500 lines (only `varieties.ts` data is exempt; `Layout.tsx` sits at the line).
+
+Routes: `/home`, `/ros`, `/grows`, `/grow/:id`, `/plants`, `/varieties`, `/environment`, `/harvest`, `/history` inside `Layout`; `/setup`, `/login`. **SetupWizard, RosOverview, Varieties and History are `React.lazy`** (5.4) — react-markdown rides in a lazy chunk; keep heavy deps out of the eager pages.
 
 ### Demo account `123`
 
-Code `123` is special everywhere: `Login.tsx` seeds a rich ghost dataset (`seedDemoData()` in `src/lib/demo.ts`, which wipes local data first), and `syncManager.isDemo()` **disables all network sync** so demo edits never hit the server. Don't route demo data through the account API.
-
-### App shell & routing
-
-`src/App.tsx` is the root state machine: `loading → unauthenticated (Login) | authenticated`. When authenticated it gates on `onboardingComplete` (a `meta` row): `/` shows `Welcome` until setup is done, then redirects to `/home`. Authenticated routes (`/home`, `/grows`, `/grow/:id`, `/plants`, `/varieties`, `/environment`, `/harvest`, `/history`) render inside `Layout` (responsive mobile/desktop nav). `SetupWizard` (`/setup`) is the animated onboarding flow. Page transitions use Framer Motion `AnimatePresence` keyed on pathname.
-
-### Domain logic (pure modules in `src/lib/`)
-
-- `phases.ts` — the grow-cycle phase timeline (`PHASES`, `TOTAL_CYCLE_DAYS = 140`) and day/progress helpers. Note the phase *display* timeline here is pepper-tuned and distinct from the broader `GrowPhase` enum in `db.ts`.
-- `daylight.ts` — Reykjavík monthly daylight table; `needsGrowLight()` / `daylightStatus()` drive the "do you need an LED this month" feature (indoor grows). Central to the tomato (Steinunn) guide.
-- `season.ts` — Reykjavík **outdoor** season/frost calendar (last frost ~late May, first frost late Sep); `frostRisk()` / `seasonForMonth()` / `seasonStatus()` drive outdoor advice (planting window, hilling, harvest-before-frost), and `growIsOutdoor(grow)` (env ?? `locationKey === 'garden'`) is the shared indoor/outdoor switch for UI. The Rós engine has its own plant-aware `growIsOutdoor(grow, plants)` (also treats potatoes as outdoor): outdoor grows skip the indoor watering/feed/LED/hand-pollination insights and get season/frost/hilling/mulch ones instead. UI mirrors this split: `DaylightCard` (indoor) vs `SeasonCard` (outdoor) on the Environment page and per-grow in `GrowDetail`; the `SetupWizard` swaps its LED step for a season step when the `garden` location is chosen.
-- `varieties.ts` — `BUILT_IN_VARIETIES` catalog (pepper SHU/color, the Icelandic `tomato-steinunn` dwarf + international `tomato-*`, day-neutral/alpine `strawberry-*`, and outdoor `potato-*` varieties). Tomatoes, strawberries and potatoes carry a structured **`CropCare`** block (`TomatoCare` is a back-compat alias; `pollination` and `seasonal` are optional — potato uses `seasonal` for the chitting→hilling→harvest checklist and has no pollination) rendered by `CareGuide.tsx`. Use the `isTomato`/`isStrawberry`/`isPotato`/`hasCare` (→ `CaredVariety`) guards rather than checking `category` strings. Add a glyph in `components/` and wire it into `PlantGlyph.tsx` when adding a crop. `locations.ts` (each `LocationCategory` has an `environment`; `garden` is the outdoor one), `account.ts`, `sync.ts`, `demo.ts`, `cn.ts` round out the lib.
-
-### `research/` — source material, not shipped code
-
-`research/` holds the Icelandic grow-guide research (tomato/potato/strawberry, HTML + PDF) that domain content like `daylight.ts`, the Steinunn guide, and `varieties.ts` is derived from. It is reference/provenance for the data model and a pointer to planned categories — it is not bundled into the app.
+Code `123` is special everywhere: `Login.tsx` seeds a ghost dataset (`seedDemoData()`), and `syncManager.isDemo()` disables all network sync. Don't route demo data through the account API.
 
 ### Conventions
 
-- Import alias **`@` → `src`** (configured in `vite.config.ts` and `tsconfig.json`); prefer `@/lib/...`, `@/components/...`.
-- Styling is Tailwind with a custom palette — **`moss`, `terracotta`, `cream`, `capsicum`** — and fonts `Fraunces` (`font-display`) / `Inter` (`font-sans`). Reuse these tokens and the primitives in `src/components/ui/` (`Button`, `Card`, `Tabs`, `PhaseBar`, `Sparkline`, etc.) rather than introducing new colors.
-- Netlify is the deploy target: `netlify.toml` builds to `dist/`, bundles functions from `netlify/functions` with esbuild. Functions are `.mts` (ESM) and export a `config` with their `path`.
+- Import alias **`@` → `src`**.
+- Styling is Tailwind with the custom palette — **`moss`, `terracotta`, `cream`, `capsicum`** — fonts `Fraunces`/`Inter`/JetBrains Mono. **Type scale lives in `src/index.css`** (`.sp-h1/.sp-h2/.sp-h3/.sp-stat/.sp-label`) — use the classes, not inline font sizes. Reuse the `src/components/ui/` primitives (`Button`, `Card`, `Tabs` incl. segmented variant, `StatCard`, `HeroCard`, `ActionTile`, `TaskRow`, `Skeleton` + `PageSkeletons`, `SearchInput`, `RangeToggle`, `Lightbox`, `ConfirmDialog`, `PhaseBar`, `Sparkline` with smooth/reference/xLabels options, …). No new colors. Dark-only — do not add a light mode.
+- Loading states: pages show their `PageSkeletons` skeleton after a ~150 ms `useDelayedFlag` delay instead of returning null.
+- Errors: never `.catch(() => undefined)` — at minimum `console.warn('[spira] …', err)`. React errors are caught by `components/ErrorBoundary.tsx` (around the Outlet in Layout + the whole app).
+- Netlify is the deploy target: `netlify.toml` builds to `dist/`, functions are `.mts` (ESM) exporting a `config` with their `path`.
+
+### `research/` — source material, not shipped code
+
+`research/` holds the Icelandic grow-guide research (tomato/potato/strawberry/pepper, HTML + PDF) that domain content like `daylight.ts`, `envTargets.ts`, the care guides and `varieties.ts` derive from. Reference/provenance only — not bundled into the app.
