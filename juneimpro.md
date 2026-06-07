@@ -18,7 +18,7 @@
 
 | Category | Ph 1 | Ph 2 | Ph 3 | Ph 4 |
 |---|---|---|---|---|
-| 1. UX | 🔶 | 🔶 | 🔶 | 🔶 |
+| 1. UX | ✅ | ✅ | ✅ | ✅ |
 | 2. UI | ✅ | ✅ | ✅ | ✅ |
 | 3. Features | ✅ | ✅ | ✅ | ✅ |
 | 4. Codebase | ✅ | ✅ | ⬜ | ⬜ |
@@ -546,6 +546,13 @@ session.
     vs cat2's ui/Lightbox — pick one; **Layout.tsx sign-out is a known 3-way** (cat1 ConfirmDialog vs
     cat5 ConfirmDialog+export-button — resolve in cat5's favor, it's the superset, but keep cat1's
     sync-error modal).
+- **2026-06-07 — Category 1 done** (cat1-ux, branch `claude/juneimpro-cat1-ux`, commits 8ed8ffa /
+  baf96f9 / 4e8fc33 / c67b9c3, 180 tests green, build OK). No native confirm() left; sync lastError +
+  syncNow + tappable error modal; Modal focus trap + ARIA; `announce.ts` aria-live; ui/SearchInput +
+  NoResults across Plants/Grows/History + GrowDetail log filters; log edit/delete (LogComposer
+  `existing?: LogEntry`); mobile "Meira" sheet (Umhverfi/Afbrigði/Safn reachable); SetupWizard step
+  explanations; Welcome CTA ~0.8s; Home fake env card → real latest reading, roadmap → real shortcuts.
+  Merge overlap noted with cat2 (same pages, Modal.tsx, LogComposer.tsx) and cat3 (RosOverview).
 - **2026-06-07 — Category 2 done** (cat2-ui, branch `claude/juneimpro-cat2-ui-wt`, commits a277086 /
   eeb7ff2 / 98ca0e2 / abbd294). Type scale `.sp-h1…sp-label`, extractions (StatCard/HeroCard/GrowRow/
   ActionTile/TaskRow, segmented Tabs), Skeleton + useDelayedFlag + PageSkeletons, Sparkline upgrade
