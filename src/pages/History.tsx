@@ -6,6 +6,7 @@ import { Archive, RotateCcw } from 'lucide-react';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { Pill } from '@/components/ui/Pill';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { SearchInput, NoResults } from '@/components/ui/SearchInput';
 import { Chili } from '@/components/Chili';
 import { db } from '@/lib/db';
 import { LOCATIONS } from '@/lib/locations';
@@ -16,10 +17,17 @@ export function History() {
   const plants = useLiveQuery(() => db.plants.toArray());
   const harvests = useLiveQuery(() => db.harvests.toArray());
   const [reopenTarget, setReopenTarget] = useState<{ id: string; name: string } | null>(null);
+  const [query, setQuery] = useState('');
 
   if (!grows || !plants || !harvests) return null;
 
-  const archived = grows.filter((g) => g.archived);
+  const allArchived = grows.filter((g) => g.archived);
+  const q = query.trim().toLocaleLowerCase('is');
+  const archived = q
+    ? allArchived.filter((g) =>
+        `${g.name} ${g.location}`.toLocaleLowerCase('is').includes(q),
+      )
+    : allArchived;
 
   async function reopen(id: string) {
     await db.grows.update(id, { archived: false, endDate: undefined, updatedAt: Date.now() });
@@ -49,12 +57,25 @@ export function History() {
         </h1>
       </header>
 
+      {allArchived.length > 0 && (
+        <div className="mb-3">
+          <SearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder="Leita að lokaðri ræktun"
+          />
+        </div>
+      )}
+
       <div className="flex flex-col gap-3">
-        {archived.length === 0 && (
-          <div className="text-sm text-cream-300/60 text-center py-8 border border-dashed border-moss-800/40 rounded-2xl">
-            Engar lokaðar ræktanir.
-          </div>
-        )}
+        {archived.length === 0 &&
+          (allArchived.length === 0 ? (
+            <div className="text-sm text-cream-300/60 text-center py-8 border border-dashed border-moss-800/40 rounded-2xl">
+              Engar lokaðar ræktanir.
+            </div>
+          ) : (
+            <NoResults message="Engar lokaðar ræktanir passa við leitina." />
+          ))}
         {archived.map((g) => {
           const gp = plants.filter((p) => p.growId === g.id);
           const gh = harvests.filter((h) => h.growId === g.id);
