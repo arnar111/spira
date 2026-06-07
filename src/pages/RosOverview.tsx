@@ -6,7 +6,13 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { RosAvatar } from '@/components/ros/RosAvatar';
 import { useRosOverviewData } from './ros/useRosOverviewData';
 import { AgendaSection } from './ros/AgendaSection';
+import { YieldOverviewSection } from './ros/YieldOverviewSection';
+import { CalendarSection } from './ros/CalendarSection';
+import { HealthSection } from './ros/HealthSection';
 import { PredictionSection } from './ros/PredictionSection';
+import { VarietyBoardSection } from './ros/VarietyBoardSection';
+import { PhotoWeekSection } from './ros/PhotoWeekSection';
+import { WeeklyQuestionSection } from './ros/WeeklyQuestionSection';
 import { ReportSection } from './ros/ReportSection';
 
 export function RosOverview() {
@@ -15,12 +21,23 @@ export function RosOverview() {
     dueAndSoon,
     infoCount,
     predictions,
+    yieldOverview,
+    health,
+    calendar,
+    varietyBoard,
+    recentPhotos,
+    weeklyQuestion,
     reports,
     building,
     buildError,
     buildReport,
     deleteReport,
   } = useRosOverviewData();
+
+  const openGrow = (growId: string) => navigate(`/grow/${growId}`);
+  // „Spurning vikunnar" → opna ræktunina með Rós á Spjall + spurningu forskrifaða.
+  const askInGrow = (growId: string, question: string) =>
+    navigate(`/grow/${growId}?spyrja=1&q=${encodeURIComponent(question)}`);
 
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
@@ -41,13 +58,21 @@ export function RosOverview() {
           </div>
         </header>
 
-        <AgendaSection
-          dueAndSoon={dueAndSoon}
-          infoCount={infoCount}
-          onOpen={(growId) => navigate(`/grow/${growId}`)}
-        />
+        <AgendaSection dueAndSoon={dueAndSoon} infoCount={infoCount} onOpen={openGrow} />
+
+        <YieldOverviewSection data={yieldOverview} />
+
+        <CalendarSection calendar={calendar} onOpen={openGrow} />
+
+        <HealthSection health={health} onOpen={openGrow} />
 
         <PredictionSection predictions={predictions} />
+
+        <VarietyBoardSection board={varietyBoard} />
+
+        <PhotoWeekSection photos={recentPhotos} />
+
+        <WeeklyQuestionSection question={weeklyQuestion} onAsk={askInGrow} />
 
         <ReportSection
           reports={reports}

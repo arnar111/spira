@@ -186,6 +186,31 @@ export interface RosAssessment {
 }
 
 /**
+ * Talning aldina/blóma/klasa á plöntu — niðurstaða úr myndtalningu Rósar eða
+ * handvirkri talningu. Notuð sem `manualCount` í uppskerumati (`ros/yield.ts`).
+ * Staðbundin eins og photos/rosAssessments: EKKI hluti af sync-snapshot
+ * (myndafleidd/handvirk talning sem aldrei þarf að ferðast af tækinu).
+ */
+export interface RosYieldCheck {
+  /** Aðallykill (newId). */
+  id: string;
+  /** Indexuð — hvaða plöntu talningin á við. */
+  plantId: string;
+  /** Indexuð — ræktunin (fyrir per-grow live-queries). */
+  growId: string;
+  /** Myndin sem var talin (ef talning kom af mynd). */
+  photoId?: string;
+  /** Fjöldi talinna eininga. */
+  count: number;
+  /** Hvað var talið. */
+  kind: 'aldin' | 'blóm' | 'klasar';
+  /** Hvaðan talningin kom. */
+  source: 'mynd' | 'handvirkt';
+  /** Hvenær talningin var gerð. */
+  createdAt: number;
+}
+
+/**
  * Vikuskýrsla Rósar — AI-samantekt yfir allar ræktanir á tilteknu tímabili.
  * Staðbundin eins og photos/rosMessages/rosAssessments: EKKI hluti af
  * sync-snapshot (LLM-afurð sem má alltaf búa til aftur).
@@ -214,6 +239,7 @@ class SpiraDB extends Dexie {
   rosMessages!: Table<RosMessage, string>;
   rosAssessments!: Table<RosAssessment, string>;
   rosReports!: Table<RosReport, string>;
+  rosYieldChecks!: Table<RosYieldCheck, string>;
 
   constructor() {
     super('spira');
@@ -252,6 +278,11 @@ class SpiraDB extends Dexie {
         await tx.table('rosAssessments').clear();
         if (migrated.length > 0) await tx.table('rosAssessments').bulkAdd(migrated);
       });
+    // v6 (4.1): talningar aldina/blóma/klasa fyrir uppskerumat Rósar. Staðbundnar
+    // eins og rosAssessments — EKKI í sync-snapshot (myndafleidd/handvirk talning).
+    this.version(6).stores({
+      rosYieldChecks: 'id, plantId, growId',
+    });
   }
 }
 

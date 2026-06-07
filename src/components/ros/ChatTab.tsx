@@ -36,18 +36,22 @@ export function ChatTab({
   plants,
   logs,
   harvests,
+  initialDraft,
 }: {
   grow: Grow;
   plants: Plant[];
   logs: LogEntry[];
   harvests: HarvestEntry[];
+  /** Forskrifaður texti í inntakslínuna (t.d. „Spurning vikunnar" af /ros). */
+  initialDraft?: string;
 }) {
   const messages = useLiveQuery(
     () => db.rosMessages.where('growId').equals(grow.id).sortBy('timestamp'),
     [grow.id],
   );
 
-  const [text, setText] = useState('');
+  // Forskrifaður texti er settur EINU sinni við opnun; notandi getur breytt/sent.
+  const [text, setText] = useState(() => initialDraft ?? '');
   const [pendingPhotos, setPendingPhotos] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
   // Lifandi streymdur texti svars Rósar (null þegar ekkert er að streyma).
