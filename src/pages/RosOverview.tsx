@@ -266,18 +266,7 @@ export function RosOverview() {
           <RosAvatar size={40} />
           <div className="min-w-0">
             <Eyebrow color="var(--terra-300)">Rós · vinkona ræktandans</Eyebrow>
-            <h1
-              className="sp-display"
-              style={{
-                fontSize: 30,
-                fontWeight: 500,
-                color: 'var(--cream-50)',
-                lineHeight: 1.1,
-                letterSpacing: '-0.015em',
-              }}
-            >
-              Dagskrá Rósar
-            </h1>
+            <h1 className="sp-h1">Dagskrá Rósar</h1>
           </div>
         </header>
 
@@ -396,12 +385,7 @@ export function RosOverview() {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2
-      className="sp-display mb-3"
-      style={{ fontSize: 20, fontWeight: 500, color: 'var(--cream-50)' }}
-    >
-      {children}
-    </h2>
+    <h2 className="sp-h3 mb-3">{children}</h2>
   );
 }
 

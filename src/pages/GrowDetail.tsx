@@ -21,9 +21,12 @@ import { SeasonCard } from '@/components/SeasonCard';
 import { VeritableCard } from '@/components/VeritableCard';
 import { growIsOutdoor } from '@/lib/season';
 import { Card } from '@/components/ui/Card';
+import { HeroCard } from '@/components/ui/HeroCard';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { PlantGlyph } from '@/components/PlantGlyph';
+import { GrowDetailSkeleton } from '@/components/PageSkeletons';
+import { useDelayedFlag } from '@/lib/useDelayedFlag';
 import {
   LogComposer,
   LogDataChips,
@@ -107,7 +110,9 @@ export function GrowDetail() {
   const [rosEverOpened, setRosEverOpened] = useState(false);
   const [openAddPlant, setOpenAddPlant] = useState(false);
 
-  if (!grow || !plants || !logs) return null;
+  const loading = !grow || !plants || !logs;
+  const showSkeleton = useDelayedFlag(loading);
+  if (loading) return showSkeleton ? <GrowDetailSkeleton /> : null;
 
   const day = daysSince(grow.startDate);
   const timeline = timelineForCategory(grow.category);
@@ -139,38 +144,14 @@ export function GrowDetail() {
         Til baka
       </button>
 
-      <div
-        style={{
-          position: 'relative',
-          borderRadius: 22,
-          overflow: 'hidden',
-          background: 'rgba(36,56,39,.55)',
-          border: '1px solid rgba(64,104,67,.45)',
-          backdropFilter: 'blur(20px) saturate(160%)',
-          padding: 18,
-          paddingRight: 120,
-        }}
-      >
-        <div style={{ position: 'absolute', right: -8, top: -4 }}>
-          <PlantGlyph name={heroVariety} size={130} tilt={8} />
-        </div>
+      <HeroCard glyph={<PlantGlyph name={heroVariety} size={130} tilt={8} />}>
         <div className="flex gap-1.5 mb-2">
           {loc && <Pill tone="moss" size="sm">{loc.label}</Pill>}
           <Pill tone="cap" size="sm">D{day}</Pill>
           {grow.archived && <Pill tone="dark" size="sm">Lokað</Pill>}
         </div>
         <Eyebrow>{grow.location}</Eyebrow>
-        <div
-          className="sp-display"
-          style={{
-            fontSize: 24,
-            fontWeight: 500,
-            color: 'var(--cream-50)',
-            lineHeight: 1.1,
-            marginTop: 4,
-            marginBottom: 10,
-          }}
-        >
+        <div className="sp-h2" style={{ marginTop: 4, marginBottom: 10 }}>
           {grow.name}
         </div>
         <PhaseBar phases={timeline.phases} currentDay={stageDay} totalDays={timeline.totalDays} />
@@ -203,7 +184,7 @@ export function GrowDetail() {
           <RosAvatar size={18} />
           Spyrja Rós
         </button>
-      </div>
+      </HeroCard>
 
       <div className="grid grid-cols-3 gap-2 mt-4">
         <Stat label="Dagur" value={String(day)} />
@@ -225,9 +206,7 @@ export function GrowDetail() {
 
       <section className="mt-6">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="sp-display text-cream-50" style={{ fontSize: 20, fontWeight: 500 }}>
-            Plöntur
-          </h2>
+          <h2 className="sp-h3">Plöntur</h2>
           <Button size="sm" variant="primary" onClick={() => setOpenAddPlant(true)}>
             <Plus size={14} /> Bæta við
           </Button>
@@ -246,9 +225,7 @@ export function GrowDetail() {
 
       <section className="mt-6">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="sp-display text-cream-50" style={{ fontSize: 20, fontWeight: 500 }}>
-            Skráningar
-          </h2>
+          <h2 className="sp-h3">Skráningar</h2>
           <Button size="sm" variant="primary" onClick={() => setOpenLog(true)}>
             <Plus size={14} /> Skrá
           </Button>
@@ -301,7 +278,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <Card tone="strong" padding={12} radius={14}>
       <Eyebrow>{label}</Eyebrow>
-      <div className="sp-display text-cream-50" style={{ fontSize: 22, fontWeight: 500 }}>
+      <div className="sp-stat text-cream-50" style={{ fontSize: 22 }}>
         {value}
       </div>
     </Card>

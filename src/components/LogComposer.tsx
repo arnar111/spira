@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { ActionTile } from '@/components/ui/ActionTile';
 import {
   db,
   newId,
@@ -174,22 +175,14 @@ export function LogComposer({
       <div className="grid grid-cols-4 gap-1.5 mb-4">
         {quick.map((m) => {
           const Icon = iconFor(m.icon);
-          const active = type === m.id;
           return (
-            <button
+            <ActionTile
               key={m.id}
-              type="button"
+              icon={<Icon size={18} />}
+              label={m.label}
+              active={type === m.id}
               onClick={() => selectType(m.id)}
-              className={cn(
-                'flex flex-col items-center justify-center gap-1 rounded-2xl border py-3 transition-colors',
-                active
-                  ? 'bg-moss-500 border-moss-400 text-cream-50'
-                  : 'bg-moss-900/40 border-moss-800/40 text-cream-200 hover:border-moss-600',
-              )}
-            >
-              <Icon size={18} />
-              <span className="text-[11px] font-medium">{m.label}</span>
-            </button>
+            />
           );
         })}
       </div>

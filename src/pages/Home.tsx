@@ -5,6 +5,7 @@ import { ChevronRight, Plus, Search, Sparkles } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Pill } from '@/components/ui/Pill';
 import { Stat } from '@/components/ui/Stat';
+import { StatCard } from '@/components/ui/StatCard';
 import { Sparkline } from '@/components/ui/Sparkline';
 import { PhaseBar } from '@/components/ui/PhaseBar';
 import { Tabs } from '@/components/ui/Tabs';
@@ -12,6 +13,8 @@ import { Eyebrow } from '@/components/ui/Eyebrow';
 import { PlantGlyph } from '@/components/PlantGlyph';
 import { Button } from '@/components/ui/Button';
 import { db, type Grow, type Plant } from '@/lib/db';
+import { useDelayedFlag } from '@/lib/useDelayedFlag';
+import { HomeSkeleton } from '@/components/PageSkeletons';
 import {
   cycleProgress,
   daysSince,
@@ -48,7 +51,9 @@ export function Home() {
   const grows = useLiveQuery(() => db.grows.toArray());
   const plants = useLiveQuery(() => db.plants.toArray());
 
-  if (grows === undefined || plants === undefined) return null;
+  const loading = grows === undefined || plants === undefined;
+  const showSkeleton = useDelayedFlag(loading);
+  if (loading) return showSkeleton ? <HomeSkeleton /> : null;
 
   const active = grows.filter((g) => !g.archived).map((g) => deriveGrow(g, plants));
   const archivedCount = grows.filter((g) => g.archived).length;
@@ -171,9 +176,9 @@ function MobileHome({ active, plants, archivedCount }: ViewProps) {
           padding: '0 22px 16px',
         }}
       >
-        <QuickStat label="Plöntur" value={String(plants.length)} tone="cream" />
-        <QuickStat label="Ræktanir" value={String(active.length)} tone="moss" />
-        <QuickStat
+        <StatCard label="Plöntur" value={String(plants.length)} tone="cream" />
+        <StatCard label="Ræktanir" value={String(active.length)} tone="moss" />
+        <StatCard
           label="Dagur"
           value={active.length > 0 ? String(Math.max(...active.map((g) => g.day))) : '—'}
           tone="cap"
@@ -189,12 +194,7 @@ function MobileHome({ active, plants, archivedCount }: ViewProps) {
           marginBottom: 12,
         }}
       >
-        <div
-          className="sp-display"
-          style={{ fontSize: 22, fontWeight: 500, color: 'var(--cream-50)' }}
-        >
-          Ræktanir
-        </div>
+        <div className="sp-h3">Ræktanir</div>
         <span
           className="sp-mono"
           style={{ fontSize: 10, color: 'var(--cream-400)', letterSpacing: '0.16em' }}
@@ -214,52 +214,6 @@ function MobileHome({ active, plants, archivedCount }: ViewProps) {
 
       <div style={{ height: 24 }} />
     </motion.div>
-  );
-}
-
-function QuickStat({
-  label,
-  value,
-  tone,
-  unit,
-}: {
-  label: string;
-  value: string;
-  tone: 'cream' | 'moss' | 'cap';
-  unit?: string;
-}) {
-  const map = {
-    cream: { fg: 'var(--cream-50)', acc: 'var(--cream-200)' },
-    moss: { fg: 'var(--moss-200)', acc: 'var(--moss-300)' },
-    cap: { fg: 'var(--cap-400)', acc: 'var(--terra-300)' },
-  }[tone];
-  return (
-    <div
-      style={{
-        flex: 1,
-        padding: 12,
-        borderRadius: 14,
-        background: 'rgba(36,56,39,.55)',
-        border: '1px solid rgba(64,104,67,.35)',
-        backdropFilter: 'blur(12px)',
-      }}
-    >
-      <div
-        className="sp-mono"
-        style={{ fontSize: 9, color: 'rgba(231,217,168,.55)', letterSpacing: '0.16em' }}
-      >
-        {label.toUpperCase()}
-      </div>
-      <div style={{ marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 3 }}>
-        <span
-          className="sp-display"
-          style={{ fontSize: 24, color: map.fg, fontWeight: 500, lineHeight: 1 }}
-        >
-          {value}
-        </span>
-        {unit && <span className="sp-mono" style={{ fontSize: 10, color: map.acc }}>{unit}</span>}
-      </div>
-    </div>
   );
 }
 
@@ -305,17 +259,7 @@ function GrowGlassCard({ grow, plants }: { grow: DerivedGrow; plants: Plant[] })
           D{grow.day}
         </Pill>
       </div>
-      <div
-        className="sp-display"
-        style={{
-          fontSize: 20,
-          fontWeight: 500,
-          color: 'var(--cream-50)',
-          letterSpacing: '-0.01em',
-          marginBottom: 4,
-          lineHeight: 1.1,
-        }}
-      >
+      <div className="sp-h3" style={{ marginBottom: 4 }}>
         {grow.name}
       </div>
       <div style={{ fontSize: 11, color: 'rgba(231,217,168,.55)', marginBottom: 12 }}>
@@ -482,12 +426,7 @@ function DesktopHome({ active, plants, archivedCount }: ViewProps) {
               alignItems: 'baseline',
             }}
           >
-            <div
-              className="sp-display"
-              style={{ fontSize: 20, color: 'var(--cream-50)', fontWeight: 500 }}
-            >
-              Virkar ræktanir
-            </div>
+            <div className="sp-h3">Virkar ræktanir</div>
             <Tabs tabs={['Allar', 'Pipur', 'Krydd']} active={0} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -617,15 +556,7 @@ function KPICard({
     >
       <Eyebrow>{label}</Eyebrow>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-        <span
-          className="sp-display"
-          style={{
-            fontSize: 30,
-            color: map[tone],
-            fontWeight: 500,
-            lineHeight: 1.05,
-          }}
-        >
+        <span className="sp-stat" style={{ fontSize: 30, color: map[tone], lineHeight: 1.05 }}>
           {value}
         </span>
         {unit && (
@@ -730,19 +661,11 @@ function DesktopGrowRow({ grow, plants }: { grow: DerivedGrow; plants: Plant[] }
         >
           DAGUR
         </div>
-        <div
-          className="sp-display"
-          style={{
-            fontSize: 26,
-            color: grow.phaseObj.color,
-            fontWeight: 500,
-            lineHeight: 1,
-          }}
-        >
+        <div className="sp-stat" style={{ fontSize: 26, color: grow.phaseObj.color }}>
           {grow.day}
         </div>
       </div>
-      <ChevronRight size={16} color="rgba(231,217,168,.4)" />
+      <ChevronRight size={16} color="var(--cream-300)" />
     </Link>
   );
 }

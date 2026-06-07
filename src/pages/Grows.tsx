@@ -1,21 +1,14 @@
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
-import { ChevronRight, Plus } from 'lucide-react';
-import { Pill } from '@/components/ui/Pill';
+import { useNavigate } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 import { Eyebrow } from '@/components/ui/Eyebrow';
-import { PhaseBar } from '@/components/ui/PhaseBar';
-import { PlantGlyph } from '@/components/PlantGlyph';
 import { Button } from '@/components/ui/Button';
+import { GrowRow } from '@/components/GrowRow';
+import { GrowsSkeleton } from '@/components/PageSkeletons';
+import { useDelayedFlag } from '@/lib/useDelayedFlag';
 import { db } from '@/lib/db';
-import {
-  daysSince,
-  getPhaseForDay,
-  growStageDay,
-  timelineForCategory,
-} from '@/lib/phases';
-import { LOCATIONS } from '@/lib/locations';
 
 export function Grows() {
   const navigate = useNavigate();
@@ -30,7 +23,9 @@ export function Grows() {
     [grows],
   );
 
-  if (!grows || !plants) return null;
+  const loading = !grows || !plants;
+  const showSkeleton = useDelayedFlag(loading);
+  if (loading) return showSkeleton ? <GrowsSkeleton /> : null;
 
   return (
     <motion.div
@@ -42,16 +37,7 @@ export function Grows() {
       <header className="flex items-end justify-between mb-5">
         <div>
           <Eyebrow color="var(--terra-300)">Allar ræktanir</Eyebrow>
-          <h1
-            className="sp-display"
-            style={{
-              fontSize: 30,
-              fontWeight: 500,
-              color: 'var(--cream-50)',
-              lineHeight: 1.05,
-              marginTop: 6,
-            }}
-          >
+          <h1 className="sp-h1" style={{ marginTop: 6 }}>
             Ræktanir
           </h1>
         </div>
@@ -66,69 +52,9 @@ export function Grows() {
             Engar ræktanir enn. Smelltu „Ný" til að byrja.
           </div>
         )}
-        {sorted.map((g) => {
-          const gp = plants.filter((p) => p.growId === g.id);
-          const day = daysSince(g.startDate);
-          const timeline = timelineForCategory(g.category);
-          const stageDay = growStageDay(g.startDate, gp, timeline);
-          const phase = getPhaseForDay(stageDay, timeline.phases);
-          const variety = gp[0]?.variety ?? '';
-          const loc = LOCATIONS.find((l) => l.key === g.locationKey);
-          return (
-            <Link
-              key={g.id}
-              to={`/grow/${g.id}`}
-              className="block"
-              style={{ textDecoration: 'none' }}
-            >
-              <div
-                style={{
-                  position: 'relative',
-                  borderRadius: 18,
-                  overflow: 'hidden',
-                  background: 'rgba(36,56,39,.55)',
-                  border: '1px solid rgba(64,104,67,.45)',
-                  backdropFilter: 'blur(20px) saturate(160%)',
-                  padding: 14,
-                  paddingRight: 90,
-                  cursor: 'pointer',
-                  transition: 'background .15s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(36,56,39,.7)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(36,56,39,.55)')}
-              >
-                <div style={{ position: 'absolute', right: -4, top: 0 }}>
-                  <PlantGlyph name={variety} size={88} tilt={8} />
-                </div>
-                <div className="flex gap-1.5 mb-1.5">
-                  {loc && <Pill tone="moss" size="sm">{loc.label}</Pill>}
-                  <Pill tone="cap" size="sm">D{day}</Pill>
-                  {g.archived && <Pill tone="dark" size="sm">Lokið</Pill>}
-                </div>
-                <div
-                  className="sp-display"
-                  style={{ fontSize: 18, fontWeight: 500, color: 'var(--cream-50)', lineHeight: 1.15 }}
-                >
-                  {g.name}
-                </div>
-                <div style={{ fontSize: 11, color: 'rgba(231,217,168,.55)', marginBottom: 10 }}>
-                  {g.location} · {gp.length} plöntur · {phase.label.toLowerCase()}
-                </div>
-                <PhaseBar
-                  phases={timeline.phases}
-                  currentDay={stageDay}
-                  totalDays={timeline.totalDays}
-                  showLabels={false}
-                />
-                <ChevronRight
-                  size={16}
-                  color="rgba(231,217,168,.4)"
-                  style={{ position: 'absolute', right: 10, bottom: 10 }}
-                />
-              </div>
-            </Link>
-          );
-        })}
+        {sorted.map((g) => (
+          <GrowRow key={g.id} grow={g} plants={plants.filter((p) => p.growId === g.id)} />
+        ))}
       </div>
     </motion.div>
   );

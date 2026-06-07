@@ -6,6 +6,8 @@ import { Filter } from 'lucide-react';
 import { Pill } from '@/components/ui/Pill';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { PlantGlyph } from '@/components/PlantGlyph';
+import { PlantsSkeleton } from '@/components/PageSkeletons';
+import { useDelayedFlag } from '@/lib/useDelayedFlag';
 import { db, type Plant } from '@/lib/db';
 import { daysSince, getPhaseForDay, timelineForCategory } from '@/lib/phases';
 import {
@@ -80,7 +82,9 @@ export function Plants() {
     return set;
   }, [plants]);
 
-  if (!plants || !grows) return null;
+  const loading = !plants || !grows;
+  const showSkeleton = useDelayedFlag(loading);
+  if (loading) return showSkeleton ? <PlantsSkeleton /> : null;
 
   return (
     <motion.div
@@ -91,16 +95,7 @@ export function Plants() {
     >
       <header className="mb-5">
         <Eyebrow color="var(--terra-300)">Allar plöntur</Eyebrow>
-        <h1
-          className="sp-display"
-          style={{
-            fontSize: 30,
-            fontWeight: 500,
-            color: 'var(--cream-50)',
-            lineHeight: 1.05,
-            marginTop: 6,
-          }}
-        >
+        <h1 className="sp-h1" style={{ marginTop: 6 }}>
           Plöntur · {rows.length}
         </h1>
       </header>
