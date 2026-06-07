@@ -21,8 +21,11 @@
 | 1. UX | ✅ | ✅ | ✅ | ✅ |
 | 2. UI | ✅ | ✅ | ✅ | ✅ |
 | 3. Features | ✅ | ✅ | ✅ | ✅ |
-| 4. Codebase | ✅ | ✅ | ✅ | 🔶 |
-| 5. Other | ✅ | ✅ | ✅ | ⬜ |
+| 4. Codebase | ✅ | ✅ | ✅ | ✅ |
+| 5. Other | ✅ | ✅ | ✅ | ✅ |
+
+**🎉 All 20 phases complete** — everything merged on `claude/juneimpro-4.1-tooling`
+(`npm run check`: 247 tests green; `npm run build` green incl. PWA SW).
 
 ⬜ not started · 🔶 in progress · ✅ done
 
@@ -392,19 +395,23 @@ tests still green.
 **Goal:** The four biggest files become navigable modules. **Pure mechanical extraction — no behavior
 changes. Do this LAST, with 4.2 tests green before and after.**
 
-- [ ] **`RosWindow.tsx` (1,158 l)** → `components/ros/` modules: `ChatTab.tsx`, `HealthTab.tsx` (assessment),
+- [x] **`RosWindow.tsx` (1,158 l)** → `components/ros/` modules: `ChatTab.tsx`, `HealthTab.tsx` (assessment),
       `InsightsTab.tsx`, shared `rosWindowState.ts` (or a context) for the cross-tab state. DiagnosisWizard
-      already separate.
-- [ ] **`SetupWizard.tsx` (969 l)** → `pages/setup/` folder: one file per step (`LocationStep`, `SpaceStep`,
+      already separate. *(98-line shell; + RosMarkdown.tsx shared by Health/Chat.)*
+- [x] **`SetupWizard.tsx` (969 l)** → `pages/setup/` folder: one file per step (`LocationStep`, `SpaceStep`,
       `LightSeasonStep`, `VarietiesStep`) + `useSetupState.ts`; variety-filter logic → pure
-      `lib/varietyFilter.ts` (then test it).
-- [ ] **`Home.tsx` (815 l)** → extract `HomeMobile.tsx` / `HomeDesktop.tsx` (or per-section components) +
-      shared `useHomeData.ts` for the derive logic.
-- [ ] **`engine.ts` (1,166 l)** → `ros/engine/` folder: `index.ts` (computeInsights orchestration),
+      `lib/varietyFilter.ts` (then test it). *(154-line shell; +8 varietyFilter tests.)*
+- [x] **`Home.tsx` (815 l)** → extract `HomeMobile.tsx` / `HomeDesktop.tsx` (or per-section components) +
+      shared `useHomeData.ts` for the derive logic. *(19-line shell, `pages/home/` folder.)*
+- [x] **`engine.ts` (1,166 l)** → `ros/engine/` folder: `index.ts` (computeInsights orchestration),
       `indoor.ts`, `outdoor.ts`, `veritable.ts`, `digest.ts` (buildContextDigest), `helpers.ts`. Keep the
       public API (`computeInsights`, `buildContextDigest`) re-exported from `ros/engine.ts` so imports
-      don't churn... or update all imports — pick one, be consistent.
-- [ ] After each split: `npm run check`, plus a manual smoke of the affected screen.
+      don't churn... or update all imports — pick one, be consistent. *(Re-export chosen; + 7th file
+      `indoorEnv.ts` to keep indoor.ts under the bar; block order preserved → byte-identical output.)*
+- [x] **Bonus splits** (files that grew past ~500 during the day): `GrowDetail.tsx` 859→411
+      (`pages/growdetail/`), `RosOverview.tsx` 643→74 (`pages/ros/`).
+- [x] After each split: `npm run check`, plus a manual smoke of the affected screen. *(check + build after
+      each; manual browser smoke is on the user's checklist below.)*
 
 **Acceptance:** No file in `src/` (excluding `varieties.ts` data) over ~500 lines; tests green; app
 behaves identically.
@@ -485,18 +492,21 @@ from cache; update toast works.
 
 **Goal:** Measure, split, document. Do after most other phases so docs capture the final state.
 
-- [ ] **Measure first**: `npm i -D rollup-plugin-visualizer`, add to vite build (behind an env flag),
-      record the top chunks in this file under "Findings".
-- [ ] **Route-level code splitting**: `React.lazy` + `Suspense` (fallback = 2.3 Skeleton or minimal
+- [x] **Measure first**: `npm i -D rollup-plugin-visualizer`, add to vite build (behind an env flag),
+      record the top chunks in this file under "Findings". *(`$env:ANALYZE='1'; npm run build` →
+      dist/stats.html, excluded from SW precache.)*
+- [x] **Route-level code splitting**: `React.lazy` + `Suspense` (fallback = 2.3 Skeleton or minimal
       "Hleður…") for heavy, rarely-first routes: SetupWizard, RosOverview, Varieties, History. Keep Home/
-      Grows/GrowDetail eager. Check `react-markdown` (used by Rós) lands in a lazy chunk.
-- [ ] **lucide-react import check**: confirm per-icon imports tree-shake in the build (inspect visualizer);
-      if the full icon set ships, switch to `lucide-react/icons/...` deep imports.
-- [ ] **Update CLAUDE.md**: new scripts (`test`, `check`, `lint:eslint`), testing conventions, ErrorBoundary,
+      Grows/GrowDetail eager. Check `react-markdown` (used by Rós) lands in a lazy chunk. *(Plus RosWindow
+      lazy inside GrowDetail. react-markdown confirmed in a lazy 186 kB chunk.)*
+- [x] **lucide-react import check**: confirm per-icon imports tree-shake in the build (inspect visualizer);
+      if the full icon set ships, switch to `lucide-react/icons/...` deep imports. *(Tree-shaking works —
+      unused icons absent from dist; no change needed.)*
+- [x] **Update CLAUDE.md**: new scripts (`test`, `check`, `lint:eslint`), testing conventions, ErrorBoundary,
       the unified `growIsOutdoor`, `dates.ts`/`series.ts`/`envTargets.ts` modules, SW status (no longer
       disabled — document the kill-switch), export/import feature, rate limiting, any db schema version
-      bumps (assessments v3?), split file layout from 4.4.
-- [ ] **Update this file**: mark all statuses, note anything deferred + why.
+      bumps (assessments v3?), split file layout from 4.4. *(Full rewrite; schema landed as v5.)*
+- [x] **Update this file**: mark all statuses, note anything deferred + why.
 
 **Acceptance:** Initial JS chunk measurably smaller (record numbers); CLAUDE.md accurate for a fresh
 session.
@@ -535,6 +545,24 @@ session.
     the `check` script in a later phase (note for 5.4 docs).
   - The rate-limit migration must be applied to the Netlify DB before deploy benefits; the function
     fails open (console.warn) until then, so nothing breaks if deploy order slips.
+- **2026-06-07 — Day complete.** Merge train (cat2 → cat1 → cat3 → cat5, gate after each; conflicts:
+  Grows/Harvest extraction-vs-addition, GrowDetail additive states, Layout sign-out 3-way resolved to
+  BackupControls + kept sync-error modal), then reconciliation (one ui/Lightbox, one ui/RangeToggle),
+  4.3, 4.4 (six splits, delegated), 5.4. **Final numbers:** 247 tests across 18 files; main JS chunk
+  **908 kB → 686 kB** (gzip **279 → 212 kB**) with react-markdown in a lazy 186 kB chunk and route chunks
+  for SetupWizard/RosOverview/Varieties/History; largest non-data src file is Layout.tsx at 515 lines
+  (borderline vs the ~500 bar — acceptable, flagged for opportunistic trimming).
+  - **Deferred (with reasons):** shared Dexie query helpers (low priority per plan); Environment-page
+    pH/EC charts (3.1 satisfied in GrowDetail; trivial add later); RosOverview's deliberate local
+    markdown/severity copies (commented in code); light mode / sensors / localization / sync conflict
+    resolution (out of scope by decision).
+  - **Manual browser checklist for the user (not automatable here):** (1) PWA: build+preview → SW active,
+    installable, airplane-mode shell loads, /api/* never from cache, update toast on rebuild, kill-switch
+    `spira:disable-sw` works (full steps in cat5's 5.3 report / team transcript); (2) visual smoke of
+    Home/GrowDetail/Setup/Rós after the splits; (3) backup round-trip: export → sign out → import.
+  - Housekeeping: rescue branch `wip/juneimpro-mixed` and dead branch `claude/juneimpro-cat2-ui` deleted
+    after integration; teammate worktrees removed (cat3-features left in place — it is this session's
+    default working directory; remove later with `git worktree remove`).
 - **2026-06-07 — Agent team running** (team "juneimpro", lead owns the main checkout on
   `claude/juneimpro-4.1-tooling`). Teammates in isolated worktrees under `.claude/worktrees/`:
   cat1-ux → `claude/juneimpro-cat1-ux`, cat2-ui → `claude/juneimpro-cat2-ui-wt` (note `-wt`; the
