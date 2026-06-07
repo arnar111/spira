@@ -22,7 +22,7 @@
 | 2. UI | 🔶 | 🔶 | 🔶 | 🔶 |
 | 3. Features | 🔶 | 🔶 | 🔶 | 🔶 |
 | 4. Codebase | ✅ | ✅ | ⬜ | ⬜ |
-| 5. Other | ✅ | 🔶 | 🔶 | ⬜ |
+| 5. Other | ✅ | ✅ | ✅ | ⬜ |
 
 ⬜ not started · 🔶 in progress · ✅ done
 
@@ -543,4 +543,12 @@ session.
   - Merge plan (lead): cat2 → cat1 → cat3 → cat5, `npm run check` after each, then 4.3 → 4.4 → 5.4.
   - Reconcile at merge: cat3 used old Sparkline API + a local RangeToggle (swap to 2.4's ui/RangeToggle);
     Environment-page pH/EC charts deferred to post-merge (cat3 avoided cat2's file); cat3's own lightbox
-    vs cat2's ui/Lightbox — pick one.
+    vs cat2's ui/Lightbox — pick one; **Layout.tsx sign-out is a known 3-way** (cat1 ConfirmDialog vs
+    cat5 ConfirmDialog+export-button — resolve in cat5's favor, it's the superset, but keep cat1's
+    sync-error modal).
+- **2026-06-07 — 5.2 + 5.3 done** (cat5-other, branch `claude/juneimpro-cat5-other`, commits 4e671ff +
+  5a4c436; on-branch, merged later). Backup export/import (`src/lib/backup.ts`, `BackupControls.tsx`,
+  `migrateSnapshot` seam in sync.ts) and PWA revival (vite-plugin-pwa autoUpdate, `manifest: false`
+  keeping the single static manifest, `lib/sw.ts` with `spira:disable-sw` kill-switch + one-time ghost
+  cleanup, update toast, offline pill + online-flush). dist verified: no /api/ precache, single manifest,
+  upgrade revision changes. Manual browser checklist is in cat5's final report (team transcript).
