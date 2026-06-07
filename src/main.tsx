@@ -3,19 +3,13 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { PwaUpdateToast } from './components/PwaUpdateToast';
 import './index.css';
 
-// Spíra notar EKKI service worker. Eldri útgáfa (eða önnur síða á localhost)
-// gat skilið eftir "draugs"-service-worker sem hlerar leiðir (t.d. /grow/:id)
-// og veldur netvillum. Afskráum allar SW-skráningar og hreinsum cache þeirra.
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then((regs) => {
-    for (const reg of regs) void reg.unregister();
-  });
-  if ('caches' in window) {
-    caches.keys().then((keys) => keys.forEach((k) => void caches.delete(k)));
-  }
-}
+// Service-worker (5.3): Spíra notar nú SW (vite-plugin-pwa) fyrir uppsetningu
+// og offline-skel. Skráningin, eins-skiptis hreinsun á eldri „draugs"-SW og
+// neyðarrofinn `localStorage['spira:disable-sw']` búa í src/lib/sw.ts og eru
+// ræst úr <PwaUpdateToast/>. /api/* er ALDREI vistað í cache.
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -23,6 +17,7 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <App />
       </BrowserRouter>
+      <PwaUpdateToast />
     </ErrorBoundary>
   </StrictMode>,
 );

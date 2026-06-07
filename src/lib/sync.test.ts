@@ -14,6 +14,7 @@ import {
   exportSnapshot,
   importSnapshot,
   isSnapshot,
+  migrateSnapshot,
   type SnapshotV1,
 } from '@/lib/sync';
 
@@ -185,6 +186,23 @@ describe('importSnapshot', () => {
     await importSnapshot(snap);
     expect((await db.meta.get('staðbundið'))?.value).toBe('helst');
     expect((await db.meta.get('onboardingComplete'))?.value).toBe(true);
+  });
+});
+
+describe('migrateSnapshot', () => {
+  it('skilar gildu v1 afriti óbreyttu', async () => {
+    await seed();
+    const snap = await exportSnapshot();
+    expect(migrateSnapshot(snap)).toBe(snap);
+  });
+
+  it('kastar á rusli (ógilt afrit)', () => {
+    expect(() => migrateSnapshot(null)).toThrow();
+    expect(() => migrateSnapshot('garbage')).toThrow();
+    expect(() => migrateSnapshot({})).toThrow();
+    expect(() =>
+      migrateSnapshot({ version: 2, grows: [], plants: [], logs: [], environment: [], harvests: [], meta: [] }),
+    ).toThrow();
   });
 });
 
