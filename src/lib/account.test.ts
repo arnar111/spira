@@ -12,11 +12,10 @@ describe('normalizeCode', () => {
     expect(normalizeCode('  1!2@3#  ')).toBe('123');
   });
 
-  it('klippir í 3 stafi (mjúk normalisering á kliendi)', () => {
-    // ATH 5.1: serverinn hafnar of löngum kóða í stað þess að klippa —
-    // þetta próf festir núverandi hegðun klientsins fyrir samræminguna.
-    expect(normalizeCode('abcdef')).toBe('ABC');
-    expect(normalizeCode('a-b-c-d')).toBe('ABC');
+  it('klippir EKKI — röng lengd fellur á isValidCode (samræmt við serverinn í 5.1)', () => {
+    expect(normalizeCode('abcdef')).toBe('ABCDEF');
+    expect(normalizeCode('a-b-c-d')).toBe('ABCD');
+    expect(isValidCode(normalizeCode('abcdef'))).toBe(false);
   });
 
   it('íslenskir stafir (Þ/Ð/Æ/Ö) eru fjarlægðir, ekki varpaðir', () => {
@@ -56,7 +55,8 @@ describe('isValidCode', () => {
 
   it('normalizeCode → isValidCode er heild fyrir gilt hráefni', () => {
     expect(isValidCode(normalizeCode('abc'))).toBe(true);
-    expect(isValidCode(normalizeCode('a b c d'))).toBe(true); // klippt í ABC
+    expect(isValidCode(normalizeCode(' a-b 1 '))).toBe(true); // strippað í AB1
+    expect(isValidCode(normalizeCode('a b c d'))).toBe(false); // 4 stafir = ógilt
     expect(isValidCode(normalizeCode('þð'))).toBe(false); // ekkert eftir
   });
 });

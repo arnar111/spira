@@ -14,8 +14,13 @@ const API = '/api/account';
 export const CODE_LENGTH = 3;
 export const CODE_PATTERN = /^[A-Z0-9]{3}$/;
 
+/**
+ * Samræmd kóða-normalisering (sjá netlify/functions/account.mts — höldum þeim
+ * eins): hástafa → strippa allt nema A–Z/0–9. EKKERT klipp — gildi með rangri
+ * lengd fellur á isValidCode í stað þess að styttast hljóðlaust.
+ */
 export function normalizeCode(raw: string): string {
-  return raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, CODE_LENGTH);
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
 export function isValidCode(raw: string): boolean {

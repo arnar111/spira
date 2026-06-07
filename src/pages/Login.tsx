@@ -285,7 +285,8 @@ function CodeInput({
 
   function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
     e.preventDefault();
-    const pasted = normalizeCode(e.clipboardData.getData('text'));
+    // Líming tekur fyrstu 3 gildu stafina (normalizeCode klippir ekki lengur).
+    const pasted = normalizeCode(e.clipboardData.getData('text')).slice(0, CODE_LENGTH);
     if (pasted) onChange(pasted);
   }
 

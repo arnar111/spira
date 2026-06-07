@@ -8,7 +8,7 @@
 > claim below. **Read it before starting any phase.** Line numbers were verified at commit `6b571aa`
 > (branch `claude/veritable-smart-integration`) and will drift — re-locate before editing.
 >
-> **How to use this file:** Pick a phase → read its section + the matching research section → implement →
+> **How to use this file:** Create an agent team for each 5 categories to work together in paralell → read its section + the matching research section → implement →
 > check the boxes → update the status table. Keep phases small and shippable; each phase should leave the
 > app working and `npm run lint` clean.
 
@@ -22,12 +22,10 @@
 | 2. UI | ⬜ | ⬜ | ⬜ | ⬜ |
 | 3. Features | ⬜ | ⬜ | ⬜ | ⬜ |
 | 4. Codebase | ✅ | ✅ | ⬜ | ⬜ |
-| 5. Other | ⬜ | ⬜ | ⬜ | ⬜ |
+| 5. Other | ✅ | ⬜ | ⬜ | ⬜ |
 
 ⬜ not started · 🔶 in progress · ✅ done
 
-**Recommended execution order:** 4.1 → 4.2 → 5.1 → (1.x / 2.x / 3.x in any order, parallel sessions OK) →
-4.3 → 4.4 last (file-splitting is safest once tests exist). 5.2–5.4 anytime after 4.1.
 
 ---
 
@@ -415,21 +413,25 @@ behaves identically.
 
 **Goal:** Close the obvious abuse surfaces on the two Netlify functions. Independent of all other phases.
 
-- [ ] **Rate limiting on `/api/account`** (`netlify/functions/account.mts`): the 3-char code space is only
+- [x] **Rate limiting on `/api/account`** (`netlify/functions/account.mts`): the 3-char code space is only
       238k — enumeration is feasible. Stateless functions → use the existing Postgres: a `rate_limits`
       table (`key TEXT PRIMARY KEY, window_start TIMESTAMPTZ, count INT`) keyed by
       `ip:action` (IP from `context.ip` or `x-nf-client-connection-ip` header). Limit e.g. 10 signin
       attempts / 5 min / IP → 429 with Icelandic message ("Of margar tilraunir — reyndu aftur eftir smá
       stund"). Add migration file in `netlify/database/migrations/` following the existing pattern.
-- [ ] **Input caps in `account.mts`**: `name` max 64 chars; reject request bodies > ~5 MB (check
+      *(Limits: signin/signup 10/5 min, sync 120/5 min. Single-upsert fixed window; **fail-open** if the
+      table is missing so a broken counter can't lock everyone out.)*
+- [x] **Input caps in `account.mts`**: `name` max 64 chars; reject request bodies > ~5 MB (check
       `content-length` and/or measure the parsed snapshot JSON string); validate snapshot shape minimally
       (`isSnapshot`-equivalent server-side or at least `version === 1` + expected keys) before writing JSONB.
-- [ ] **Input caps in `ros.mts`**: max 40 messages per request (truncate oldest client-side too, in
+      *(sync validates the full v1 shape; signup validates `version === 1` only — Login sends `{version:1}`.)*
+- [x] **Input caps in `ros.mts`**: max 40 messages per request (truncate oldest client-side too, in
       `src/lib/ros/chat.ts`), max ~2 MB per inline image / 4 images, max context length (~24k chars —
       truncate with a note). Return 413 with Icelandic message on violation.
-- [ ] **Align `normalizeCode`**: client (`src/lib/account.ts:17-22`) slices, server
+- [x] **Align `normalizeCode`**: client (`src/lib/account.ts:17-22`) slices, server
       (`account.mts:83-88`) requires exact — make both: uppercase → strip non-`[A-Z0-9]` → must be exactly
-      3 chars, else invalid. Add the client function to 4.2's tests.
+      3 chars, else invalid. Add the client function to 4.2's tests. *(Client no longer slices; the
+      CodeInput paste handler does its own `.slice(0, 3)` for UX. Tests updated.)*
 
 **Acceptance:** Hammering signin gets 429s; oversized payloads rejected cleanly; both normalizers
 byte-identical in behavior.
@@ -521,3 +523,11 @@ session.
     (b) latent quirk: the feed/topping/pollinate blocks do NOT gate on `grow.archived`/`growActive`, so an
     archived grow still yields a `feed` due insight — locked in as-is, decide in 4.3 whether to fix.
   - `importSnapshot` merges `meta` via bulkPut (doesn't clear) and leaves photos untouched — now pinned.
+- **2026-06-07 — 5.1 Server hardening done** (same branch). Rate limiting (Postgres fixed-window,
+  migration `20260607120000_create-rate-limits`), input caps on both functions, normalizeCode aligned.
+  - **Gotcha found:** `tsconfig.json` includes only `src/` — the Netlify `.mts` functions are NOT covered
+    by `npm run lint`/`check` (esbuild bundles them untyped). Verified this phase ad-hoc with
+    `npx tsc --noEmit --strict … netlify/functions/*.mts`. Consider wiring a `tsconfig.netlify.json` into
+    the `check` script in a later phase (note for 5.4 docs).
+  - The rate-limit migration must be applied to the Netlify DB before deploy benefits; the function
+    fails open (console.warn) until then, so nothing breaks if deploy order slips.
