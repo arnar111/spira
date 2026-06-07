@@ -6,6 +6,7 @@ import { Eyebrow } from '@/components/ui/Eyebrow';
 import { Card } from '@/components/ui/Card';
 import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
 import { Chili } from '@/components/Chili';
 import { db, newId, type Plant } from '@/lib/db';
 import { chiliForVarietyName, formatShu, varietyByName } from '@/lib/varieties';
@@ -165,16 +166,23 @@ function HarvestDialog({
 
   const selectedPlant = plants.find((p) => p.id === plantId);
 
+  const weightG = parseFloat(weight);
+  const podCount = parseInt(pods, 10);
+  const hasWeight = Number.isFinite(weightG) && weightG > 0;
+  const hasPods = Number.isFinite(podCount) && podCount > 0;
+  // Krafa: skráðu annaðhvort þyngd eða fjölda (1.1 — staðfesting á uppskeruformi).
+  const canSubmit = !!selectedPlant && (hasWeight || hasPods);
+
   async function submit() {
-    if (!selectedPlant || !weight) return;
+    if (!selectedPlant || !canSubmit) return;
     setBusy(true);
     await db.harvests.add({
       id: newId(),
       growId: selectedPlant.growId,
       plantId: selectedPlant.id,
       timestamp: Date.now(),
-      weightG: parseFloat(weight),
-      podCount: pods ? parseInt(pods, 10) : undefined,
+      weightG: hasWeight ? weightG : 0,
+      podCount: hasPods ? podCount : undefined,
       note: note.trim() || undefined,
     });
     setBusy(false);
@@ -182,86 +190,71 @@ function HarvestDialog({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3"
-      style={{ background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(4px)' }}
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-2xl p-5"
-        style={{
-          background: 'rgba(36,56,39,.96)',
-          border: '1px solid rgba(64,104,67,.55)',
-        }}
-        onClick={(e) => e.stopPropagation()}
+    <Modal open onClose={onClose} eyebrow="Ný uppskera" title="Skrá tínslu">
+      <label className="text-xs text-cream-300/80 block mb-1.5">Planta</label>
+      <select
+        value={plantId}
+        onChange={(e) => setPlantId(e.target.value)}
+        className="w-full rounded-xl bg-moss-950/60 border border-moss-800 px-3 py-2.5 text-sm text-cream-100 outline-none focus:border-moss-400"
       >
-        <Eyebrow>Ný uppskera</Eyebrow>
-        <h3
-          className="sp-display"
-          style={{ fontSize: 22, color: 'var(--cream-50)', fontWeight: 500, marginTop: 4 }}
-        >
-          Skrá tínslu
-        </h3>
+        {plants.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.nickname || p.variety}
+          </option>
+        ))}
+      </select>
 
-        <label className="text-xs text-cream-300/80 block mt-4 mb-1.5">Planta</label>
-        <select
-          value={plantId}
-          onChange={(e) => setPlantId(e.target.value)}
-          className="w-full rounded-xl bg-moss-950/60 border border-moss-800 px-3 py-2.5 text-sm text-cream-100 outline-none focus:border-moss-400"
-        >
-          {plants.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.nickname || p.variety}
-            </option>
-          ))}
-        </select>
-
-        <div className="grid grid-cols-2 gap-3 mt-3">
-          <div>
-            <label className="text-xs text-cream-300/80 block mb-1.5">Þyngd</label>
-            <div className="relative">
-              <input
-                autoFocus
-                inputMode="decimal"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value.replace(',', '.'))}
-                placeholder="0"
-                className="w-full rounded-xl bg-moss-950/60 border border-moss-800 px-3 py-2.5 pr-7 text-sm text-cream-100 outline-none focus:border-moss-400"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-cream-400/60 text-xs">
-                g
-              </span>
-            </div>
-          </div>
-          <div>
-            <label className="text-xs text-cream-300/80 block mb-1.5">Pod-talning</label>
+      <div className="grid grid-cols-2 gap-3 mt-3">
+        <div>
+          <label className="text-xs text-cream-300/80 block mb-1.5">Þyngd</label>
+          <div className="relative">
             <input
-              inputMode="numeric"
-              value={pods}
-              onChange={(e) => setPods(e.target.value)}
-              placeholder="—"
-              className="w-full rounded-xl bg-moss-950/60 border border-moss-800 px-3 py-2.5 text-sm text-cream-100 outline-none focus:border-moss-400"
+              autoFocus
+              inputMode="decimal"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value.replace(',', '.'))}
+              placeholder="0"
+              className="w-full rounded-xl bg-moss-950/60 border border-moss-800 px-3 py-2.5 pr-7 text-sm text-cream-100 outline-none focus:border-moss-400"
             />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-cream-400/60 text-xs">
+              g
+            </span>
           </div>
         </div>
-
-        <label className="text-xs text-cream-300/80 block mt-3 mb-1.5">Athugasemd</label>
-        <input
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="t.d. fyrsta tínsla, fersk"
-          className="w-full rounded-xl bg-moss-950/60 border border-moss-800 px-3 py-2 text-sm text-cream-100 outline-none focus:border-moss-400"
-        />
-
-        <div className="mt-5 flex gap-2 justify-end">
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            Hætta við
-          </Button>
-          <Button size="sm" disabled={busy || !weight} onClick={submit}>
-            Vista
-          </Button>
+        <div>
+          <label className="text-xs text-cream-300/80 block mb-1.5">Pod-talning</label>
+          <input
+            inputMode="numeric"
+            value={pods}
+            onChange={(e) => setPods(e.target.value)}
+            placeholder="—"
+            className="w-full rounded-xl bg-moss-950/60 border border-moss-800 px-3 py-2.5 text-sm text-cream-100 outline-none focus:border-moss-400"
+          />
         </div>
       </div>
-    </div>
+
+      {!canSubmit && (
+        <p className="text-[11px] mt-2" style={{ color: 'var(--terra-300)' }}>
+          Skráðu þyngd eða fjölda.
+        </p>
+      )}
+
+      <label className="text-xs text-cream-300/80 block mt-3 mb-1.5">Athugasemd</label>
+      <input
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="t.d. fyrsta tínsla, fersk"
+        className="w-full rounded-xl bg-moss-950/60 border border-moss-800 px-3 py-2 text-sm text-cream-100 outline-none focus:border-moss-400"
+      />
+
+      <div className="mt-5 flex gap-2 justify-end">
+        <Button variant="ghost" size="sm" onClick={onClose}>
+          Hætta við
+        </Button>
+        <Button size="sm" disabled={busy || !canSubmit} onClick={submit}>
+          Vista
+        </Button>
+      </div>
+    </Modal>
   );
 }

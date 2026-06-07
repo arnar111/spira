@@ -10,6 +10,7 @@ import {
   Layers,
   Leaf,
   LogOut,
+  RefreshCw,
   Scale,
   Sprout,
   Thermometer,
@@ -19,6 +20,9 @@ import { cn } from '@/lib/cn';
 import { clearCurrentAccount, type Account } from '@/lib/account';
 import { clearLocalData, syncManager, type SyncStatus } from '@/lib/sync';
 import { ErrorBoundary } from './ErrorBoundary';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 const navItems = [
   { to: '/home', label: 'Heim', icon: Home, available: true },
@@ -182,19 +186,22 @@ export function Layout({ account, onSignOut }: LayoutProps) {
 function useSyncStatus() {
   const [status, setStatus] = useState<SyncStatus>('idle');
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
+  const [lastError, setLastError] = useState<string | null>(null);
   useEffect(
     () =>
-      syncManager.subscribe((s, t) => {
-        setStatus(s);
-        setLastSyncedAt(t);
+      syncManager.subscribe((s) => {
+        setStatus(s.status);
+        setLastSyncedAt(s.lastSyncedAt);
+        setLastError(s.lastError);
       }),
     [],
   );
-  return { status, lastSyncedAt };
+  return { status, lastSyncedAt, lastError };
 }
 
 function AccountFooter({ account, onSignOut }: { account: Account; onSignOut: () => void }) {
-  const { status, lastSyncedAt } = useSyncStatus();
+  const { status, lastSyncedAt, lastError } = useSyncStatus();
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
   return (
     <div
       className="mx-[18px] mb-5 p-3 rounded-xl space-y-2.5"
@@ -221,12 +228,12 @@ function AccountFooter({ account, onSignOut }: { account: Account; onSignOut: ()
           >
             {account.name}
           </div>
-          <SyncBadge status={status} lastSyncedAt={lastSyncedAt} />
+          <SyncBadge status={status} lastSyncedAt={lastSyncedAt} lastError={lastError} />
         </div>
       </div>
       <button
         type="button"
-        onClick={() => handleSignOut(onSignOut)}
+        onClick={() => setConfirmSignOut(true)}
         className="w-full flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-medium transition-colors"
         style={{
           color: 'rgba(231,217,168,.7)',
@@ -237,60 +244,170 @@ function AccountFooter({ account, onSignOut }: { account: Account; onSignOut: ()
         <LogOut size={12} />
         Skrá út
       </button>
+      <SignOutConfirm
+        open={confirmSignOut}
+        onClose={() => setConfirmSignOut(false)}
+        onSignOut={onSignOut}
+      />
     </div>
   );
 }
 
 function MobileAccountBadge({ account, onSignOut }: { account: Account; onSignOut: () => void }) {
   const { status } = useSyncStatus();
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
   return (
-    <button
-      type="button"
-      onClick={() => handleSignOut(onSignOut)}
-      className="flex items-center gap-1.5 rounded-lg pl-2 pr-2.5 py-1.5 text-xs transition-colors"
-      style={{
-        background: 'rgba(36,56,39,.7)',
-        border: '1px solid rgba(64,104,67,.4)',
-        color: 'var(--cream-100)',
-      }}
-      title={`${account.name} (${account.code}) — smelltu til að skrá þig út`}
-      aria-label={`Skráður inn sem ${account.name}, kóði ${account.code}`}
-    >
-      <SyncDot status={status} />
-      <span className="sp-display font-semibold tracking-wider">{account.code}</span>
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => setConfirmSignOut(true)}
+        className="flex items-center gap-1.5 rounded-lg pl-2 pr-2.5 py-1.5 text-xs transition-colors"
+        style={{
+          background: 'rgba(36,56,39,.7)',
+          border: '1px solid rgba(64,104,67,.4)',
+          color: 'var(--cream-100)',
+        }}
+        title={`${account.name} (${account.code}) — smelltu til að skrá þig út`}
+        aria-label={`Skráður inn sem ${account.name}, kóði ${account.code}`}
+      >
+        <SyncDot status={status} />
+        <span className="sp-display font-semibold tracking-wider">{account.code}</span>
+      </button>
+      <SignOutConfirm
+        open={confirmSignOut}
+        onClose={() => setConfirmSignOut(false)}
+        onSignOut={onSignOut}
+      />
+    </>
   );
 }
 
-async function handleSignOut(onSignOut: () => void) {
-  if (
-    !confirm(
-      'Skrá út? Local gögn verða hreinsuð. Þú getur skráð þig inn aftur með kóðanum þínum.',
-    )
-  )
-    return;
-  await syncManager.flush();
-  await clearLocalData();
-  clearCurrentAccount();
-  onSignOut();
+function SignOutConfirm({
+  open,
+  onClose,
+  onSignOut,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSignOut: () => void;
+}) {
+  async function doSignOut() {
+    await syncManager.flush();
+    await clearLocalData();
+    clearCurrentAccount();
+    onSignOut();
+  }
+  return (
+    <ConfirmDialog
+      open={open}
+      onClose={onClose}
+      onConfirm={() => void doSignOut()}
+      title="Skrá út"
+      body="Gögnin í þessu tæki verða hreinsuð. Þú getur skráð þig inn aftur með kóðanum þínum og sótt afritið úr skýinu."
+      confirmLabel="Skrá út"
+      destructive
+    />
+  );
 }
 
 function SyncBadge({
   status,
   lastSyncedAt,
+  lastError,
 }: {
   status: SyncStatus;
   lastSyncedAt: number | null;
+  lastError: string | null;
 }) {
   const { icon: Icon, label, tone } = describeSync(status, lastSyncedAt);
-  return (
-    <div className="flex items-center gap-1 text-[11px] mt-0.5" style={{ color: tone }}>
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+
+  async function retry() {
+    setRetrying(true);
+    try {
+      await syncManager.syncNow();
+    } finally {
+      setRetrying(false);
+    }
+  }
+
+  const badge = (
+    <span className="inline-flex items-center gap-1">
       <Icon
         size={11}
         className={status === 'syncing' || status === 'pending' ? 'animate-pulse' : ''}
       />
       <span>{label}</span>
-    </div>
+    </span>
+  );
+
+  if (status !== 'error') {
+    return (
+      <div className="flex items-center gap-1 text-[11px] mt-0.5" style={{ color: tone }}>
+        {badge}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setDetailsOpen(true)}
+        className="flex items-center gap-1 text-[11px] mt-0.5 underline-offset-2 hover:underline"
+        style={{ color: tone }}
+        aria-label="Sýna ástæðu fyrir misheppnaðri samstillingu"
+      >
+        {badge}
+      </button>
+      <Modal
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        eyebrow="Samstilling"
+        title="Synci klikkaði"
+        size="sm"
+      >
+        <div className="space-y-3 text-sm" style={{ color: 'var(--cream-300)' }}>
+          <p>
+            Síðasta samstilling við skýið mistókst. Gögnin þín eru samt örugg í
+            tækinu — Spíra reynir aftur sjálfkrafa.
+          </p>
+          {lastError && (
+            <p
+              className="sp-mono text-[11px] rounded-lg px-3 py-2"
+              style={{
+                background: 'rgba(18,31,20,.6)',
+                border: '1px solid rgba(64,104,67,.4)',
+                color: 'rgb(212,128,107)',
+                wordBreak: 'break-word',
+              }}
+            >
+              {lastError}
+            </p>
+          )}
+          <p className="text-[11px]" style={{ color: 'var(--cream-400)' }}>
+            {lastSyncedAt
+              ? `Síðast vistað ${formatRelative(lastSyncedAt)}.`
+              : 'Engin samstilling hefur tekist enn.'}
+          </p>
+        </div>
+        <div className="flex justify-end gap-2 mt-4">
+          <Button variant="ghost" size="md" onClick={() => setDetailsOpen(false)}>
+            Loka
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
+            disabled={retrying}
+            onClick={() => void retry()}
+          >
+            <RefreshCw size={14} className={retrying ? 'animate-spin' : ''} />
+            {retrying ? 'Reyni…' : 'Reyna aftur'}
+          </Button>
+        </div>
+      </Modal>
+    </>
   );
 }
 

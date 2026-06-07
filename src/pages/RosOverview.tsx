@@ -27,6 +27,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Eyebrow } from '@/components/ui/Eyebrow';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { RosAvatar } from '@/components/ros/RosAvatar';
 import { db, newId, type Plant, type RosReport } from '@/lib/db';
 import {
@@ -128,6 +129,7 @@ export function RosOverview() {
 
   const [building, setBuilding] = useState(false);
   const [buildError, setBuildError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   // Virkar ræktanir (ekki vistaðar í safn).
   const activeGrows = useMemo(
@@ -249,7 +251,6 @@ export function RosOverview() {
   }
 
   async function deleteReport(id: string) {
-    if (!confirm('Eyða þessari vikuskýrslu?')) return;
     await db.rosReports.delete(id);
   }
 
@@ -382,12 +383,24 @@ export function RosOverview() {
               <ReportCard
                 key={report.id}
                 report={report}
-                onDelete={() => void deleteReport(report.id)}
+                onDelete={() => setDeleteTarget(report.id)}
               />
             ))}
           </div>
         </section>
       </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) void deleteReport(deleteTarget);
+        }}
+        title="Eyða vikuskýrslu"
+        body="Viltu eyða þessari vikuskýrslu? Þetta er ekki hægt að afturkalla."
+        confirmLabel="Eyða skýrslu"
+        destructive
+      />
     </motion.div>
   );
 }

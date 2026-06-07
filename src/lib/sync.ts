@@ -100,12 +100,23 @@ export function isSnapshot(value: unknown): value is SnapshotV1 {
 }
 
 type SyncStatus = 'idle' | 'pending' | 'syncing' | 'error';
-type Listener = (status: SyncStatus, lastSyncedAt: number | null) => void;
+
+/**
+ * Síðasta villuboð frá netþjóni er geymt svo „Synci klikkaði"-merkið geti birt
+ * ástæðuna og boðið „Reyna aftur" (1.1 — gagnsæi á sync-villum).
+ */
+interface SyncState {
+  status: SyncStatus;
+  lastSyncedAt: number | null;
+  lastError: string | null;
+}
+type Listener = (state: SyncState) => void;
 
 class SyncManager {
   private code: string | null = null;
   private status: SyncStatus = 'idle';
   private lastSyncedAt: number | null = null;
+  private lastError: string | null = null;
   private listeners = new Set<Listener>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private inFlight: Promise<void> | null = null;
@@ -116,6 +127,7 @@ class SyncManager {
     this.code = code;
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
+    this.lastError = null;
     this.setStatus('idle', null);
   }
 
@@ -160,9 +172,24 @@ class SyncManager {
 
   subscribe(listener: Listener): () => void {
     this.listeners.add(listener);
-    listener(this.status, this.lastSyncedAt);
+    listener(this.snapshot());
     return () => {
       this.listeners.delete(listener);
+    };
+  }
+
+  /** Handvirk samstilling núna — notað af „Reyna aftur"-hnappnum. */
+  async syncNow(): Promise<void> {
+    if (!this.code || this.isDemo()) return;
+    this.lastError = null;
+    await this.flush();
+  }
+
+  private snapshot(): SyncState {
+    return {
+      status: this.status,
+      lastSyncedAt: this.lastSyncedAt,
+      lastError: this.lastError,
     };
   }
 
@@ -174,9 +201,14 @@ class SyncManager {
       await syncData(this.code, snapshot);
       const now = Date.now();
       this.lastSyncedAt = now;
+      this.lastError = null;
       this.setStatus('idle', now);
     } catch (err) {
       console.error('[sync] failed', err);
+      this.lastError =
+        err instanceof Error && err.message
+          ? err.message
+          : 'Óþekkt villa við samstillingu.';
       this.setStatus('error', this.lastSyncedAt);
     }
   }
@@ -184,12 +216,13 @@ class SyncManager {
   private setStatus(status: SyncStatus, lastSyncedAt: number | null) {
     this.status = status;
     this.lastSyncedAt = lastSyncedAt;
-    for (const listener of this.listeners) listener(status, lastSyncedAt);
+    const state = this.snapshot();
+    for (const listener of this.listeners) listener(state);
   }
 }
 
 export const syncManager = new SyncManager();
-export type { SyncStatus };
+export type { SyncStatus, SyncState };
 
 let hooksInstalled = false;
 

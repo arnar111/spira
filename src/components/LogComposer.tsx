@@ -75,6 +75,10 @@ export function LogComposer({
   const [photoId, setPhotoId] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Sjálfvirkur fókus á fyrsta merkingarbæra reitinn (1.1) — sett þegar
+  // gerð er valin svo við opnum ekki lyklaborð á tegundavalskjánum að óþörfu.
+  const firstFieldRef = useRef<HTMLInputElement | HTMLSelectElement>(null);
+  const noteRef = useRef<HTMLTextAreaElement>(null);
 
   // Reset transient state whenever the dialog (re)opens.
   useEffect(() => {
@@ -87,6 +91,18 @@ export function LogComposer({
       setBusy(false);
     }
   }, [open, defaultType]);
+
+  // Þegar gluggi opnast eða gerð er valin: settu fókus á fyrsta reitinn
+  // (eða athugasemd ef gerðin hefur enga reiti). Sleppum mynd — hún opnar
+  // skráarvalið beint. Lítill biðtími svo Modal-hreyfingin nái að teikna.
+  useEffect(() => {
+    if (!open || type === 'photo') return;
+    const id = window.setTimeout(() => {
+      const target = firstFieldRef.current ?? noteRef.current;
+      target?.focus();
+    }, 80);
+    return () => window.clearTimeout(id);
+  }, [open, type]);
 
   // Clear structured field values when switching log type.
   function selectType(next: LogType) {
@@ -236,12 +252,13 @@ export function LogComposer({
       {/* Structured fields */}
       {fields.length > 0 && (
         <div className="grid grid-cols-2 gap-2 mb-3">
-          {fields.map((field) => (
+          {fields.map((field, i) => (
             <Field
               key={field.key}
               field={field}
               value={data[field.key] ?? ''}
               onChange={(v) => setField(field.key, v)}
+              inputRef={i === 0 ? firstFieldRef : undefined}
             />
           ))}
         </div>
@@ -284,6 +301,7 @@ export function LogComposer({
       {/* Freeform note */}
       <label className="text-xs text-cream-300/80 mb-1.5 block">Athugasemd</label>
       <textarea
+        ref={noteRef}
         value={note}
         onChange={(e) => setNote(e.target.value)}
         rows={2}
@@ -308,10 +326,12 @@ function Field({
   field,
   value,
   onChange,
+  inputRef,
 }: {
   field: LogField;
   value: string;
   onChange: (value: string) => void;
+  inputRef?: React.Ref<HTMLInputElement | HTMLSelectElement>;
 }): JSX.Element {
   const isFullWidth = field.kind === 'text' || field.kind === 'select';
   return (
@@ -322,6 +342,7 @@ function Field({
       </label>
       {field.kind === 'select' ? (
         <select
+          ref={inputRef as React.Ref<HTMLSelectElement>}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className={inputClass}
@@ -336,6 +357,7 @@ function Field({
       ) : (
         <div className="relative">
           <input
+            ref={inputRef as React.Ref<HTMLInputElement>}
             type={field.kind === 'number' ? 'number' : 'text'}
             inputMode={field.kind === 'number' ? 'decimal' : undefined}
             value={value}

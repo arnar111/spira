@@ -23,6 +23,7 @@ import { growIsOutdoor } from '@/lib/season';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { PlantGlyph } from '@/components/PlantGlyph';
 import {
   LogComposer,
@@ -106,6 +107,7 @@ export function GrowDetail() {
   const [rosOpen, setRosOpen] = useState(false);
   const [rosEverOpened, setRosEverOpened] = useState(false);
   const [openAddPlant, setOpenAddPlant] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
 
   if (!grow || !plants || !logs) return null;
 
@@ -119,7 +121,6 @@ export function GrowDetail() {
 
   async function archiveGrow() {
     if (!grow) return;
-    if (!confirm(`Loka ræktun "${grow.name}"?`)) return;
     await db.grows.update(grow.id, { archived: true, endDate: Date.now(), updatedAt: Date.now() });
     navigate('/grows');
   }
@@ -267,13 +268,23 @@ export function GrowDetail() {
 
       {!grow.archived && (
         <button
-          onClick={archiveGrow}
+          onClick={() => setConfirmArchive(true)}
           className="mt-8 flex items-center justify-center gap-1.5 text-cream-300/60 text-sm hover:text-cream-100 transition-colors w-full py-3 rounded-xl border border-dashed border-moss-800/40"
         >
           <Archive size={14} />
           Loka ræktun
         </button>
       )}
+
+      <ConfirmDialog
+        open={confirmArchive}
+        onClose={() => setConfirmArchive(false)}
+        onConfirm={archiveGrow}
+        title="Loka ræktun"
+        body={`Viltu loka ræktuninni „${grow.name}"? Hún færist í safnið og þú getur opnað hana aftur þaðan.`}
+        confirmLabel="Loka ræktun"
+        destructive
+      />
 
       <LogComposer
         growId={grow.id}
@@ -386,7 +397,8 @@ function PlantRow({ plant, day }: { plant: Plant; day: number }) {
         <select
           value={plant.currentPhase}
           onChange={(e) => setPhase(e.target.value as GrowPhase)}
-          className="mt-1 bg-moss-950/60 border border-moss-800 rounded-md px-2 py-0.5 text-[11px] text-cream-100 outline-none focus:border-moss-400"
+          aria-label={`Fasi fyrir ${plant.nickname || plant.variety}`}
+          className="mt-1 min-h-[40px] bg-moss-950/60 border border-moss-800 rounded-lg px-2.5 py-2 text-sm text-cream-100 outline-none focus:border-moss-400"
         >
           {PHASE_OPTIONS.map((p) => (
             <option key={p.id} value={p.id}>

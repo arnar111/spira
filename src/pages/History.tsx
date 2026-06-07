@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Archive, RotateCcw } from 'lucide-react';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { Pill } from '@/components/ui/Pill';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Chili } from '@/components/Chili';
 import { db } from '@/lib/db';
 import { LOCATIONS } from '@/lib/locations';
@@ -13,13 +15,13 @@ export function History() {
   const grows = useLiveQuery(() => db.grows.toArray());
   const plants = useLiveQuery(() => db.plants.toArray());
   const harvests = useLiveQuery(() => db.harvests.toArray());
+  const [reopenTarget, setReopenTarget] = useState<{ id: string; name: string } | null>(null);
 
   if (!grows || !plants || !harvests) return null;
 
   const archived = grows.filter((g) => g.archived);
 
   async function reopen(id: string) {
-    if (!confirm('Opna ræktun aftur?')) return;
     await db.grows.update(id, { archived: false, endDate: undefined, updatedAt: Date.now() });
   }
 
@@ -85,9 +87,10 @@ export function History() {
               </div>
               <button
                 type="button"
-                onClick={() => reopen(g.id)}
+                onClick={() => setReopenTarget({ id: g.id, name: g.name })}
                 className="flex items-center gap-1 text-[11px] text-cream-300 hover:text-cream-100 px-2 py-1 rounded-md border border-moss-800"
                 title="Opna aftur"
+                aria-label={`Opna ræktun ${g.name} aftur`}
               >
                 <RotateCcw size={11} /> Opna
               </button>
@@ -95,6 +98,21 @@ export function History() {
           );
         })}
       </div>
+
+      <ConfirmDialog
+        open={reopenTarget !== null}
+        onClose={() => setReopenTarget(null)}
+        onConfirm={() => {
+          if (reopenTarget) void reopen(reopenTarget.id);
+        }}
+        title="Opna ræktun aftur"
+        body={
+          reopenTarget
+            ? `Viltu opna „${reopenTarget.name}" aftur? Hún færist aftur í virku ræktanirnar.`
+            : undefined
+        }
+        confirmLabel="Opna aftur"
+      />
     </motion.div>
   );
 }
