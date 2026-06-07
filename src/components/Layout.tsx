@@ -13,6 +13,7 @@ import {
   Settings,
   Sprout,
   Thermometer,
+  WifiOff,
 } from 'lucide-react';
 import { Logo, Wordmark } from './Logo';
 import { cn } from '@/lib/cn';
@@ -115,6 +116,7 @@ export function Layout({ account, onSignOut }: LayoutProps) {
       </header>
 
       <main className="flex-1 min-w-0 pb-nav-safe md:pb-0">
+        <OfflineBanner />
         <ErrorBoundary resetKey={location.pathname}>
           <Outlet />
         </ErrorBoundary>
@@ -193,6 +195,52 @@ function useSyncStatus() {
     [],
   );
   return { status, lastSyncedAt };
+}
+
+/**
+ * Fylgist með nettengingu (5.3). Þegar tækið kemst aftur á netið er sync
+ * keyrt strax svo bið-breytingar fari upp í skýið.
+ */
+function useOnlineStatus(): boolean {
+  const [online, setOnline] = useState(
+    typeof navigator === 'undefined' ? true : navigator.onLine,
+  );
+  useEffect(() => {
+    const goOnline = () => {
+      setOnline(true);
+      void syncManager.flush();
+    };
+    const goOffline = () => setOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
+  return online;
+}
+
+/** Lítil pilla sem birtist aðeins þegar tækið er ónettengt (5.3). */
+function OfflineBanner() {
+  const online = useOnlineStatus();
+  if (online) return null;
+  return (
+    <div className="flex justify-center px-4 pt-3">
+      <span
+        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium"
+        style={{
+          background: 'rgba(212,128,107,.14)',
+          border: '1px solid rgba(212,128,107,.4)',
+          color: 'rgb(212,128,107)',
+        }}
+        title="Engin nettenging — breytingar samstillast þegar þú kemst aftur á netið."
+      >
+        <WifiOff size={11} />
+        Ónettengd — gögn vistast á tækinu
+      </span>
+    </div>
+  );
 }
 
 function AccountFooter({ account, onSignOut }: { account: Account; onSignOut: () => void }) {
