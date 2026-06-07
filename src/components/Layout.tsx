@@ -9,16 +9,18 @@ import {
   Home,
   Layers,
   Leaf,
-  LogOut,
   Scale,
+  Settings,
   Sprout,
   Thermometer,
 } from 'lucide-react';
 import { Logo, Wordmark } from './Logo';
 import { cn } from '@/lib/cn';
-import { clearCurrentAccount, type Account } from '@/lib/account';
-import { clearLocalData, syncManager, type SyncStatus } from '@/lib/sync';
+import { type Account } from '@/lib/account';
+import { syncManager, type SyncStatus } from '@/lib/sync';
 import { ErrorBoundary } from './ErrorBoundary';
+import { BackupControls } from './BackupControls';
+import { Modal } from '@/components/ui/Modal';
 
 const navItems = [
   { to: '/home', label: 'Heim', icon: Home, available: true },
@@ -224,55 +226,49 @@ function AccountFooter({ account, onSignOut }: { account: Account; onSignOut: ()
           <SyncBadge status={status} lastSyncedAt={lastSyncedAt} />
         </div>
       </div>
-      <button
-        type="button"
-        onClick={() => handleSignOut(onSignOut)}
-        className="w-full flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-medium transition-colors"
-        style={{
-          color: 'rgba(231,217,168,.7)',
-          border: '1px solid rgba(64,104,67,.5)',
-          background: 'transparent',
-        }}
-      >
-        <LogOut size={12} />
-        Skrá út
-      </button>
+      <BackupControls onSignOut={onSignOut} />
     </div>
   );
 }
 
 function MobileAccountBadge({ account, onSignOut }: { account: Account; onSignOut: () => void }) {
   const { status } = useSyncStatus();
+  const [open, setOpen] = useState(false);
   return (
-    <button
-      type="button"
-      onClick={() => handleSignOut(onSignOut)}
-      className="flex items-center gap-1.5 rounded-lg pl-2 pr-2.5 py-1.5 text-xs transition-colors"
-      style={{
-        background: 'rgba(36,56,39,.7)',
-        border: '1px solid rgba(64,104,67,.4)',
-        color: 'var(--cream-100)',
-      }}
-      title={`${account.name} (${account.code}) — smelltu til að skrá þig út`}
-      aria-label={`Skráður inn sem ${account.name}, kóði ${account.code}`}
-    >
-      <SyncDot status={status} />
-      <span className="sp-display font-semibold tracking-wider">{account.code}</span>
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-1.5 rounded-lg pl-2 pr-2.5 py-1.5 text-xs transition-colors"
+        style={{
+          background: 'rgba(36,56,39,.7)',
+          border: '1px solid rgba(64,104,67,.4)',
+          color: 'var(--cream-100)',
+        }}
+        title={`${account.name} (${account.code}) — reikningur & afrit`}
+        aria-label={`Skráður inn sem ${account.name}, kóði ${account.code}`}
+      >
+        <SyncDot status={status} />
+        <span className="sp-display font-semibold tracking-wider">{account.code}</span>
+      </button>
+      <Modal open={open} onClose={() => setOpen(false)} eyebrow="Reikningur" title={account.name}>
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-[13px]" style={{ color: 'var(--cream-300)' }}>
+            <Settings size={14} color="var(--moss-300)" />
+            <span>
+              Kóði <span className="sp-display font-semibold tracking-wider">{account.code}</span>
+            </span>
+          </div>
+          <BackupControls
+            onSignOut={() => {
+              setOpen(false);
+              onSignOut();
+            }}
+          />
+        </div>
+      </Modal>
+    </>
   );
-}
-
-async function handleSignOut(onSignOut: () => void) {
-  if (
-    !confirm(
-      'Skrá út? Local gögn verða hreinsuð. Þú getur skráð þig inn aftur með kóðanum þínum.',
-    )
-  )
-    return;
-  await syncManager.flush();
-  await clearLocalData();
-  clearCurrentAccount();
-  onSignOut();
 }
 
 function SyncBadge({

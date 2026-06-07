@@ -99,6 +99,16 @@ export function isSnapshot(value: unknown): value is SnapshotV1 {
   );
 }
 
+/**
+ * Eina hliðið fyrir innflutt afrit (5.2). Í dag staðfestir þetta bara v1, en
+ * þetta er staðurinn til að bæta við v2→v1 umbreytingu seinna án þess að snerta
+ * innflutnings-UI-ið. Kastar ef gögnin eru ekki gilt Spíra-afrit.
+ */
+export function migrateSnapshot(raw: unknown): SnapshotV1 {
+  if (isSnapshot(raw)) return raw;
+  throw new Error('Ógilt afrit — þetta er ekki gilt Spíra-afrit.');
+}
+
 type SyncStatus = 'idle' | 'pending' | 'syncing' | 'error';
 type Listener = (status: SyncStatus, lastSyncedAt: number | null) => void;
 
