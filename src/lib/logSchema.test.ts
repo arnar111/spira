@@ -72,6 +72,14 @@ describe('formatLogData', () => {
     it('óþekkt aðferð birtist hrá', () => {
       expect(formatLogData('pollinate', { method: 'blástur' })).toEqual(['blástur']);
     });
+
+    it('aldinatalning bætist við sem flís (4.1)', () => {
+      expect(formatLogData('pollinate', { method: 'pensill', fruitCount: 12 })).toEqual([
+        'Pensill',
+        '12 aldin',
+      ]);
+      expect(formatLogData('pollinate', { fruitCount: '8' })).toEqual(['8 aldin']);
+    });
   });
 
   describe('prune / top / transplant', () => {
@@ -159,6 +167,17 @@ describe('logData (týpaða lagið, 4.3)', () => {
     expect(logData('water', undefined).ph).toBeUndefined();
     expect(logData('note', { anything: 1 })).toEqual({});
     expect(logData('phase_change', undefined)).toEqual({});
+  });
+
+  it('pollinate: aðferð + aldinatalning þvinguð (4.1)', () => {
+    expect(logData('pollinate', { method: 'pensill', fruitCount: '14' })).toEqual({
+      method: 'pensill',
+      fruitCount: 14,
+    });
+    expect(logData('pollinate', { fruitCount: 'abc' })).toEqual({
+      method: undefined,
+      fruitCount: undefined,
+    });
   });
 
   it('pest/disease: kind + severity + detail', () => {

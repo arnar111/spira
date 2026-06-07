@@ -1,4 +1,5 @@
-import { Activity } from 'lucide-react';
+import { Activity, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { plantLabel } from '@/lib/ros/engine';
 import type { Plant } from '@/lib/db';
 import { dayWord } from '@/lib/dates';
@@ -43,6 +44,7 @@ function PredictionRow({
   daysUntilStart: number;
   progress: number;
 }) {
+  const navigate = useNavigate();
   const pct = Math.max(0, Math.min(1, progress));
   const windowLabel =
     daysUntilStart <= 0
@@ -50,8 +52,10 @@ function PredictionRow({
       : `gluggi opnast eftir ${daysUntilStart} ${dayWord(daysUntilStart)}`;
 
   return (
-    <div
-      className="rounded-2xl p-3"
+    <button
+      type="button"
+      onClick={() => navigate(`/grow/${plant.growId}`)}
+      className="w-full text-left rounded-2xl p-3 transition-colors hover:bg-moss-800/40"
       style={{
         background: 'rgba(36,56,39,.55)',
         border: '1px solid rgba(64,104,67,.4)',
@@ -81,6 +85,7 @@ function PredictionRow({
         >
           {windowLabel}
         </span>
+        <ChevronRight size={14} className="shrink-0 text-cream-300/40" />
       </div>
       <div
         className="w-full rounded-full overflow-hidden"
@@ -95,6 +100,6 @@ function PredictionRow({
           }}
         />
       </div>
-    </div>
+    </button>
   );
 }

@@ -186,6 +186,31 @@ export interface RosAssessment {
 }
 
 /**
+ * Talning aldina/blóma/klasa á plöntu — niðurstaða úr myndtalningu Rósar eða
+ * handvirkri talningu. Notuð sem `manualCount` í uppskerumati (`ros/yield.ts`).
+ * Staðbundin eins og photos/rosAssessments: EKKI hluti af sync-snapshot
+ * (myndafleidd/handvirk talning sem aldrei þarf að ferðast af tækinu).
+ */
+export interface RosYieldCheck {
+  /** Aðallykill (newId). */
+  id: string;
+  /** Indexuð — hvaða plöntu talningin á við. */
+  plantId: string;
+  /** Indexuð — ræktunin (fyrir per-grow live-queries). */
+  growId: string;
+  /** Myndin sem var talin (ef talning kom af mynd). */
+  photoId?: string;
+  /** Fjöldi talinna eininga. */
+  count: number;
+  /** Hvað var talið. */
+  kind: 'aldin' | 'blóm' | 'klasar';
+  /** Hvaðan talningin kom. */
+  source: 'mynd' | 'handvirkt';
+  /** Hvenær talningin var gerð. */
+  createdAt: number;
+}
+
+/**
  * Vikuskýrsla Rósar — AI-samantekt yfir allar ræktanir á tilteknu tímabili.
  * Staðbundin eins og photos/rosMessages/rosAssessments: EKKI hluti af
  * sync-snapshot (LLM-afurð sem má alltaf búa til aftur).
@@ -214,6 +239,7 @@ class SpiraDB extends Dexie {
   rosMessages!: Table<RosMessage, string>;
   rosAssessments!: Table<RosAssessment, string>;
   rosReports!: Table<RosReport, string>;
+  rosYieldChecks!: Table<RosYieldCheck, string>;
 
   constructor() {
     super('spira');
@@ -239,19 +265,27 @@ class SpiraDB extends Dexie {
     this.version(4).stores({
       rosReports: 'id, createdAt',
     });
-    // v5 (3.4): heilsumöt SAFNAST nú upp — nýr lykill `id` (newId) með `plantId`
-    // og `growId` index. Eldri (plantId-lyklaðar) færslur eru fluttar yfir og
-    // fá nýtt `id`. Áfram staðbundið — EKKI í sync-snapshot.
-    this.version(5)
-      .stores({
-        rosAssessments: 'id, plantId, growId',
-      })
-      .upgrade(async (tx) => {
-        const old = await tx.table<RosAssessment>('rosAssessments').toArray();
-        const migrated = old.map((a) => ({ ...a, id: a.id ?? newId() }));
-        await tx.table('rosAssessments').clear();
-        if (migrated.length > 0) await tx.table('rosAssessments').bulkAdd(migrated);
-      });
+    // v5 (3.4): heilsumöt eiga að SAFNAST upp — endurlyklað úr `plantId` í `id`.
+    // Dexie styður EKKI að breyta aðallykli í stað ("Not yet support for changing
+    // primary key"); rétta leiðin er að EYÐA töflunni í einni útgáfu og endurgera
+    // hana með nýja lyklinum í þeirri næstu. rosAssessments er staðbundið og
+    // myndafleitt (endurgeranlegt), svo töpuð eldri möt á þessari leið eru í lagi.
+    // (Athugið: notendur sem þegar voru komnir á v5 með `id`-lyklinum halda sínum
+    // gögnum — Dexie keyrir aðeins útgáfur > núverandi, svo þessi eyðing keyrir
+    // bara fyrir DB sem var á v3/v4.)
+    this.version(5).stores({
+      rosAssessments: null,
+    });
+    // v6: rosAssessments endurgerð með `id` sem aðallykli (+ plantId/growId index)
+    // svo hvert mat geymist (saga/þróun) í stað þess að yfirskrifast.
+    this.version(6).stores({
+      rosAssessments: 'id, plantId, growId',
+    });
+    // v7 (4.1): talningar aldina/blóma/klasa fyrir uppskerumat Rósar. Staðbundnar
+    // eins og rosAssessments — EKKI í sync-snapshot (myndafleidd/handvirk talning).
+    this.version(7).stores({
+      rosYieldChecks: 'id, plantId, growId',
+    });
   }
 }
 

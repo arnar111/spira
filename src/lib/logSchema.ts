@@ -51,6 +51,7 @@ export const LOG_FIELDS: Partial<Record<LogType, LogField[]>> = {
         { value: 'hristing', label: 'Hristing' },
       ],
     },
+    { key: 'fruitCount', label: 'Aldin á plöntu', unit: 'stk', kind: 'number', min: 0, step: 1, placeholder: 't.d. 12' },
   ],
   prune: [
     { key: 'detail', label: 'Hvað var gert', kind: 'text', placeholder: 't.d. neðri blöð fjarlægð' },
@@ -201,6 +202,8 @@ export interface HarvestLogData {
 
 export interface PollinateLogData {
   method?: string;
+  /** Handvirk talning aldina á plöntu — fóður í uppskerumat (`ros/yield.ts`). */
+  fruitCount?: number;
 }
 
 /** prune / top / transplant — eitt frjálst lýsingarsvið. */
@@ -275,7 +278,10 @@ export function logData<T extends LogType>(
         podCount: asNumber(d.podCount),
       } as LogDataByType[T];
     case 'pollinate':
-      return { method: asText(d.method) } as LogDataByType[T];
+      return {
+        method: asText(d.method),
+        fruitCount: asNumber(d.fruitCount),
+      } as LogDataByType[T];
     case 'prune':
     case 'top':
     case 'transplant':
@@ -351,6 +357,7 @@ export function formatLogData(
     case 'pollinate': {
       const d = logData(type, data);
       if (d.method !== undefined) chips.push(optionLabel(type, 'method', d.method));
+      if (d.fruitCount !== undefined) chips.push(`${num(d.fruitCount)} aldin`);
       break;
     }
     case 'prune':

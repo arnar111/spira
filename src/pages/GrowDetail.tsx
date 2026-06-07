@@ -1,7 +1,7 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Archive, Plus } from 'lucide-react';
 import { Pill } from '@/components/ui/Pill';
 import { Eyebrow } from '@/components/ui/Eyebrow';
@@ -24,11 +24,17 @@ import { useDelayedFlag } from '@/lib/useDelayedFlag';
 import { LogComposer } from '@/components/LogComposer';
 import { AddPlantDialog } from '@/components/AddPlantDialog';
 import { RosAvatar } from '@/components/ros/RosAvatar';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 
 // Rós-glugginn dregur inn markdown-vélina (react-markdown) — hlöðum hann
 // aðeins þegar notandi opnar Rós, svo aðalbúntið haldist létt.
 const RosWindow = lazy(() =>
   import('@/components/ros/RosWindow').then((m) => ({ default: m.RosWindow })),
+);
+// Innfelldi Rós-flöturinn (borðtölva) er líka hlaðinn sér af sömu ástæðu;
+// hann er aðeins tengdur á lg, svo hann hleðst þegar síðan opnast þar.
+const RosEmbeddedPanel = lazy(() =>
+  import('@/components/ros/RosEmbeddedPanel').then((m) => ({ default: m.RosEmbeddedPanel })),
 );
 import { db, type LogEntry, type LogType, type Plant } from '@/lib/db';
 import { deletePhoto } from '@/lib/photos';
@@ -50,6 +56,9 @@ import { PerPlantGallery } from './growdetail/PerPlantGallery';
 export function GrowDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  // Á borðtölvu er innfelldur Rós-flötur alltaf sýnilegur (Ráð/Uppskera/…), svo
+  // HeroCard-hnappurinn opnar spjallið; á síma opnar hann allan Rós-gluggann.
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
   const grow = useLiveQuery(() => (id ? db.grows.get(id) : undefined), [id]);
   const plants = useLiveQuery(
     () => (id ? db.plants.where('growId').equals(id).toArray() : []),
@@ -72,6 +81,11 @@ export function GrowDetail() {
   const [openLog, setOpenLog] = useState(false);
   const [rosOpen, setRosOpen] = useState(false);
   const [rosEverOpened, setRosEverOpened] = useState(false);
+  // Djúptenging af /ros („Spurning vikunnar"): opna Rós á Spjall-flipa með
+  // forskrifaðri spurningu. Lesið úr ?spyrja=1&q=… og hreinsað strax aftur.
+  const [rosInitialTab, setRosInitialTab] = useState<string | undefined>(undefined);
+  const [rosChatDraft, setRosChatDraft] = useState<string | undefined>(undefined);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [openAddPlant, setOpenAddPlant] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
   // Breyta/eyða skráningu (1.4).
@@ -83,6 +97,20 @@ export function GrowDetail() {
   const [logRange, setLogRange] = useState<7 | 30 | 0>(0);
   const [photosPlant, setPhotosPlant] = useState<Plant | null>(null);
   const [carePlant, setCarePlant] = useState<Plant | null>(null);
+
+  // Opna Rós beint á spjall með forskrifaðri spurningu þegar komið er af /ros.
+  // Hreinsum færibreyturnar (replace) svo bakvísun/endurhleðsla opni ekki aftur.
+  useEffect(() => {
+    if (searchParams.get('spyrja') === null) return;
+    setRosChatDraft(searchParams.get('q') ?? undefined);
+    setRosInitialTab('Spjall');
+    setRosEverOpened(true);
+    setRosOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('spyrja');
+    next.delete('q');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // Tegundir sem koma fyrir í þessari ræktun, í birtingarröð LOG_TYPES.
   const presentTypes = useMemo(() => {
@@ -155,6 +183,12 @@ export function GrowDetail() {
         Til baka
       </button>
 
+      {/*
+        Borðtölva (lg+): tvær súlur — vinstri með öllu efni síðunnar, hægri
+        kyrrstæður Rós-flötur. Á síma rennur þetta í eina súlu eins og áður.
+      */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-6 lg:items-start">
+        <div className="min-w-0">
       <HeroCard glyph={<PlantGlyph name={heroVariety} size={130} tilt={8} />}>
         <div className="flex gap-1.5 mb-2">
           {loc && <Pill tone="moss" size="sm">{loc.label}</Pill>}
@@ -193,7 +227,7 @@ export function GrowDetail() {
           }}
         >
           <RosAvatar size={18} />
-          Spyrja Rós
+          {isDesktop ? 'Spjall við Rós' : 'Spyrja Rós'}
         </button>
       </HeroCard>
 
@@ -322,6 +356,25 @@ export function GrowDetail() {
           Loka ræktun
         </button>
       )}
+        </div>
+
+        {/*
+          Kyrrstæður Rós-flötur — aðeins á borðtölvu. Festur rétt undir efri
+          brún efnis (py-6 ⇒ top-6); hæð takmörkuð við gluggann með eigin
+          innri skruni. Layout hefur engan efri stiku-haus á md+, svo offsetið
+          er bara efra bilið. Hleðst sér (react-markdown utan aðalbúnts).
+        */}
+        <aside
+          className="hidden lg:block lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)]"
+          aria-label="Rós — yfirlit ræktunar"
+        >
+          <Card tone="strong" radius={20} padding={16} className="h-full flex flex-col min-h-0">
+            <Suspense fallback={null}>
+              <RosEmbeddedPanel grow={grow} />
+            </Suspense>
+          </Card>
+        </aside>
+      </div>
 
       <ConfirmDialog
         open={confirmArchive}
@@ -392,7 +445,13 @@ export function GrowDetail() {
 
       {rosEverOpened && (
         <Suspense fallback={null}>
-          <RosWindow grow={grow} open={rosOpen} onClose={() => setRosOpen(false)} />
+          <RosWindow
+            grow={grow}
+            open={rosOpen}
+            onClose={() => setRosOpen(false)}
+            initialTab={rosInitialTab}
+            initialChatDraft={rosChatDraft}
+          />
         </Suspense>
       )}
     </motion.div>
