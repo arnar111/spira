@@ -3,14 +3,7 @@ import { CalendarCheck } from 'lucide-react';
 import type { HarvestEntry, Plant } from '@/lib/db';
 import { predictHarvestWindow } from '@/lib/ros/predict';
 import { varietyById, varietyByName } from '@/lib/varieties';
-
-function shortDate(ts: number): string {
-  try {
-    return new Date(ts).toLocaleDateString('is-IS', { day: 'numeric', month: 'short' });
-  } catch {
-    return new Date(ts).toISOString().slice(0, 10);
-  }
-}
+import { shortDate } from '@/lib/dates';
 
 interface Row {
   plantId: string;

@@ -3,6 +3,7 @@ import { Sparkline } from '@/components/ui/Sparkline';
 import { RangeToggle } from '@/components/ui/RangeToggle';
 import type { RangeDays } from '@/lib/range';
 import type { SeriesPoint } from '@/lib/series';
+import { shortDate } from '@/lib/dates';
 
 const DAY_MS = 86_400_000;
 
@@ -16,14 +17,6 @@ function sliceRange(points: SeriesPoint[], range: RangeDays): SeriesPoint[] {
   const last = points[points.length - 1].t;
   const cutoff = last - range * DAY_MS;
   return points.filter((p) => p.t >= cutoff);
-}
-
-function shortDate(ts: number): string {
-  try {
-    return new Date(ts).toLocaleDateString('is-IS', { day: 'numeric', month: 'short' });
-  } catch {
-    return new Date(ts).toISOString().slice(0, 10);
-  }
 }
 
 /** Snyrtir tölu: skerður óþarfa aukastaf. */

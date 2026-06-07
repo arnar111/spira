@@ -1,14 +1,7 @@
 import { useMemo } from 'react';
 import type { HarvestEntry } from '@/lib/db';
 import { harvestTimeline } from '@/lib/harvestStats';
-
-function shortDate(ts: number): string {
-  try {
-    return new Date(ts).toLocaleDateString('is-IS', { day: 'numeric', month: 'short' });
-  } catch {
-    return new Date(ts).toISOString().slice(0, 10);
-  }
-}
+import { shortDate } from '@/lib/dates';
 
 /**
  * Stöpla-tímalína tínslna: einn stöpull á hverja tínslu (hæð ∝ þyngd), raðað í

@@ -53,6 +53,7 @@ import {
   type PhotoBlob,
 } from '@/lib/db';
 import { addPhotoFromFile, getPhotoBlob, usePhotoUrl } from '@/lib/photos';
+import { relativeTime, shortDate } from '@/lib/dates';
 import {
   computeInsights,
   buildContextDigest,
@@ -336,29 +337,6 @@ function scoreColor(score: number | null): string {
   return 'var(--cap-500)';
 }
 
-/** Stutt, hlý íslensk afstæð tímasetning fyrir „greint fyrir …". */
-function relTime(ts: number, now: number): string {
-  const diff = Math.max(0, now - ts);
-  const min = Math.floor(diff / 60000);
-  if (min < 1) return 'rétt í þessu';
-  if (min < 60) return `fyrir ${min} mín`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `fyrir ${hr} klst`;
-  const d = Math.floor(hr / 24);
-  return `fyrir ${d} ${d === 1 ? 'degi' : 'dögum'}`;
-}
-
-/** Stutt dagsetning myndar á íslensku (fellur aftur á ISO ef locale vantar). */
-function photoDate(ts: number): string {
-  try {
-    return new Date(ts).toLocaleDateString('is-IS', {
-      day: 'numeric',
-      month: 'short',
-    });
-  } catch {
-    return new Date(ts).toISOString().slice(0, 10);
-  }
-}
 
 /**
  * Léttvæg lýsigögn nýjustu myndar plöntu — án blob (sparar minni; blobbinn er
@@ -643,8 +621,8 @@ function PlantHealthCard({
         <div className="mb-2">
           <MarkdownText content={assessment.text} />
           <div className="text-[10px] text-cream-300/55 mt-1.5 sp-mono">
-            Greint {relTime(assessment.createdAt, Date.now())} · mynd frá{' '}
-            {photoDate(assessment.photoTakenAt)}
+            Greint {relativeTime(assessment.createdAt)} · mynd frá{' '}
+            {shortDate(assessment.photoTakenAt)}
           </div>
           {hasNewerPhoto && (
             <div className="text-[11px] mt-1" style={{ color: 'var(--cream-300)' }}>
@@ -692,7 +670,7 @@ function PlantHealthCard({
                 >
                   <div className="flex items-center justify-between mb-0.5">
                     <span className="sp-mono text-cream-400/65">
-                      {photoDate(a.createdAt)}
+                      {shortDate(a.createdAt)}
                     </span>
                     {a.score !== null && (
                       <span className="sp-mono" style={{ color: scoreColor(a.score) }}>

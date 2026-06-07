@@ -28,6 +28,7 @@ import { GrowHarvestSection } from '@/components/charts/GrowHarvestSection';
 import { EnvBand } from '@/components/charts/EnvBand';
 import { PhotoGallery } from '@/components/gallery/PhotoGallery';
 import { growIsOutdoor } from '@/lib/season';
+import { shortDate } from '@/lib/dates';
 import { Card } from '@/components/ui/Card';
 import { HeroCard } from '@/components/ui/HeroCard';
 import { Button } from '@/components/ui/Button';
@@ -750,7 +751,7 @@ function LogRow({
             </span>
           )}
           <span className="text-[10px] text-cream-400/60 ml-auto sp-mono">
-            {date.toLocaleDateString('is-IS', { day: 'numeric', month: 'short' })}
+            {shortDate(date.getTime())}
           </span>
           <div className="flex items-center gap-0.5">
             {editable && (

@@ -273,8 +273,9 @@ describe('útiræktun sleppir innidyra-ráðum', () => {
   });
 });
 
-describe('kartöflur teljast útiræktun (frávik vélar frá season.ts)', () => {
-  // 4.3 sameinar þessar tvær útgáfur — þetta próf festir muninn þangað til.
+describe('kartöflur teljast útiræktun (sameinað growIsOutdoor, 4.3)', () => {
+  // 4.3: vélin notar nú growIsOutdoor úr season.ts — ein útgáfa með valkvæðum
+  // plöntulista. Án plöntulista (UI-tilvikið) gildir aðeins environment/garden.
   const grow = mkGrow({ locationKey: 'window' }); // EKKI garður, ekkert environment
   const potato = mkPlant({ category: 'potato', variety: 'Prófkartafla' });
 
@@ -284,8 +285,10 @@ describe('kartöflur teljast útiræktun (frávik vélar frá season.ts)', () =>
     expect(byId(insights, 'season-g1')).toBeDefined();
   });
 
-  it('season.ts growIsOutdoor: sama ræktun telst INNANdyra (engin plöntuvitund)', () => {
-    expect(seasonGrowIsOutdoor(grow)).toBe(false);
+  it('sameinaða fallið: plöntulisti gerir kartöfluræktun útiræktun, annars ekki', () => {
+    expect(seasonGrowIsOutdoor(grow)).toBe(false); // grow-eingöngu (UI án plantna)
+    expect(seasonGrowIsOutdoor(grow, [potato])).toBe(true); // plöntu-meðvitað (vélin)
+    expect(seasonGrowIsOutdoor(grow, [{ ...potato, archived: true }])).toBe(false);
   });
 
   it('environment "indoor" yfirskrifar kartöflureglu vélarinnar', () => {

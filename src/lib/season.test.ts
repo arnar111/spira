@@ -69,7 +69,7 @@ describe('seasonStatus', () => {
   });
 });
 
-describe('growIsOutdoor (grow-only útgáfan í season.ts)', () => {
+describe('growIsOutdoor (sameinaða útgáfan, 4.3)', () => {
   it('environment ræður þegar það er sett', () => {
     expect(growIsOutdoor({ environment: 'outdoor' })).toBe(true);
     expect(growIsOutdoor({ environment: 'indoor' })).toBe(false);
@@ -86,6 +86,12 @@ describe('growIsOutdoor (grow-only útgáfan í season.ts)', () => {
     expect(growIsOutdoor({})).toBe(false);
   });
 
-  // ATH: Rós-vélin hefur sína plöntu-meðvituðu útgáfu sem telur kartöflur
-  // alltaf útiræktun — sá munur er staðfestur í ros/engine.test.ts (4.3 sameinar).
+  it('valkvæður plöntulisti: virk kartafla gerir ræktun útiræktun', () => {
+    const potato = { archived: false, category: 'potato' };
+    expect(growIsOutdoor({}, [potato])).toBe(true);
+    expect(growIsOutdoor({}, [{ ...potato, archived: true }])).toBe(false);
+    expect(growIsOutdoor({}, [{ archived: false, category: 'pepper' }])).toBe(false);
+    // environment vinnur áfram fram yfir kartöflureglu.
+    expect(growIsOutdoor({ environment: 'indoor' }, [potato])).toBe(false);
+  });
 });

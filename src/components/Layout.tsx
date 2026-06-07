@@ -26,6 +26,7 @@ import { BackupControls } from './BackupControls';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { subscribeAnnounce } from '@/lib/announce';
+import { relativeTime } from '@/lib/dates';
 
 const navItems = [
   { to: '/home', label: 'Heim', icon: Home, available: true },
@@ -480,7 +481,7 @@ function SyncBadge({
           )}
           <p className="text-[11px]" style={{ color: 'var(--cream-400)' }}>
             {lastSyncedAt
-              ? `Síðast vistað ${formatRelative(lastSyncedAt)}.`
+              ? `Síðast vistað ${relativeTime(lastSyncedAt)}.`
               : 'Engin samstilling hefur tekist enn.'}
           </p>
         </div>
@@ -531,20 +532,10 @@ function describeSync(status: SyncStatus, lastSyncedAt: number | null) {
   if (lastSyncedAt) {
     return {
       icon: Cloud,
-      label: `Vistað ${formatRelative(lastSyncedAt)}`,
+      label: `Vistað ${relativeTime(lastSyncedAt)}`,
       tone: 'rgba(159,191,157,.85)',
     };
   }
   return { icon: Cloud, label: 'Tilbúið', tone: 'rgba(159,191,157,.65)' };
 }
 
-function formatRelative(ts: number): string {
-  const diff = Date.now() - ts;
-  if (diff < 60_000) return 'núna';
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 60) return `fyrir ${mins} mín`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `fyrir ${hours} klst`;
-  const days = Math.floor(hours / 24);
-  return `fyrir ${days} d`;
-}

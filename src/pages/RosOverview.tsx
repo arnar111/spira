@@ -41,6 +41,7 @@ import type { RosInsight, RosInsightKind, RosSeverity } from '@/lib/ros/types';
 import { askRos } from '@/lib/ros/chat';
 import { predictForPlants } from '@/lib/ros/predict';
 import { varietyById, varietyByName } from '@/lib/varieties';
+import { dayWord, longDate } from '@/lib/dates';
 
 const DAY_MS = 1000 * 60 * 60 * 24;
 
@@ -100,23 +101,6 @@ interface TaggedInsight {
   growName: string;
 }
 
-/** Íslensk fleirtölu-/eintölumeðferð fyrir „dag(a)". */
-function dayWord(n: number): string {
-  return Math.abs(n) === 1 ? 'dag' : 'daga';
-}
-
-/** Stutt íslensk dagsetning (fellur aftur á ISO ef locale vantar). */
-function reportDate(ts: number): string {
-  try {
-    return new Date(ts).toLocaleDateString('is-IS', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  } catch {
-    return new Date(ts).toISOString().slice(0, 10);
-  }
-}
 
 export function RosOverview() {
   const navigate = useNavigate();
@@ -544,7 +528,7 @@ function ReportCard({
             Vikuskýrsla
           </div>
           <div className="text-[12px] text-cream-300/80">
-            {reportDate(report.createdAt)}
+            {longDate(report.createdAt)}
           </div>
         </div>
         <button

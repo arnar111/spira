@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { Lightbox } from '@/components/ui/Lightbox';
 import { usePhotoUrl } from '@/lib/photos';
 import type { PhotoBlob } from '@/lib/db';
+import { longDate } from '@/lib/dates';
 
 /** Lýsigögn um eina mynd í ljóskassanum + samhengi til að sýna í texta. */
 export interface LightboxPhoto {
@@ -10,18 +11,6 @@ export interface LightboxPhoto {
   plantLabel?: string;
   /** Athugasemd af tengdri skráningu, ef einhver. */
   note?: string;
-}
-
-function fullDate(ts: number): string {
-  try {
-    return new Date(ts).toLocaleDateString('is-IS', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  } catch {
-    return new Date(ts).toISOString().slice(0, 10);
-  }
 }
 
 /**
@@ -63,7 +52,7 @@ export function PhotoLightbox({
       open={open}
       onClose={onClose}
       src={url ?? undefined}
-      date={fullDate(current.photo.takenAt)}
+      date={longDate(current.photo.takenAt)}
       plantName={current.plantLabel}
       note={current.note}
       counter={items.length > 1 ? `${safeIndex + 1}/${items.length}` : undefined}

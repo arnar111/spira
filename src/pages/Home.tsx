@@ -23,6 +23,7 @@ import {
   timelineForCategory,
   type CropTimeline,
 } from '@/lib/phases';
+import { shortDate } from '@/lib/dates';
 
 interface DerivedGrow extends Grow {
   day: number;
@@ -662,8 +663,7 @@ function DesktopGrowRow({ grow, plants }: { grow: DerivedGrow; plants: Plant[] }
           {grow.name}
         </div>
         <div style={{ fontSize: 10.5, color: 'rgba(231,217,168,.55)', marginTop: 2 }}>
-          {grow.location} · {plants.length} plöntur · hóf{' '}
-          {startDate.toLocaleDateString('is-IS', { day: 'numeric', month: 'short' })}
+          {grow.location} · {plants.length} plöntur · hóf {shortDate(startDate.getTime())}
         </div>
       </div>
       <div

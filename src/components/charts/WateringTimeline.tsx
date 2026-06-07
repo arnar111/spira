@@ -6,16 +6,9 @@ import {
   type WateringEvent,
 } from '@/lib/series';
 import type { LogEntry } from '@/lib/db';
+import { shortDate } from '@/lib/dates';
 
 const DAY_MS = 86_400_000;
-
-function shortDate(ts: number): string {
-  try {
-    return new Date(ts).toLocaleDateString('is-IS', { day: 'numeric', month: 'short' });
-  } catch {
-    return new Date(ts).toISOString().slice(0, 10);
-  }
-}
 
 /** Hæð tikks ∝ magni (ml) þegar það er skráð, annars meðalhæð. */
 function tickHeight(events: WateringEvent[], ev: WateringEvent): number {

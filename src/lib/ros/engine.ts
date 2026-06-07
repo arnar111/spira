@@ -18,7 +18,10 @@ import type {
   GrowPhase,
 } from '@/lib/db';
 import { needsGrowLight, daylightForMonth } from '@/lib/daylight';
-import { seasonForMonth, frostRisk } from '@/lib/season';
+import { seasonForMonth, frostRisk, growIsOutdoor } from '@/lib/season';
+// Hrein dagsetningasnið (4.3): shortDate er deterministískt frá ts — engin
+// klukkuköllun, svo hreinleiki vélarinnar helst.
+import { dayWord, shortDate } from '@/lib/dates';
 import { envTargetForPhase, bandStatus, formatBand } from '@/lib/envTargets';
 import {
   varietyByName,
@@ -197,17 +200,6 @@ function plantVariety(p: Plant) {
 /** Besta upphafsdagsetning til að mæla aldur plöntu (spírun > sáning > stofnun). */
 function plantStartTs(p: Plant): number {
   return p.germinatedDate ?? p.sowDate ?? p.createdAt;
-}
-
-/**
- * Er ræktunin utandyra? Notar `environment` ef sett; annars ræður garður-
- * staðsetning eða kartöflur (alltaf útiræktun) því. Útiræktun fær árstíða-/
- * frostráð í stað innidyra-ráða (LED, fingurpróf, handfrjóvgun).
- */
-function growIsOutdoor(grow: Grow, plants: Plant[]): boolean {
-  if (grow.environment) return grow.environment === 'outdoor';
-  if (grow.locationKey === 'garden') return true;
-  return plants.some((p) => !p.archived && p.category === 'potato');
 }
 
 /**
@@ -1151,29 +1143,9 @@ function stableSortBySeverity(items: RosInsight[]): RosInsight[] {
     .map((x) => x.item);
 }
 
-/** Íslensk fleirtölu-/eintölumeðferð fyrir „dag(a)". */
-function dayWord(n: number): string {
-  return Math.abs(n) === 1 ? 'dag' : 'daga';
-}
-
 /** Snyrtir tölu: skerður óþarfa aukastafi (sama og formatLogData). */
 function num(value: number): string {
   return String(Number(value.toFixed(2)));
-}
-
-/**
- * Stutt dagsetning á íslensku frá tímastimpli (fellur aftur á ISO ef locale vantar).
- * Hér er Date smíðað ÚT FRÁ ts sem berst inn — engin klukkuköllun (deterministískt).
- */
-function shortDate(ts: number): string {
-  try {
-    return new Date(ts).toLocaleDateString('is-IS', {
-      day: 'numeric',
-      month: 'short',
-    });
-  } catch {
-    return new Date(ts).toISOString().slice(0, 10);
-  }
 }
 
 /** Stutt merki fyrir plöntu — gælunafn ef til, annars afbrigðisnafn. */
