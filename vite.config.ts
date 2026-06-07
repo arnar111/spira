@@ -3,12 +3,17 @@ import { configDefaults } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import netlify from '@netlify/vite-plugin';
 import { VitePWA } from 'vite-plugin-pwa';
+import { visualizer } from 'rollup-plugin-visualizer';
 import path from 'node:path';
 
 export default defineConfig({
   plugins: [
     react(),
     netlify(),
+    // Bundle-kort (5.4): `$env:ANALYZE='1'; npm run build` skrifar dist/stats.html.
+    ...(process.env.ANALYZE
+      ? [visualizer({ filename: 'dist/stats.html', gzipSize: true })]
+      : []),
     VitePWA({
       registerType: 'autoUpdate',
       // Eitt manifest: við höldum public/manifest.webmanifest + <link> í
@@ -24,6 +29,8 @@ export default defineConfig({
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
+        // Bundle-kortið (ANALYZE-byggingar) á aldrei heima í precache.
+        globIgnores: ['**/stats.html'],
         navigateFallback: '/index.html',
         // Aldrei láta SPA-fallback grípa API-köll.
         navigateFallbackDenylist: [/^\/api\//],
