@@ -45,7 +45,7 @@ import {
   type PepperColor,
   type Variety,
 } from '@/lib/varieties';
-import { LOCATIONS, type LocationCategory, type LocationKey } from '@/lib/locations';
+import { LOCATIONS, getLocation, type LocationCategory, type LocationKey } from '@/lib/locations';
 import { syncManager } from '@/lib/sync';
 
 interface SetupWizardProps {
@@ -84,7 +84,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [state, setState] = useState<WizardState>(() => {
-    const defaults = LOCATIONS.find((l) => l.key === 'shower')!.defaults;
+    // getLocation hefur innbyggt fallback (4.3: engin non-null fullyrðing).
+    const defaults = getLocation('shower').defaults;
     return {
       locationKey: 'shower',
       growName: defaults.growName,
@@ -111,7 +112,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   const veritable = state.locationKey === 'veritable';
 
   function pickLocation(key: LocationKey) {
-    const cat = LOCATIONS.find((l) => l.key === key)!;
+    const cat = getLocation(key);
     const d = cat.defaults;
     setState((s) => ({
       ...s,
@@ -642,7 +643,7 @@ function StepVarieties({
   state: WizardState;
   set: (patch: Partial<WizardState>) => void;
 }) {
-  const loc = LOCATIONS.find((l) => l.key === state.locationKey)!;
+  const loc = getLocation(state.locationKey);
   const suggested = useMemo(() => suggestForLocation(state.locationKey), [state.locationKey]);
 
   const filtered = useMemo(() => {
@@ -652,7 +653,7 @@ function StepVarieties({
       if (!isPepper(v)) return noPepperFilter;
       if (state.filterMother !== 'all' && v.motherSpecies !== state.filterMother) return false;
       if (state.filterColor !== 'all' && v.color !== state.filterColor) return false;
-      const tier = SHU_TIERS.find((t) => t.id === state.shuTier)!;
+      const tier = SHU_TIERS.find((t) => t.id === state.shuTier) ?? SHU_TIERS[0];
       if (!(v.shu >= tier.min && v.shu <= tier.max)) return false;
       return true;
     });

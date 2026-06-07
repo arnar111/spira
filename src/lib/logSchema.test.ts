@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { LogType } from '@/lib/db';
-import { LOG_FIELDS, LOG_TYPE_META, formatLogData } from '@/lib/logSchema';
+import { LOG_FIELDS, LOG_TYPE_META, formatLogData, logData } from '@/lib/logSchema';
 
 describe('formatLogData', () => {
   it('skilar tómu fylki án data', () => {
@@ -136,6 +136,37 @@ describe('formatLogData', () => {
     expect(formatLogData('water', { amountMl: 200.0 })).toEqual(['200 ml']);
     expect(formatLogData('water', { ph: 6.999 })).toEqual(['pH 7']);
     expect(formatLogData('water', { ec: 1.25 })).toEqual(['EC 1.25']);
+  });
+});
+
+describe('logData (týpaða lagið, 4.3)', () => {
+  it('þvingar tölustrengi og snyrtir texta', () => {
+    expect(logData('water', { amountMl: '250', ph: 6.2 })).toEqual({
+      amountMl: 250,
+      ph: 6.2,
+      ec: undefined,
+      runoffMl: undefined,
+    });
+    expect(logData('feed', { nutrient: '  CalMag  ' }).nutrient).toBe('CalMag');
+  });
+
+  it('gölluð gildi verða undefined, ekki hrun', () => {
+    const d = logData('water', { amountMl: 'abc', ph: NaN, ec: null, runoffMl: Infinity });
+    expect(d).toEqual({ amountMl: undefined, ph: undefined, ec: undefined, runoffMl: undefined });
+  });
+
+  it('undefined data og frjálsar gerðir skila tómu', () => {
+    expect(logData('water', undefined).ph).toBeUndefined();
+    expect(logData('note', { anything: 1 })).toEqual({});
+    expect(logData('phase_change', undefined)).toEqual({});
+  });
+
+  it('pest/disease: kind + severity + detail', () => {
+    expect(logData('pest', { kind: 'lus', severity: 'mikil', detail: ' á blöðum ' })).toEqual({
+      kind: 'lus',
+      severity: 'mikil',
+      detail: 'á blöðum',
+    });
   });
 });
 

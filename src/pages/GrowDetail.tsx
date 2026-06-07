@@ -217,7 +217,10 @@ export function GrowDetail() {
       const others = await db.logs
         .filter((l) => l.id !== log.id && l.photoId === log.photoId)
         .count();
-      if (others === 0) await deletePhoto(log.photoId).catch(() => undefined);
+      if (others === 0)
+        await deletePhoto(log.photoId).catch((err) =>
+          console.warn('[spira] gat ekki eytt mynd skráningar', err),
+        );
     }
     await db.logs.delete(log.id);
     announce('Skráningu eytt');

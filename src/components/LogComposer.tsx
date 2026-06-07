@@ -153,7 +153,9 @@ export function LogComposer({
     e.target.value = '';
     if (!file) return;
     if (photoId) {
-      await deletePhoto(photoId).catch(() => undefined);
+      await deletePhoto(photoId).catch((err) =>
+        console.warn('[spira] gat ekki eytt eldri mynd', err),
+      );
     }
     const id = await addPhotoFromFile(file, {
       growId,
@@ -164,7 +166,9 @@ export function LogComposer({
 
   async function removePhoto() {
     if (photoId) {
-      await deletePhoto(photoId).catch(() => undefined);
+      await deletePhoto(photoId).catch((err) =>
+        console.warn('[spira] gat ekki eytt mynd', err),
+      );
     }
     setPhotoId(undefined);
   }
@@ -195,7 +199,9 @@ export function LogComposer({
     // óvalin), svo við samstillum plantId hennar við lokavalið hér — annars
     // situr myndin eftir með rangt/ótengt plantId og Heilsa finnur hana ekki.
     if (photoId) {
-      await db.photos.update(photoId, { plantId }).catch(() => undefined);
+      await db.photos
+        .update(photoId, { plantId })
+        .catch((err) => console.warn('[spira] gat ekki tengt mynd við plöntu', err));
     }
     if (existing) {
       await db.logs.put({

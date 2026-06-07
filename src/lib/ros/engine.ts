@@ -22,6 +22,8 @@ import { seasonForMonth, frostRisk, growIsOutdoor } from '@/lib/season';
 // Hrein dagsetningasnið (4.3): shortDate er deterministískt frá ts — engin
 // klukkuköllun, svo hreinleiki vélarinnar helst.
 import { dayWord, shortDate } from '@/lib/dates';
+// Týpaðir lestrar á LogEntry.data (4.3) — engin hrá data.key-fletting í vélinni.
+import { logData } from '@/lib/logSchema';
 import { envTargetForPhase, bandStatus, formatBand } from '@/lib/envTargets';
 import {
   varietyByName,
@@ -118,8 +120,8 @@ function lastMaintenanceTs(
     if (l.type !== 'maintenance') continue;
     if (plantId !== undefined && l.plantId !== undefined && l.plantId !== plantId)
       continue;
-    const task = l.data?.task;
-    if (typeof task !== 'string' || !tasks.includes(task)) continue;
+    const { task } = logData(l.type, l.data);
+    if (task === undefined || !tasks.includes(task)) continue;
     if (latest === undefined || l.timestamp > latest) latest = l.timestamp;
   }
   return latest;
@@ -128,16 +130,6 @@ function lastMaintenanceTs(
 /** Er einhver virk planta í þessu grow í tilteknum fasa? */
 function plantsInPhase(plants: Plant[], phase: GrowPhase): Plant[] {
   return plants.filter((p) => !p.archived && p.currentPhase === phase);
-}
-
-/** Tölu úr unknown (number eða tölulegur strengur), annars undefined. */
-function asNum(value: unknown): number | undefined {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string' && value.trim() !== '') {
-    const n = Number(value);
-    if (Number.isFinite(n)) return n;
-  }
-  return undefined;
 }
 
 /** Nýjasta log-færsla af tiltekinni gerð (ekki bara tímastimpill). */
@@ -155,7 +147,7 @@ function lastPh(logs: LogEntry[]): { value: number; ts: number } | undefined {
   let best: { value: number; ts: number } | undefined;
   for (const l of logs) {
     if (l.type !== 'water' && l.type !== 'feed') continue;
-    const ph = asNum(l.data?.ph);
+    const ph = logData(l.type, l.data).ph;
     if (ph === undefined) continue;
     if (best === undefined || l.timestamp > best.ts) best = { value: ph, ts: l.timestamp };
   }
@@ -1003,8 +995,7 @@ export function computeInsights(input: EngineInput): RosInsight[] {
     if (envLog && now - envLog.timestamp <= ENV_FRESH_MS) {
       const phase = furthestPhase(activePlants);
       const target = envTargetForPhase(phase);
-      const temp = asNum(envLog.data?.tempC);
-      const humidity = asNum(envLog.data?.humidityPct);
+      const { tempC: temp, humidityPct: humidity } = logData('environment', envLog.data);
 
       if (temp !== undefined) {
         const status = bandStatus(temp, target.tempC);
@@ -1105,7 +1096,9 @@ export function computeInsights(input: EngineInput): RosInsight[] {
   if (growActive && !outdoor && !veritable) {
     const envLog = lastLogOfType(logs, 'environment');
     const humidity =
-      envLog && now - envLog.timestamp <= ENV_FRESH_MS ? asNum(envLog.data?.humidityPct) : undefined;
+      envLog && now - envLog.timestamp <= ENV_FRESH_MS
+        ? logData('environment', envLog.data).humidityPct
+        : undefined;
     const veryDry = humidity !== undefined && humidity < 45;
     const winterDry = month >= 11 || month <= 3;
     if (veryDry) {
@@ -1254,14 +1247,19 @@ export function buildContextDigest(input: EngineInput): string {
   }
 
   // Nýlegir minnispunktar (síðustu 3 'note' skráningar).
+  // flatMap síar OG þrengir í senn — engin non-null fullyrðing (4.3).
   const notes = logs
-    .filter((l) => l.type === 'note' && l.note && l.note.trim())
+    .flatMap((l) => {
+      if (l.type !== 'note') return [];
+      const note = l.note?.trim();
+      return note ? [{ note, timestamp: l.timestamp }] : [];
+    })
     .sort((a, b) => b.timestamp - a.timestamp)
     .slice(0, 3);
   if (notes.length > 0) {
     lines.push('Nýlegir minnispunktar:');
     for (const n of notes) {
-      lines.push(`- ${n.note!.trim()}`);
+      lines.push(`- ${n.note}`);
     }
   }
 

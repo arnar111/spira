@@ -11,6 +11,7 @@
  */
 
 import type { EnvironmentSample, LogEntry } from '@/lib/db';
+import { logData } from '@/lib/logSchema';
 
 /** Einn punktur í tímaröð: gildi + tímastimpill þess. */
 export interface SeriesPoint {
@@ -22,7 +23,7 @@ export interface SeriesPoint {
 
 const DAY_MS = 86_400_000;
 
-/** Sama talnameðferð og `formatLogData`: number eða tölulegur strengur, annars undefined. */
+/** Sama talnameðferð og `logData`: number eða tölulegur strengur, annars undefined. */
 function asNumber(value: unknown): number | undefined {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string' && value.trim() !== '') {
@@ -33,18 +34,17 @@ function asNumber(value: unknown): number | undefined {
 }
 
 /**
- * Dregur tölulega tímaröð úr `data[key]` allra skráninga af tilteknum gerðum,
- * raðað í tímaröð (elst fyrst). Skráningar án gildis falla út.
+ * Dregur tölulega tímaröð úr skráningum gegnum gildissækjandi fall, raðað í
+ * tímaröð (elst fyrst). Skráningar án gildis falla út. Sækjendur nota týpaða
+ * `logData()`-lagið (4.3) í stað hrárra `data[key]`-lestra.
  */
 function dataSeries(
   logs: LogEntry[],
-  types: ReadonlySet<LogEntry['type']>,
-  key: string,
+  pick: (l: LogEntry) => number | undefined,
 ): SeriesPoint[] {
   const out: SeriesPoint[] = [];
   for (const l of logs) {
-    if (!types.has(l.type)) continue;
-    const v = asNumber(l.data?.[key]);
+    const v = pick(l);
     if (v === undefined) continue;
     out.push({ t: l.timestamp, v });
   }
@@ -52,24 +52,33 @@ function dataSeries(
   return out;
 }
 
-const WATER_OR_FEED: ReadonlySet<LogEntry['type']> = new Set<LogEntry['type']>([
-  'water',
-  'feed',
-]);
+/** pH úr vökvun/áburði (týpað gegnum logData), annars undefined. */
+function phOf(l: LogEntry): number | undefined {
+  if (l.type !== 'water' && l.type !== 'feed') return undefined;
+  return logData(l.type, l.data).ph;
+}
 
-/** pH-mælingar úr vökvun/áburði (data.ph), elst fyrst. */
+/** EC úr vökvun/áburði (týpað gegnum logData), annars undefined. */
+function ecOf(l: LogEntry): number | undefined {
+  if (l.type !== 'water' && l.type !== 'feed') return undefined;
+  return logData(l.type, l.data).ec;
+}
+
+/** pH-mælingar úr vökvun/áburði, elst fyrst. */
 export function phSeries(logs: LogEntry[]): SeriesPoint[] {
-  return dataSeries(logs, WATER_OR_FEED, 'ph');
+  return dataSeries(logs, phOf);
 }
 
-/** EC-/leiðni-mælingar úr vökvun/áburði (data.ec), elst fyrst. */
+/** EC-/leiðni-mælingar úr vökvun/áburði, elst fyrst. */
 export function ecSeries(logs: LogEntry[]): SeriesPoint[] {
-  return dataSeries(logs, WATER_OR_FEED, 'ec');
+  return dataSeries(logs, ecOf);
 }
 
-/** Magn vökvunar í ml (data.amountMl) úr vökvunarskráningum, elst fyrst. */
+/** Magn vökvunar í ml úr vökvunarskráningum, elst fyrst. */
 export function wateringAmountSeries(logs: LogEntry[]): SeriesPoint[] {
-  return dataSeries(logs, new Set<LogEntry['type']>(['water']), 'amountMl');
+  return dataSeries(logs, (l) =>
+    l.type === 'water' ? logData(l.type, l.data).amountMl : undefined,
+  );
 }
 
 /**
@@ -90,7 +99,9 @@ export function lightHoursSeries(samples: EnvironmentSample[]): SeriesPoint[] {
 
 /** Ljóstími skráður í 'environment'-loggum (data.lightHours), elst fyrst. */
 export function lightHoursLogSeries(logs: LogEntry[]): SeriesPoint[] {
-  return dataSeries(logs, new Set<LogEntry['type']>(['environment']), 'lightHours');
+  return dataSeries(logs, (l) =>
+    l.type === 'environment' ? logData(l.type, l.data).lightHours : undefined,
+  );
 }
 
 /** Einn vökvunaratburður á tímalínu: tími + magn (ml) ef skráð. */
@@ -107,7 +118,7 @@ export function wateringEvents(logs: LogEntry[]): WateringEvent[] {
   const out: WateringEvent[] = [];
   for (const l of logs) {
     if (l.type !== 'water') continue;
-    out.push({ t: l.timestamp, amountMl: asNumber(l.data?.amountMl) });
+    out.push({ t: l.timestamp, amountMl: logData(l.type, l.data).amountMl });
   }
   out.sort((a, b) => a.t - b.t);
   return out;
