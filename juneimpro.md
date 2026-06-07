@@ -20,7 +20,7 @@
 |---|---|---|---|---|
 | 1. UX | 🔶 | 🔶 | 🔶 | 🔶 |
 | 2. UI | ✅ | ✅ | ✅ | ✅ |
-| 3. Features | 🔶 | 🔶 | 🔶 | 🔶 |
+| 3. Features | ✅ | ✅ | ✅ | ✅ |
 | 4. Codebase | ✅ | ✅ | ⬜ | ⬜ |
 | 5. Other | ✅ | ✅ | ✅ | ⬜ |
 
@@ -553,6 +553,15 @@ session.
   (`RangeDays = 7|14|30|null` + `withinRange` in `lib/range.ts`), ui/Lightbox (props: src/date/plantName/
   note/onPrev/onNext). Deviations: Layout inactive-nav icon keeps rgba (contrast), Environment range
   labels made honest. 182 tests green per commit.
+- **2026-06-07 — Category 3 done** (cat3-features, branch `claude/juneimpro-cat3-features`, 4 commits,
+  218 tests green, build OK). New pure libs `series.ts`/`photoGallery.ts`/`envTargets.ts`/`harvestStats.ts`
+  (all tested), `components/charts/*` (7) + `components/gallery/*` (2), pest/disease log schemas +
+  LogComposer forms, engine envBand/pH/humidity-aware insights (still pure), **db schema v5**
+  (`rosAssessments: 'id, plantId, growId'` + upgrade migration — assessments now accumulate),
+  4 pepper CropCare tier guides + `resolveCare` (CareGuide signature: `variety` → `care`), Umhirða
+  affordance in GrowDetail. Deviation: pepper tier content from standard Capsicum horticulture
+  (growing_guide.html is outdoor-only). Merge reconcile: local RangeToggle/Lightbox swap, RosOverview
+  KIND_ICON vs cat1's ConfirmDialog, CareGuide call sites must pass `resolveCare(variety)`.
 - **2026-06-07 — 5.2 + 5.3 done** (cat5-other, branch `claude/juneimpro-cat5-other`, commits 4e671ff +
   5a4c436; on-branch, merged later). Backup export/import (`src/lib/backup.ts`, `BackupControls.tsx`,
   `migrateSnapshot` seam in sync.ts) and PWA revival (vite-plugin-pwa autoUpdate, `manifest: false`
