@@ -6,6 +6,8 @@ import { Plus } from 'lucide-react';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { Button } from '@/components/ui/Button';
 import { GrowRow } from '@/components/GrowRow';
+import { GrowsSkeleton } from '@/components/PageSkeletons';
+import { useDelayedFlag } from '@/lib/useDelayedFlag';
 import { db } from '@/lib/db';
 
 export function Grows() {
@@ -21,7 +23,9 @@ export function Grows() {
     [grows],
   );
 
-  if (!grows || !plants) return null;
+  const loading = !grows || !plants;
+  const showSkeleton = useDelayedFlag(loading);
+  if (loading) return showSkeleton ? <GrowsSkeleton /> : null;
 
   return (
     <motion.div

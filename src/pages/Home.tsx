@@ -13,6 +13,8 @@ import { Eyebrow } from '@/components/ui/Eyebrow';
 import { PlantGlyph } from '@/components/PlantGlyph';
 import { Button } from '@/components/ui/Button';
 import { db, type Grow, type Plant } from '@/lib/db';
+import { useDelayedFlag } from '@/lib/useDelayedFlag';
+import { HomeSkeleton } from '@/components/PageSkeletons';
 import {
   cycleProgress,
   daysSince,
@@ -49,7 +51,9 @@ export function Home() {
   const grows = useLiveQuery(() => db.grows.toArray());
   const plants = useLiveQuery(() => db.plants.toArray());
 
-  if (grows === undefined || plants === undefined) return null;
+  const loading = grows === undefined || plants === undefined;
+  const showSkeleton = useDelayedFlag(loading);
+  if (loading) return showSkeleton ? <HomeSkeleton /> : null;
 
   const active = grows.filter((g) => !g.archived).map((g) => deriveGrow(g, plants));
   const archivedCount = grows.filter((g) => g.archived).length;

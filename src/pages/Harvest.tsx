@@ -7,6 +7,8 @@ import { Card } from '@/components/ui/Card';
 import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
 import { Chili } from '@/components/Chili';
+import { HarvestSkeleton } from '@/components/PageSkeletons';
+import { useDelayedFlag } from '@/lib/useDelayedFlag';
 import { db, newId, type Plant } from '@/lib/db';
 import { chiliForVarietyName, formatShu, varietyByName } from '@/lib/varieties';
 
@@ -38,7 +40,9 @@ export function Harvest() {
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
   }, [harvests, plants]);
 
-  if (!harvests || !plants || !grows) return null;
+  const loading = !harvests || !plants || !grows;
+  const showSkeleton = useDelayedFlag(loading);
+  if (loading) return showSkeleton ? <HarvestSkeleton /> : null;
 
   return (
     <motion.div

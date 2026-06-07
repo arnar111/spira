@@ -25,6 +25,8 @@ import { HeroCard } from '@/components/ui/HeroCard';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { PlantGlyph } from '@/components/PlantGlyph';
+import { GrowDetailSkeleton } from '@/components/PageSkeletons';
+import { useDelayedFlag } from '@/lib/useDelayedFlag';
 import {
   LogComposer,
   LogDataChips,
@@ -108,7 +110,9 @@ export function GrowDetail() {
   const [rosEverOpened, setRosEverOpened] = useState(false);
   const [openAddPlant, setOpenAddPlant] = useState(false);
 
-  if (!grow || !plants || !logs) return null;
+  const loading = !grow || !plants || !logs;
+  const showSkeleton = useDelayedFlag(loading);
+  if (loading) return showSkeleton ? <GrowDetailSkeleton /> : null;
 
   const day = daysSince(grow.startDate);
   const timeline = timelineForCategory(grow.category);

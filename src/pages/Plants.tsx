@@ -6,6 +6,8 @@ import { Filter } from 'lucide-react';
 import { Pill } from '@/components/ui/Pill';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { PlantGlyph } from '@/components/PlantGlyph';
+import { PlantsSkeleton } from '@/components/PageSkeletons';
+import { useDelayedFlag } from '@/lib/useDelayedFlag';
 import { db, type Plant } from '@/lib/db';
 import { daysSince, getPhaseForDay, timelineForCategory } from '@/lib/phases';
 import {
@@ -80,7 +82,9 @@ export function Plants() {
     return set;
   }, [plants]);
 
-  if (!plants || !grows) return null;
+  const loading = !plants || !grows;
+  const showSkeleton = useDelayedFlag(loading);
+  if (loading) return showSkeleton ? <PlantsSkeleton /> : null;
 
   return (
     <motion.div
