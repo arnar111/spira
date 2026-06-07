@@ -21,7 +21,7 @@
 | 1. UX | ✅ | ✅ | ✅ | ✅ |
 | 2. UI | ✅ | ✅ | ✅ | ✅ |
 | 3. Features | ✅ | ✅ | ✅ | ✅ |
-| 4. Codebase | ✅ | ✅ | ⬜ | ⬜ |
+| 4. Codebase | ✅ | ✅ | ✅ | 🔶 |
 | 5. Other | ✅ | ✅ | ✅ | ⬜ |
 
 ⬜ not started · 🔶 in progress · ✅ done
@@ -359,26 +359,30 @@ co-located `*.test.ts` — pick one convention and note it here. **Convention pi
 
 **Goal:** One source of truth for shared logic. Behavior-preserving (tests from 4.2 prove it).
 
-- [ ] **Unify `growIsOutdoor`**: single implementation in `season.ts` —
+- [x] **Unify `growIsOutdoor`**: single implementation in `season.ts` —
       `growIsOutdoor(grow, plants?)` where the optional plants param adds the potato-category check that
       currently only exists in `engine.ts:144-148`. Engine imports it; delete its local copy. Run engine
-      tests.
-- [ ] **Central date formatting**: new `src/lib/dates.ts` with `shortDate(ts)` (d. mán), `longDate(ts)`,
+      tests. *(Divergence-characterization tests rewritten as unified-behavior tests.)*
+- [x] **Central date formatting**: new `src/lib/dates.ts` with `shortDate(ts)` (d. mán), `longDate(ts)`,
       `relativeDays(ts, now)` — replace the copies in `engine.ts` (~1028), `RosOverview.tsx` (~103),
       `RosWindow.tsx` (~346), and inline `Home.tsx` instances. All `Intl.DateTimeFormat('is', …)` based.
-- [ ] **Typed log data**: in `logSchema.ts` (or `db.ts`), define per-type data interfaces
+      *(Also swept the 4 chart components, PhotoLightbox and Layout's formatRelative — 9 copies total.
+      `relativeTime(ts, now?)` + `dayWord` included; dates.test.ts added.)*
+- [x] **Typed log data**: in `logSchema.ts` (or `db.ts`), define per-type data interfaces
       (`WaterLogData { amountMl?: number; ph?: number; ec?: number; runoffMl?: number }`, `FeedLogData`,
       `PollinateLogData`, `MaintenanceLogData`, + 3.4's pest/disease) and a narrowing helper
       `logData<T extends LogType>(entry): …`. Keep `LogEntry.data` as the loose stored shape (snapshot
       compat) but route all reads through the typed helpers (`formatLogData`, engine, the 3.1 `series.ts`).
-- [ ] **Kill non-null assertions**: `SetupWizard.tsx:87` (fallback to first LOCATIONS entry),
-      `engine.ts:1152` (filter before map).
-- [ ] **Error visibility**: replace bare `.catch(() => undefined)` swallows (`LogComposer.tsx` ~109/120/151,
+- [x] **Kill non-null assertions**: `SetupWizard.tsx:87` (fallback to first LOCATIONS entry),
+      `engine.ts:1152` (filter before map). *(Plus 3 more `LOCATIONS.find(...)!`/`SHU_TIERS.find(...)!`
+      in SetupWizard — all via `getLocation()`.)*
+- [x] **Error visibility**: replace bare `.catch(() => undefined)` swallows (`LogComposer.tsx` ~109/120/151,
       `photos.ts:113`) with `console.warn('[spira] …', err)` at minimum. Keep the photo-downscale fallback
-      (`photos.ts:57-59`) — it's intentional — but add the warn.
+      (`photos.ts:57-59`) — it's intentional — but add the warn. *(Plus GrowDetail's orphan-photo delete.)*
 - [ ] **Shared Dexie query helpers**: `src/lib/queries.ts` — `logsForGrow(growId)`, `plantsForGrow(growId)`,
       `photosForGrow(growId)` etc., adopted where the `.where('growId').equals(id)` pattern repeats
-      (RosWindow ~151-158, pages). Low priority — do if time permits.
+      (RosWindow ~151-158, pages). Low priority — do if time permits. **Skipped deliberately** (low
+      priority per plan; the pattern is consistent enough to grep).
 
 **Acceptance:** One `growIsOutdoor`, one date module; `formatLogData` and engine read typed data;
 tests still green.
