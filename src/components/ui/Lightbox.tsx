@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, X } from 'lucide-react';
 import { useScrollLock } from '@/lib/useScrollLock';
 
 export interface LightboxProps {
@@ -17,10 +17,14 @@ export interface LightboxProps {
   plantName?: string;
   /** Aukatexti (t.d. nóta tengdrar skráningar). */
   note?: string;
-  /** Fletta á fyrri mynd (örvar/hnappur birtast ef gefið). */
+  /** Staða í safni, t.d. "3/12" — birt í skýringunni. */
+  counter?: string;
+  /** Fletta á fyrri mynd (örvar/hnappur + strok birtast ef gefið). */
   onPrev?: () => void;
   /** Fletta á næstu mynd. */
   onNext?: () => void;
+  /** Eyða myndinni (lítill hnappur neðst ef gefið). */
+  onDelete?: () => void;
 }
 
 /**
@@ -35,10 +39,13 @@ export function Lightbox({
   date,
   plantName,
   note,
+  counter,
   onPrev,
   onNext,
+  onDelete,
 }: LightboxProps) {
   useScrollLock(open);
+  const touchX = useRef<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -53,7 +60,7 @@ export function Lightbox({
 
   if (typeof document === 'undefined') return null;
 
-  const caption = [date, plantName].filter(Boolean).join(' · ');
+  const caption = [date, plantName, counter].filter(Boolean).join(' · ');
 
   return createPortal(
     <AnimatePresence>
@@ -62,6 +69,18 @@ export function Lightbox({
           className="fixed inset-0 z-[60] flex items-center justify-center"
           style={{ background: 'rgba(6,10,7,.94)', backdropFilter: 'blur(6px)' }}
           onClick={onClose}
+          onTouchStart={(e) => {
+            touchX.current = e.touches[0]?.clientX ?? null;
+          }}
+          onTouchEnd={(e) => {
+            if (touchX.current === null) return;
+            const dx = (e.changedTouches[0]?.clientX ?? touchX.current) - touchX.current;
+            touchX.current = null;
+            if (Math.abs(dx) > 40) {
+              if (dx < 0) onNext?.();
+              else onPrev?.();
+            }
+          }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -122,7 +141,7 @@ export function Lightbox({
                 style={{ maxWidth: '92vw', maxHeight: '80vh' }}
               />
             )}
-            {(caption || note) && (
+            {(caption || note || onDelete) && (
               <div className="mt-4 text-center">
                 {caption && (
                   <div
@@ -138,6 +157,16 @@ export function Lightbox({
                 )}
                 {note && (
                   <div className="text-sm text-cream-300/70 mt-1 max-w-md">{note}</div>
+                )}
+                {onDelete && (
+                  <button
+                    type="button"
+                    onClick={onDelete}
+                    className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-cream-300/70 hover:text-cap-400 transition-colors"
+                  >
+                    <Trash2 size={13} />
+                    Eyða mynd
+                  </button>
                 )}
               </div>
             )}
