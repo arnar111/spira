@@ -24,6 +24,15 @@ const API = '/api/ros';
 const MAX_DIMENSION = 1024;
 const NET_ERROR = 'Náði ekki sambandi við Rós. Athugaðu nettenginguna.';
 
+/** Hámarksfjöldi spjall-umferða per beiðni — sami og á /api/ros (413 annars). */
+const MAX_TURNS = 40;
+
+/** Klippir elstu umferðirnar af svo beiðnin haldist innan marka þjónsins. */
+function capInput(input: AskRosInput): AskRosInput {
+  if (input.messages.length <= MAX_TURNS) return input;
+  return { ...input, messages: input.messages.slice(-MAX_TURNS) };
+}
+
 /**
  * Venjulegt (ekki-streymandi) spjall við Rós. Skilar fullbúnum texta.
  * Óbreytt hegðun: kastar villu á netbresti og á `!res.ok` (íslensk skilaboð).
@@ -34,7 +43,7 @@ export async function askRos(input: AskRosInput): Promise<string> {
     res = await fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
+      body: JSON.stringify(capInput(input)),
     });
   } catch {
     throw new Error(NET_ERROR);
@@ -66,7 +75,7 @@ export async function askRosStream(
     res = await fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...input, stream: true }),
+      body: JSON.stringify({ ...capInput(input), stream: true }),
     });
   } catch {
     throw new Error(NET_ERROR);

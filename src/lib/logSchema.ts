@@ -76,11 +76,58 @@ export const LOG_FIELDS: Partial<Record<LogType, LogField[]>> = {
       ],
     },
   ],
+  pest: [
+    {
+      key: 'kind',
+      label: 'Tegund',
+      kind: 'select',
+      options: [
+        { value: 'lus', label: 'Lús' },
+        { value: 'spunamitill', label: 'Spunamítill' },
+        { value: 'hvitfluga', label: 'Hvítfluga' },
+        { value: 'annad', label: 'Annað' },
+      ],
+    },
+    {
+      key: 'severity',
+      label: 'Umfang',
+      kind: 'select',
+      options: [
+        { value: 'litil', label: 'Lítið' },
+        { value: 'midlungs', label: 'Miðlungs' },
+        { value: 'mikil', label: 'Mikið' },
+      ],
+    },
+    { key: 'detail', label: 'Nánar', kind: 'text', placeholder: 't.d. á bakhlið neðri blaða' },
+  ],
+  disease: [
+    {
+      key: 'kind',
+      label: 'Tegund',
+      kind: 'select',
+      options: [
+        { value: 'gramygla', label: 'Grámygla' },
+        { value: 'dunmygla', label: 'Dúnmygla' },
+        { value: 'rotarfui', label: 'Rótarfúi' },
+        { value: 'blettir', label: 'Blaðblettir' },
+        { value: 'annad', label: 'Annað' },
+      ],
+    },
+    {
+      key: 'severity',
+      label: 'Umfang',
+      kind: 'select',
+      options: [
+        { value: 'litil', label: 'Lítið' },
+        { value: 'midlungs', label: 'Miðlungs' },
+        { value: 'mikil', label: 'Mikið' },
+      ],
+    },
+    { key: 'detail', label: 'Nánar', kind: 'text', placeholder: 't.d. brúnir blettir með gulum jaðri' },
+  ],
   note: [],
   photo: [],
   phase_change: [],
-  pest: [],
-  disease: [],
 };
 
 /** Lucide icon names referenced by string so this module stays React-free. */
@@ -101,6 +148,8 @@ export const LOG_TYPE_META: {
   { id: 'harvest', label: 'Uppskera', icon: 'Sprout' },
   { id: 'transplant', label: 'Umpotta', icon: 'Move' },
   { id: 'maintenance', label: 'Viðhald', icon: 'Wrench' },
+  { id: 'pest', label: 'Meindýr', icon: 'Bug' },
+  { id: 'disease', label: 'Sjúkdómur', icon: 'ShieldAlert' },
 ];
 
 function asNumber(value: unknown): number | undefined {
@@ -120,14 +169,147 @@ function asText(value: unknown): string | undefined {
   return undefined;
 }
 
+// — Týpuð skráningargögn (4.3) —
+// `LogEntry.data` er áfram laust `Record<string, unknown>` í geymslu (snapshot-
+// samhæfni), en allir LESTRAR fara gegnum `logData()` sem þvingar gildin
+// (tala-eða-tölustrengur → number, strengir snyrtir) í týpað form per gerð.
+
+export interface WaterLogData {
+  amountMl?: number;
+  ph?: number;
+  ec?: number;
+  runoffMl?: number;
+}
+
+export interface FeedLogData {
+  nutrient?: string;
+  doseMlPerL?: number;
+  ec?: number;
+  ph?: number;
+}
+
+export interface EnvironmentLogData {
+  tempC?: number;
+  humidityPct?: number;
+  lightHours?: number;
+}
+
+export interface HarvestLogData {
+  weightG?: number;
+  podCount?: number;
+}
+
+export interface PollinateLogData {
+  method?: string;
+}
+
+/** prune / top / transplant — eitt frjálst lýsingarsvið. */
+export interface DetailLogData {
+  detail?: string;
+}
+
+export interface MaintenanceLogData {
+  task?: string;
+}
+
+/** pest / disease — tegund + umfang + nánar (3.4). */
+export interface PestDiseaseLogData {
+  kind?: string;
+  severity?: string;
+  detail?: string;
+}
+
+/** note / photo / phase_change bera engin skipulögð svið. */
+export type EmptyLogData = Record<string, never>;
+
+export interface LogDataByType {
+  water: WaterLogData;
+  feed: FeedLogData;
+  environment: EnvironmentLogData;
+  harvest: HarvestLogData;
+  pollinate: PollinateLogData;
+  prune: DetailLogData;
+  top: DetailLogData;
+  transplant: DetailLogData;
+  maintenance: MaintenanceLogData;
+  pest: PestDiseaseLogData;
+  disease: PestDiseaseLogData;
+  note: EmptyLogData;
+  photo: EmptyLogData;
+  phase_change: EmptyLogData;
+}
+
+/**
+ * Þrengir hrá `LogEntry.data` í týpað form fyrir gerðina — eina leiðin sem
+ * lestrar eiga að nota (formatLogData, Rós-vélin, series.ts).
+ */
+export function logData<T extends LogType>(
+  type: T,
+  data: Record<string, unknown> | undefined,
+): LogDataByType[T] {
+  const d = data ?? {};
+  switch (type as LogType) {
+    case 'water':
+      return {
+        amountMl: asNumber(d.amountMl),
+        ph: asNumber(d.ph),
+        ec: asNumber(d.ec),
+        runoffMl: asNumber(d.runoffMl),
+      } as LogDataByType[T];
+    case 'feed':
+      return {
+        nutrient: asText(d.nutrient),
+        doseMlPerL: asNumber(d.doseMlPerL),
+        ec: asNumber(d.ec),
+        ph: asNumber(d.ph),
+      } as LogDataByType[T];
+    case 'environment':
+      return {
+        tempC: asNumber(d.tempC),
+        humidityPct: asNumber(d.humidityPct),
+        lightHours: asNumber(d.lightHours),
+      } as LogDataByType[T];
+    case 'harvest':
+      return {
+        weightG: asNumber(d.weightG),
+        podCount: asNumber(d.podCount),
+      } as LogDataByType[T];
+    case 'pollinate':
+      return { method: asText(d.method) } as LogDataByType[T];
+    case 'prune':
+    case 'top':
+    case 'transplant':
+      return { detail: asText(d.detail) } as LogDataByType[T];
+    case 'maintenance':
+      return { task: asText(d.task) } as LogDataByType[T];
+    case 'pest':
+    case 'disease':
+      return {
+        kind: asText(d.kind),
+        severity: asText(d.severity),
+        detail: asText(d.detail),
+      } as LogDataByType[T];
+    default:
+      return {} as LogDataByType[T];
+  }
+}
+
 /** Trim trailing zeros from a fixed-precision number for compact display. */
 function num(value: number): string {
   return String(Number(value.toFixed(2)));
 }
 
+/** Íslenskt heiti select-valkosts úr LOG_FIELDS, eða hráa gildið. */
+function optionLabel(type: LogType, key: string, value: string): string {
+  const opt = LOG_FIELDS[type]
+    ?.find((f) => f.key === key)
+    ?.options?.find((o) => o.value === value);
+  return opt?.label ?? value;
+}
+
 /**
  * Compact display chips for a log entry's structured data.
- * Skips empty/undefined values.
+ * Skips empty/undefined values. Les gegnum týpaða `logData()`-lagið (4.3).
  */
 export function formatLogData(
   type: LogType,
@@ -138,64 +320,57 @@ export function formatLogData(
 
   switch (type) {
     case 'water': {
-      const amount = asNumber(data.amountMl);
-      if (amount !== undefined) chips.push(`${num(amount)} ml`);
-      const ph = asNumber(data.ph);
-      if (ph !== undefined) chips.push(`pH ${num(ph)}`);
-      const ec = asNumber(data.ec);
-      if (ec !== undefined) chips.push(`EC ${num(ec)}`);
-      const runoff = asNumber(data.runoffMl);
-      if (runoff !== undefined) chips.push(`${num(runoff)} ml frárennsli`);
+      const d = logData(type, data);
+      if (d.amountMl !== undefined) chips.push(`${num(d.amountMl)} ml`);
+      if (d.ph !== undefined) chips.push(`pH ${num(d.ph)}`);
+      if (d.ec !== undefined) chips.push(`EC ${num(d.ec)}`);
+      if (d.runoffMl !== undefined) chips.push(`${num(d.runoffMl)} ml frárennsli`);
       break;
     }
     case 'feed': {
-      const nutrient = asText(data.nutrient);
-      if (nutrient !== undefined) chips.push(nutrient);
-      const dose = asNumber(data.doseMlPerL);
-      if (dose !== undefined) chips.push(`${num(dose)} ml/L`);
-      const ec = asNumber(data.ec);
-      if (ec !== undefined) chips.push(`EC ${num(ec)}`);
-      const ph = asNumber(data.ph);
-      if (ph !== undefined) chips.push(`pH ${num(ph)}`);
+      const d = logData(type, data);
+      if (d.nutrient !== undefined) chips.push(d.nutrient);
+      if (d.doseMlPerL !== undefined) chips.push(`${num(d.doseMlPerL)} ml/L`);
+      if (d.ec !== undefined) chips.push(`EC ${num(d.ec)}`);
+      if (d.ph !== undefined) chips.push(`pH ${num(d.ph)}`);
       break;
     }
     case 'environment': {
-      const temp = asNumber(data.tempC);
-      if (temp !== undefined) chips.push(`${num(temp)}°C`);
-      const humidity = asNumber(data.humidityPct);
-      if (humidity !== undefined) chips.push(`${num(humidity)}%`);
-      const light = asNumber(data.lightHours);
-      if (light !== undefined) chips.push(`${num(light)} klst`);
+      const d = logData(type, data);
+      if (d.tempC !== undefined) chips.push(`${num(d.tempC)}°C`);
+      if (d.humidityPct !== undefined) chips.push(`${num(d.humidityPct)}%`);
+      if (d.lightHours !== undefined) chips.push(`${num(d.lightHours)} klst`);
       break;
     }
     case 'harvest': {
-      const weight = asNumber(data.weightG);
-      if (weight !== undefined) chips.push(`${num(weight)} g`);
-      const pods = asNumber(data.podCount);
-      if (pods !== undefined) chips.push(`${num(pods)} stk`);
+      const d = logData(type, data);
+      if (d.weightG !== undefined) chips.push(`${num(d.weightG)} g`);
+      if (d.podCount !== undefined) chips.push(`${num(d.podCount)} stk`);
       break;
     }
     case 'pollinate': {
-      const method = asText(data.method);
-      if (method !== undefined) {
-        const opt = LOG_FIELDS.pollinate?.[0]?.options?.find((o) => o.value === method);
-        chips.push(opt?.label ?? method);
-      }
+      const d = logData(type, data);
+      if (d.method !== undefined) chips.push(optionLabel(type, 'method', d.method));
       break;
     }
     case 'prune':
     case 'top':
     case 'transplant': {
-      const detail = asText(data.detail);
-      if (detail !== undefined) chips.push(detail);
+      const d = logData(type, data);
+      if (d.detail !== undefined) chips.push(d.detail);
       break;
     }
     case 'maintenance': {
-      const task = asText(data.task);
-      if (task !== undefined) {
-        const opt = LOG_FIELDS.maintenance?.[0]?.options?.find((o) => o.value === task);
-        chips.push(opt?.label ?? task);
-      }
+      const d = logData(type, data);
+      if (d.task !== undefined) chips.push(optionLabel(type, 'task', d.task));
+      break;
+    }
+    case 'pest':
+    case 'disease': {
+      const d = logData(type, data);
+      if (d.kind !== undefined) chips.push(optionLabel(type, 'kind', d.kind));
+      if (d.severity !== undefined) chips.push(optionLabel(type, 'severity', d.severity));
+      if (d.detail !== undefined) chips.push(d.detail);
       break;
     }
     default:

@@ -50,6 +50,16 @@ const OVERALL_BUDGET_MS = 22000;
 // 4xx like 400/403/404 are NOT retryable — another model won't fix them.
 const RETRYABLE = new Set([429, 500, 502, 503, 504]);
 
+// — Inntaksmörk (5.1 server hardening) —
+// Biðlarinn (src/lib/ros/chat.ts) klippir spjallsöguna í sömu mörk áður en hann
+// sendir, svo þessi 413-svör eiga aðeins við um beiðnir utan appsins.
+const MAX_MESSAGES = 40;
+const MAX_IMAGES = 4;
+/** ~2 MB á mynd, mælt á afkóðuðum bætum (base64-lengd × 3/4). */
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+/** Samhengið er stytt (ekki hafnað) — appið byggir það sjálft og það má skerða. */
+const MAX_CONTEXT_CHARS = 24_000;
+
 // Primary from GEMINI_MODEL (or comma-separated GEMINI_MODELS) takes priority,
 // then the defaults, de-duped.
 function buildModelChain(): string[] {
@@ -81,9 +91,35 @@ export default async (req: Request, _context: Context) => {
 
   const messages = Array.isArray(body.messages) ? body.messages : [];
   const images = Array.isArray(body.images) ? body.images : [];
-  const system = typeof body.context === 'string' && body.context.trim().length > 0
-    ? `${body.context.trim()}\n\n${SYSTEM}`
-    : SYSTEM;
+
+  // — Inntaksmörk —
+  if (messages.length > MAX_MESSAGES) {
+    return json(
+      { error: 'too_many_messages', message: 'Spjallið er orðið of langt fyrir eina beiðni — opnaðu nýtt spjall.' },
+      413,
+    );
+  }
+  if (images.length > MAX_IMAGES) {
+    return json(
+      { error: 'too_many_images', message: `Of margar myndir — sendu mest ${MAX_IMAGES} í einu.` },
+      413,
+    );
+  }
+  for (const img of images) {
+    const b64len = img && typeof img.dataB64 === 'string' ? img.dataB64.length : 0;
+    if ((b64len * 3) / 4 > MAX_IMAGE_BYTES) {
+      return json(
+        { error: 'image_too_large', message: 'Mynd er of stór fyrir Rós (hámark ~2 MB).' },
+        413,
+      );
+    }
+  }
+
+  let context = typeof body.context === 'string' ? body.context.trim() : '';
+  if (context.length > MAX_CONTEXT_CHARS) {
+    context = `${context.slice(0, MAX_CONTEXT_CHARS)}\n\n[Samhengi var stytt vegna lengdar.]`;
+  }
+  const system = context.length > 0 ? `${context}\n\n${SYSTEM}` : SYSTEM;
 
   const contents: GeminiContent[] = [];
   messages.forEach((turn, index) => {

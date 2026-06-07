@@ -54,7 +54,10 @@ async function downscaleImage(file: File): Promise<DownscaleResult> {
     }
 
     return { blob, width: targetW, height: targetH };
-  } catch {
+  } catch (err) {
+    // Viljandi fallback: frummyndin er geymd óbreytt ef niðurskölun klikkar —
+    // en skiljum eftir spor svo vandinn sjáist (4.3).
+    console.warn('[spira] niðurskölun myndar mistókst — geymi frummynd', err);
     return { blob: file };
   }
 }
@@ -110,7 +113,8 @@ export function usePhotoUrl(photoId?: string): string | null {
         objectUrl = URL.createObjectURL(photo.blob);
         setUrl(objectUrl);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.warn('[spira] gat ekki sótt mynd úr grunni', err);
         if (active) {
           setUrl(null);
         }

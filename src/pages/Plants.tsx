@@ -5,7 +5,10 @@ import { useNavigate } from 'react-router-dom';
 import { Filter } from 'lucide-react';
 import { Pill } from '@/components/ui/Pill';
 import { Eyebrow } from '@/components/ui/Eyebrow';
+import { SearchInput, NoResults } from '@/components/ui/SearchInput';
 import { PlantGlyph } from '@/components/PlantGlyph';
+import { PlantsSkeleton } from '@/components/PageSkeletons';
+import { useDelayedFlag } from '@/lib/useDelayedFlag';
 import { db, type Plant } from '@/lib/db';
 import { daysSince, getPhaseForDay, timelineForCategory } from '@/lib/phases';
 import {
@@ -29,6 +32,7 @@ export function Plants() {
   const plants = useLiveQuery(() => db.plants.toArray());
   const grows = useLiveQuery(() => db.grows.toArray());
 
+  const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'pepper' | 'tomato'>('all');
   const [filterMother, setFilterMother] = useState<MotherSpecies | 'all'>('all');
   const [filterColor, setFilterColor] = useState<PepperColor | 'all'>('all');
@@ -37,6 +41,7 @@ export function Plants() {
   const rows = useMemo(() => {
     if (!plants || !grows) return [];
     const growMap = new Map(grows.map((g) => [g.id, g]));
+    const q = query.trim().toLocaleLowerCase('is');
     return plants
       .filter((p) => !p.archived)
       .map((p) => {
@@ -53,9 +58,15 @@ export function Plants() {
         if (filterColor !== 'all' && !(isPepper(r.variety) && r.variety.color === filterColor))
           return false;
         if (phaseFilter !== 'all' && r.plant.currentPhase !== phaseFilter) return false;
+        if (q) {
+          const haystack = `${r.plant.nickname ?? ''} ${r.plant.variety}`.toLocaleLowerCase('is');
+          if (!haystack.includes(q)) return false;
+        }
         return true;
       });
-  }, [plants, grows, typeFilter, filterMother, filterColor, phaseFilter]);
+  }, [plants, grows, query, typeFilter, filterMother, filterColor, phaseFilter]);
+
+  const activePlants = useMemo(() => (plants ?? []).filter((p) => !p.archived), [plants]);
 
   const hasTomatoes = useMemo(
     () => !!plants?.some((p) => (varietyByName(p.variety)?.category ?? p.category) === 'tomato'),
@@ -80,7 +91,9 @@ export function Plants() {
     return set;
   }, [plants]);
 
-  if (!plants || !grows) return null;
+  const loading = !plants || !grows;
+  const showSkeleton = useDelayedFlag(loading);
+  if (loading) return showSkeleton ? <PlantsSkeleton /> : null;
 
   return (
     <motion.div
@@ -91,19 +104,18 @@ export function Plants() {
     >
       <header className="mb-5">
         <Eyebrow color="var(--terra-300)">Allar plöntur</Eyebrow>
-        <h1
-          className="sp-display"
-          style={{
-            fontSize: 30,
-            fontWeight: 500,
-            color: 'var(--cream-50)',
-            lineHeight: 1.05,
-            marginTop: 6,
-          }}
-        >
+        <h1 className="sp-h1" style={{ marginTop: 6 }}>
           Plöntur · {rows.length}
         </h1>
       </header>
+
+      <div className="mb-3">
+        <SearchInput
+          value={query}
+          onChange={setQuery}
+          placeholder="Leita að plöntu eða afbrigði"
+        />
+      </div>
 
       {hasTomatoes && (
         <FilterRow icon={<Filter size={11} />} label="Tegund">
@@ -167,11 +179,14 @@ export function Plants() {
       </FilterRow>
 
       <div className="flex flex-col gap-2 mt-4">
-        {rows.length === 0 && (
-          <div className="text-cream-300/60 text-sm border border-dashed border-moss-800/40 rounded-2xl p-6 text-center">
-            Engar plöntur passa við síurnar.
-          </div>
-        )}
+        {rows.length === 0 &&
+          (activePlants.length === 0 ? (
+            <div className="text-cream-300/60 text-sm border border-dashed border-moss-800/40 rounded-2xl p-6 text-center">
+              Engar plöntur enn. Bættu plöntum við ræktun til að sjá þær hér.
+            </div>
+          ) : (
+            <NoResults message="Engar plöntur passa við leit eða síur." />
+          ))}
         {rows.map(({ plant, grow, variety, day }) => (
           <PlantCard
             key={plant.id}

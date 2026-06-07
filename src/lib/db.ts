@@ -159,14 +159,18 @@ export interface RosMessage {
 }
 
 /**
- * Rós's most recent photo health assessment for a single plant ("Heilsa" tab).
- * Keyed by plantId so a re-run overwrites the previous result — there is always
- * at most one current assessment per plant. Device-local like photos/rosMessages:
- * NOT part of the sync snapshot (image-derived, never leaves the device beyond
- * the one vision call that produced it).
+ * Rós's photo health assessment for a single plant ("Heilsa" tab).
+ *
+ * As of db v5 these ACCUMULATE: keyed by a unique `id` (newId), with `plantId`
+ * indexed, so every run is kept and the UI can show a score trend over time.
+ * (Pre-v5 the table was keyed by plantId and a re-run overwrote the prior one.)
+ * Device-local like photos/rosMessages: NOT part of the sync snapshot
+ * (image-derived, never leaves the device beyond the one vision call).
  */
 export interface RosAssessment {
-  /** Primary key — one current assessment per plant. */
+  /** Primary key (newId) — every assessment is kept (history). */
+  id: string;
+  /** Indexed — which plant this assessment is for. */
   plantId: string;
   growId: string;
   /** The photo that was analyzed. */
@@ -235,6 +239,19 @@ class SpiraDB extends Dexie {
     this.version(4).stores({
       rosReports: 'id, createdAt',
     });
+    // v5 (3.4): heilsumöt SAFNAST nú upp — nýr lykill `id` (newId) með `plantId`
+    // og `growId` index. Eldri (plantId-lyklaðar) færslur eru fluttar yfir og
+    // fá nýtt `id`. Áfram staðbundið — EKKI í sync-snapshot.
+    this.version(5)
+      .stores({
+        rosAssessments: 'id, plantId, growId',
+      })
+      .upgrade(async (tx) => {
+        const old = await tx.table<RosAssessment>('rosAssessments').toArray();
+        const migrated = old.map((a) => ({ ...a, id: a.id ?? newId() }));
+        await tx.table('rosAssessments').clear();
+        if (migrated.length > 0) await tx.table('rosAssessments').bulkAdd(migrated);
+      });
   }
 }
 

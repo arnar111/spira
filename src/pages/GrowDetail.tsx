@@ -1,34 +1,27 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-  ArrowLeft,
-  Archive,
-  Droplet,
-  Flame,
-  Leaf,
-  Plus,
-  Scissors,
-  Sparkles,
-  StickyNote,
-  Thermometer,
-} from 'lucide-react';
+import { ArrowLeft, Archive, Plus } from 'lucide-react';
 import { Pill } from '@/components/ui/Pill';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { PhaseBar } from '@/components/ui/PhaseBar';
 import { SeasonCard } from '@/components/SeasonCard';
 import { VeritableCard } from '@/components/VeritableCard';
+import { GrowMetricsSection } from '@/components/charts/GrowMetricsSection';
+import { GrowHarvestSection } from '@/components/charts/GrowHarvestSection';
+import { EnvBand } from '@/components/charts/EnvBand';
+import { PhotoGallery } from '@/components/gallery/PhotoGallery';
 import { growIsOutdoor } from '@/lib/season';
 import { Card } from '@/components/ui/Card';
+import { HeroCard } from '@/components/ui/HeroCard';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { PlantGlyph } from '@/components/PlantGlyph';
-import {
-  LogComposer,
-  LogDataChips,
-  LogThumbnail,
-} from '@/components/LogComposer';
+import { GrowDetailSkeleton } from '@/components/PageSkeletons';
+import { useDelayedFlag } from '@/lib/useDelayedFlag';
+import { LogComposer } from '@/components/LogComposer';
 import { AddPlantDialog } from '@/components/AddPlantDialog';
 import { RosAvatar } from '@/components/ros/RosAvatar';
 
@@ -37,53 +30,22 @@ import { RosAvatar } from '@/components/ros/RosAvatar';
 const RosWindow = lazy(() =>
   import('@/components/ros/RosWindow').then((m) => ({ default: m.RosWindow })),
 );
-import {
-  db,
-  newId,
-  type GrowPhase,
-  type LogEntry,
-  type LogType,
-  type Plant,
-} from '@/lib/db';
-import { usePhotoUrl } from '@/lib/photos';
+import { db, type LogEntry, type LogType, type Plant } from '@/lib/db';
+import { deletePhoto } from '@/lib/photos';
+import { announce } from '@/lib/announce';
 import {
   daysSince,
   getPhaseForDay,
   growStageDay,
   timelineForCategory,
 } from '@/lib/phases';
-import {
-  COLOR_HEX,
-  COLOR_LABEL,
-  formatShu,
-  isPepper,
-  isPotato,
-  isStrawberry,
-  isTomato,
-  varietyByName,
-} from '@/lib/varieties';
 import { LOCATIONS } from '@/lib/locations';
-
-const PHASE_OPTIONS: { id: GrowPhase; label: string }[] = [
-  { id: 'planning', label: 'Áætlun' },
-  { id: 'germinating', label: 'Spírun' },
-  { id: 'seedling', label: 'Plöntu' },
-  { id: 'vegetative', label: 'Veg' },
-  { id: 'flowering', label: 'Blómgun' },
-  { id: 'fruiting', label: 'Aldin' },
-  { id: 'ripening', label: 'Þroskast' },
-  { id: 'harvest', label: 'Uppskera' },
-];
-
-const LOG_TYPES: { id: LogType; label: string; icon: typeof Droplet }[] = [
-  { id: 'water', label: 'Vökva', icon: Droplet },
-  { id: 'feed', label: 'Næring', icon: Leaf },
-  { id: 'note', label: 'Nóta', icon: StickyNote },
-  { id: 'prune', label: 'Klippt', icon: Scissors },
-  { id: 'top', label: 'Toppað', icon: Sparkles },
-  { id: 'pollinate', label: 'Frjóvgun', icon: Flame },
-  { id: 'environment', label: 'Umhverfi', icon: Thermometer },
-];
+import { LOG_TYPES, pickRepresentativePhase } from './growdetail/shared';
+import { PlantRow } from './growdetail/PlantRow';
+import { LogFilters } from './growdetail/LogFilters';
+import { LogRow } from './growdetail/LogRow';
+import { PlantCareGuide } from './growdetail/PlantCareGuide';
+import { PerPlantGallery } from './growdetail/PerPlantGallery';
 
 export function GrowDetail() {
   const { id } = useParams<{ id: string }>();
@@ -101,13 +63,49 @@ export function GrowDetail() {
     () => (id ? db.harvests.where('growId').equals(id).toArray() : []),
     [id],
   );
+  const latestEnv = useLiveQuery(async () => {
+    if (!id) return undefined;
+    const rows = await db.environment.where('growId').equals(id).reverse().sortBy('timestamp');
+    return rows[0];
+  }, [id]);
 
   const [openLog, setOpenLog] = useState(false);
   const [rosOpen, setRosOpen] = useState(false);
   const [rosEverOpened, setRosEverOpened] = useState(false);
   const [openAddPlant, setOpenAddPlant] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  // Breyta/eyða skráningu (1.4).
+  const [editingLog, setEditingLog] = useState<LogEntry | null>(null);
+  const [deletingLog, setDeletingLog] = useState<LogEntry | null>(null);
+  // Síun á skráningum (1.3) — allt reiknað í minni úr þegar hlöðnum logs.
+  const [logTypeFilter, setLogTypeFilter] = useState<LogType | 'all'>('all');
+  const [logPlantFilter, setLogPlantFilter] = useState<string>('all');
+  const [logRange, setLogRange] = useState<7 | 30 | 0>(0);
+  const [photosPlant, setPhotosPlant] = useState<Plant | null>(null);
+  const [carePlant, setCarePlant] = useState<Plant | null>(null);
 
-  if (!grow || !plants || !logs) return null;
+  // Tegundir sem koma fyrir í þessari ræktun, í birtingarröð LOG_TYPES.
+  const presentTypes = useMemo(() => {
+    const set = new Set((logs ?? []).map((l) => l.type));
+    const ordered = LOG_TYPES.filter((t) => set.has(t.id)).map((t) => t.id);
+    // Tegundir sem LOG_TYPES þekkir ekki (t.d. phase_change) fara aftast.
+    const extra = [...set].filter((t) => !ordered.includes(t as LogType));
+    return [...ordered, ...extra] as LogType[];
+  }, [logs]);
+
+  const filteredLogs = useMemo(() => {
+    const cutoff = logRange ? Date.now() - logRange * 24 * 60 * 60 * 1000 : 0;
+    return (logs ?? []).filter((l) => {
+      if (logTypeFilter !== 'all' && l.type !== logTypeFilter) return false;
+      if (logPlantFilter !== 'all' && l.plantId !== logPlantFilter) return false;
+      if (cutoff && l.timestamp < cutoff) return false;
+      return true;
+    });
+  }, [logs, logTypeFilter, logPlantFilter, logRange]);
+
+  const loading = !grow || !plants || !logs;
+  const showSkeleton = useDelayedFlag(loading);
+  if (loading) return showSkeleton ? <GrowDetailSkeleton /> : null;
 
   const day = daysSince(grow.startDate);
   const timeline = timelineForCategory(grow.category);
@@ -116,12 +114,30 @@ export function GrowDetail() {
   const loc = LOCATIONS.find((l) => l.key === grow.locationKey);
   const heroVariety = plants[0]?.variety ?? 'Habanero Helios';
   const totalHarvest = (harvests ?? []).reduce((s, h) => s + (h.weightG ?? 0), 0);
+  // Fulltrúa-fasi fyrir umhverfis-markgildi: lengst kominn virkur fasi.
+  const representativePhase = pickRepresentativePhase(plants);
 
   async function archiveGrow() {
     if (!grow) return;
-    if (!confirm(`Loka ræktun "${grow.name}"?`)) return;
     await db.grows.update(grow.id, { archived: true, endDate: Date.now(), updatedAt: Date.now() });
+    announce('Ræktun lokað');
     navigate('/grows');
+  }
+
+  async function deleteLog(log: LogEntry) {
+    // Eyddu tengdri mynd ef engin önnur skráning vísar í hana. photoId er ekki
+    // index-aður, svo við skönnum logs töfluna (filter) frekar en .where.
+    if (log.photoId) {
+      const others = await db.logs
+        .filter((l) => l.id !== log.id && l.photoId === log.photoId)
+        .count();
+      if (others === 0)
+        await deletePhoto(log.photoId).catch((err) =>
+          console.warn('[spira] gat ekki eytt mynd skráningar', err),
+        );
+    }
+    await db.logs.delete(log.id);
+    announce('Skráningu eytt');
   }
 
   return (
@@ -139,38 +155,14 @@ export function GrowDetail() {
         Til baka
       </button>
 
-      <div
-        style={{
-          position: 'relative',
-          borderRadius: 22,
-          overflow: 'hidden',
-          background: 'rgba(36,56,39,.55)',
-          border: '1px solid rgba(64,104,67,.45)',
-          backdropFilter: 'blur(20px) saturate(160%)',
-          padding: 18,
-          paddingRight: 120,
-        }}
-      >
-        <div style={{ position: 'absolute', right: -8, top: -4 }}>
-          <PlantGlyph name={heroVariety} size={130} tilt={8} />
-        </div>
+      <HeroCard glyph={<PlantGlyph name={heroVariety} size={130} tilt={8} />}>
         <div className="flex gap-1.5 mb-2">
           {loc && <Pill tone="moss" size="sm">{loc.label}</Pill>}
           <Pill tone="cap" size="sm">D{day}</Pill>
           {grow.archived && <Pill tone="dark" size="sm">Lokað</Pill>}
         </div>
         <Eyebrow>{grow.location}</Eyebrow>
-        <div
-          className="sp-display"
-          style={{
-            fontSize: 24,
-            fontWeight: 500,
-            color: 'var(--cream-50)',
-            lineHeight: 1.1,
-            marginTop: 4,
-            marginBottom: 10,
-          }}
-        >
+        <div className="sp-h2" style={{ marginTop: 4, marginBottom: 10 }}>
           {grow.name}
         </div>
         <PhaseBar phases={timeline.phases} currentDay={stageDay} totalDays={timeline.totalDays} />
@@ -203,7 +195,7 @@ export function GrowDetail() {
           <RosAvatar size={18} />
           Spyrja Rós
         </button>
-      </div>
+      </HeroCard>
 
       <div className="grid grid-cols-3 gap-2 mt-4">
         <Stat label="Dagur" value={String(day)} />
@@ -223,18 +215,34 @@ export function GrowDetail() {
         </div>
       )}
 
+      {!growIsOutdoor(grow) &&
+        latestEnv &&
+        (latestEnv.tempC !== undefined || latestEnv.humidityPct !== undefined) && (
+          <Card tone="strong" radius={18} padding={16} className="mt-4">
+            <EnvBand
+              phase={representativePhase}
+              tempC={latestEnv.tempC}
+              humidityPct={latestEnv.humidityPct}
+            />
+          </Card>
+        )}
+
       <section className="mt-6">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="sp-display text-cream-50" style={{ fontSize: 20, fontWeight: 500 }}>
-            Plöntur
-          </h2>
+          <h2 className="sp-h3">Plöntur</h2>
           <Button size="sm" variant="primary" onClick={() => setOpenAddPlant(true)}>
             <Plus size={14} /> Bæta við
           </Button>
         </div>
         <div className="flex flex-col gap-2">
           {plants.map((p) => (
-            <PlantRow key={p.id} plant={p} day={day} />
+            <PlantRow
+              key={p.id}
+              plant={p}
+              day={day}
+              onOpenPhotos={setPhotosPlant}
+              onOpenCare={setCarePlant}
+            />
           ))}
           {plants.length === 0 && (
             <div className="text-sm text-cream-300/60 border border-dashed border-moss-800/40 rounded-2xl p-5 text-center">
@@ -244,36 +252,86 @@ export function GrowDetail() {
         </div>
       </section>
 
+      <GrowMetricsSection growId={grow.id} logs={logs} className="mt-6" />
+
+      <GrowHarvestSection
+        plants={plants}
+        harvests={harvests ?? []}
+        now={Date.now()}
+        className="mt-6"
+      />
+
+      <PhotoGallery
+        growId={grow.id}
+        plants={plants}
+        logs={logs}
+        className="mt-6"
+      />
+
       <section className="mt-6">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="sp-display text-cream-50" style={{ fontSize: 20, fontWeight: 500 }}>
-            Skráningar
-          </h2>
+          <h2 className="sp-h3">Skráningar</h2>
           <Button size="sm" variant="primary" onClick={() => setOpenLog(true)}>
             <Plus size={14} /> Skrá
           </Button>
         </div>
+
+        {logs.length > 0 && (
+          <LogFilters
+            presentTypes={presentTypes}
+            plants={plants}
+            typeFilter={logTypeFilter}
+            onType={setLogTypeFilter}
+            plantFilter={logPlantFilter}
+            onPlant={setLogPlantFilter}
+            range={logRange}
+            onRange={setLogRange}
+          />
+        )}
+
         <div className="flex flex-col gap-2">
-          {(logs ?? []).slice(0, 30).map((l) => (
-            <LogRow key={l.id} log={l} plants={plants} />
+          {filteredLogs.slice(0, 50).map((l) => (
+            <LogRow
+              key={l.id}
+              log={l}
+              plants={plants}
+              onEdit={setEditingLog}
+              onDelete={setDeletingLog}
+            />
           ))}
-          {(logs ?? []).length === 0 && (
+          {logs.length === 0 ? (
             <div className="text-sm text-cream-300/60 border border-dashed border-moss-800/40 rounded-2xl p-5 text-center">
               Engar skráningar enn. Smelltu „Skrá" til að bæta við.
             </div>
+          ) : (
+            filteredLogs.length === 0 && (
+              <div className="text-sm text-cream-300/60 border border-dashed border-moss-800/40 rounded-2xl p-5 text-center">
+                Engar skráningar passa við síurnar.
+              </div>
+            )
           )}
         </div>
       </section>
 
       {!grow.archived && (
         <button
-          onClick={archiveGrow}
+          onClick={() => setConfirmArchive(true)}
           className="mt-8 flex items-center justify-center gap-1.5 text-cream-300/60 text-sm hover:text-cream-100 transition-colors w-full py-3 rounded-xl border border-dashed border-moss-800/40"
         >
           <Archive size={14} />
           Loka ræktun
         </button>
       )}
+
+      <ConfirmDialog
+        open={confirmArchive}
+        onClose={() => setConfirmArchive(false)}
+        onConfirm={archiveGrow}
+        title="Loka ræktun"
+        body={`Viltu loka ræktuninni „${grow.name}"? Hún færist í safnið og þú getur opnað hana aftur þaðan.`}
+        confirmLabel="Loka ræktun"
+        destructive
+      />
 
       <LogComposer
         growId={grow.id}
@@ -282,11 +340,55 @@ export function GrowDetail() {
         onClose={() => setOpenLog(false)}
       />
 
+      {editingLog && (
+        <LogComposer
+          growId={grow.id}
+          plants={plants}
+          open={editingLog !== null}
+          existing={editingLog}
+          onClose={() => setEditingLog(null)}
+        />
+      )}
+
+      <ConfirmDialog
+        open={deletingLog !== null}
+        onClose={() => setDeletingLog(null)}
+        onConfirm={() => {
+          if (deletingLog) void deleteLog(deletingLog);
+        }}
+        title="Eyða skráningu"
+        body="Viltu eyða þessari skráningu? Þetta er ekki hægt að afturkalla."
+        confirmLabel="Eyða skráningu"
+        destructive
+      />
+
       <AddPlantDialog
         grow={grow}
         open={openAddPlant}
         onClose={() => setOpenAddPlant(false)}
       />
+
+      <Modal
+        open={photosPlant !== null}
+        onClose={() => setPhotosPlant(null)}
+        title={photosPlant ? `Myndir — ${photosPlant.nickname || photosPlant.variety}` : 'Myndir'}
+        size="lg"
+        fullHeight
+      >
+        {photosPlant && (
+          <PerPlantGallery growId={grow.id} plant={photosPlant} plants={plants} logs={logs} />
+        )}
+      </Modal>
+
+      <Modal
+        open={carePlant !== null}
+        onClose={() => setCarePlant(null)}
+        title={carePlant ? `Umhirða — ${carePlant.nickname || carePlant.variety}` : 'Umhirða'}
+        size="lg"
+        fullHeight
+      >
+        {carePlant && <PlantCareGuide plant={carePlant} />}
+      </Modal>
 
       {rosEverOpened && (
         <Suspense fallback={null}>
@@ -301,175 +403,9 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <Card tone="strong" padding={12} radius={14}>
       <Eyebrow>{label}</Eyebrow>
-      <div className="sp-display text-cream-50" style={{ fontSize: 22, fontWeight: 500 }}>
+      <div className="sp-stat text-cream-50" style={{ fontSize: 22 }}>
         {value}
       </div>
     </Card>
   );
 }
-
-function PlantRow({ plant, day }: { plant: Plant; day: number }) {
-  const variety = varietyByName(plant.variety);
-  const phase = PHASE_OPTIONS.find((p) => p.id === plant.currentPhase);
-
-  async function setPhase(p: GrowPhase) {
-    await db.plants.update(plant.id, { currentPhase: p, updatedAt: Date.now() });
-    await db.logs.add({
-      id: newId(),
-      growId: plant.growId,
-      plantId: plant.id,
-      timestamp: Date.now(),
-      type: 'phase_change',
-      note: `Færðist í ${PHASE_OPTIONS.find((x) => x.id === p)?.label ?? p}`,
-    });
-  }
-
-  const swatch = isPepper(variety)
-    ? variety.color
-    : isTomato(variety) || isStrawberry(variety)
-      ? variety.fruitColor
-      : isPotato(variety)
-        ? variety.skinColor
-        : undefined;
-  return (
-    <div className="flex items-center gap-3 rounded-2xl p-3 border bg-moss-900/40 border-moss-800/40">
-      <PlantGlyph variety={variety} name={plant.variety} size={44} tilt={-4} />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-cream-50 font-medium text-sm">
-            {plant.nickname || plant.variety}
-          </span>
-          {swatch && (
-            <span
-              className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-full"
-              style={{
-                background: 'rgba(18,31,20,.55)',
-                border: '1px solid rgba(64,104,67,.5)',
-                color: 'var(--cream-100)',
-              }}
-            >
-              <span
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: 999,
-                  background: COLOR_HEX[swatch],
-                }}
-              />
-              {COLOR_LABEL[swatch]}
-            </span>
-          )}
-          {isPepper(variety) && variety.shu > 0 && (
-            <span className="text-[9px] uppercase tracking-wider text-capsicum-400">
-              {formatShu(variety.shu)} SHU
-            </span>
-          )}
-          {isTomato(variety) && (
-            <span className="text-[9px] uppercase tracking-wider text-terra-300">
-              {variety.fruitWeightG}g · {variety.fruitShape.toLowerCase()}
-            </span>
-          )}
-          {isStrawberry(variety) && (
-            <span className="text-[9px] uppercase tracking-wider text-capsicum-400">
-              {variety.fruitWeightG}g ber
-            </span>
-          )}
-          {isPotato(variety) && (
-            <span className="text-[9px] uppercase tracking-wider text-moss-300">
-              {variety.use}
-            </span>
-          )}
-        </div>
-        <div className="text-[10px] text-cream-400/60 mt-0.5">
-          {plant.variety} · D{day}
-        </div>
-        <select
-          value={plant.currentPhase}
-          onChange={(e) => setPhase(e.target.value as GrowPhase)}
-          className="mt-1 bg-moss-950/60 border border-moss-800 rounded-md px-2 py-0.5 text-[11px] text-cream-100 outline-none focus:border-moss-400"
-        >
-          {PHASE_OPTIONS.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <span className="text-[10px] text-cream-300/60 uppercase tracking-wider">
-        {phase?.label ?? plant.currentPhase}
-      </span>
-    </div>
-  );
-}
-
-function LogRow({ log, plants }: { log: LogEntry; plants: Plant[] }) {
-  const meta = LOG_TYPES.find((t) => t.id === log.type);
-  const Icon = meta?.icon ?? StickyNote;
-  const plant = plants.find((p) => p.id === log.plantId);
-  const date = new Date(log.timestamp);
-  const [viewerOpen, setViewerOpen] = useState(false);
-  return (
-    <div className="flex items-start gap-3 rounded-xl p-2.5 border bg-moss-900/30 border-moss-800/30">
-      <div
-        className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
-        style={{ background: 'rgba(231,217,168,.08)', color: 'var(--cream-300)' }}
-      >
-        <Icon size={14} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-cream-100 text-sm font-medium">
-            {meta?.label ?? log.type}
-          </span>
-          {plant && (
-            <span className="text-[10px] text-cream-400/70">
-              {plant.nickname || plant.variety}
-            </span>
-          )}
-          <span className="text-[10px] text-cream-400/60 ml-auto sp-mono">
-            {date.toLocaleDateString('is-IS', { day: 'numeric', month: 'short' })}
-          </span>
-        </div>
-        <LogDataChips
-          type={log.type}
-          data={log.data as Record<string, unknown> | undefined}
-        />
-        {log.note && <div className="text-[12px] text-cream-300/75 mt-0.5">{log.note}</div>}
-        {log.photoId && (
-          <>
-            <LogThumbnail photoId={log.photoId} onOpen={() => setViewerOpen(true)} />
-            <PhotoViewer
-              photoId={log.photoId}
-              open={viewerOpen}
-              onClose={() => setViewerOpen(false)}
-            />
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function PhotoViewer({
-  photoId,
-  open,
-  onClose,
-}: {
-  photoId: string;
-  open: boolean;
-  onClose: () => void;
-}) {
-  const url = usePhotoUrl(open ? photoId : undefined);
-  return (
-    <Modal open={open} onClose={onClose}>
-      <div className="rounded-xl overflow-hidden bg-moss-950/60 border border-moss-800/50">
-        {url ? (
-          <img src={url} alt="Skráð mynd" className="w-full h-auto object-contain" />
-        ) : (
-          <div className="aspect-square w-full" />
-        )}
-      </div>
-    </Modal>
-  );
-}
-

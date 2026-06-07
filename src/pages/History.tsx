@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Archive, RotateCcw } from 'lucide-react';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { Pill } from '@/components/ui/Pill';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { SearchInput, NoResults } from '@/components/ui/SearchInput';
 import { Chili } from '@/components/Chili';
 import { db } from '@/lib/db';
 import { LOCATIONS } from '@/lib/locations';
@@ -13,13 +16,20 @@ export function History() {
   const grows = useLiveQuery(() => db.grows.toArray());
   const plants = useLiveQuery(() => db.plants.toArray());
   const harvests = useLiveQuery(() => db.harvests.toArray());
+  const [reopenTarget, setReopenTarget] = useState<{ id: string; name: string } | null>(null);
+  const [query, setQuery] = useState('');
 
   if (!grows || !plants || !harvests) return null;
 
-  const archived = grows.filter((g) => g.archived);
+  const allArchived = grows.filter((g) => g.archived);
+  const q = query.trim().toLocaleLowerCase('is');
+  const archived = q
+    ? allArchived.filter((g) =>
+        `${g.name} ${g.location}`.toLocaleLowerCase('is').includes(q),
+      )
+    : allArchived;
 
   async function reopen(id: string) {
-    if (!confirm('Opna ræktun aftur?')) return;
     await db.grows.update(id, { archived: false, endDate: undefined, updatedAt: Date.now() });
   }
 
@@ -32,27 +42,31 @@ export function History() {
     >
       <header className="mb-5">
         <Eyebrow color="var(--terra-300)">Safn</Eyebrow>
-        <h1
-          className="sp-display"
-          style={{
-            fontSize: 30,
-            fontWeight: 500,
-            color: 'var(--cream-50)',
-            lineHeight: 1.05,
-            marginTop: 6,
-          }}
-        >
+        <h1 className="sp-h1" style={{ marginTop: 6 }}>
           <Archive size={22} className="inline-block mr-1" />
           Lokaðar ræktanir
         </h1>
       </header>
 
+      {allArchived.length > 0 && (
+        <div className="mb-3">
+          <SearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder="Leita að lokaðri ræktun"
+          />
+        </div>
+      )}
+
       <div className="flex flex-col gap-3">
-        {archived.length === 0 && (
-          <div className="text-sm text-cream-300/60 text-center py-8 border border-dashed border-moss-800/40 rounded-2xl">
-            Engar lokaðar ræktanir.
-          </div>
-        )}
+        {archived.length === 0 &&
+          (allArchived.length === 0 ? (
+            <div className="text-sm text-cream-300/60 text-center py-8 border border-dashed border-moss-800/40 rounded-2xl">
+              Engar lokaðar ræktanir.
+            </div>
+          ) : (
+            <NoResults message="Engar lokaðar ræktanir passa við leitina." />
+          ))}
         {archived.map((g) => {
           const gp = plants.filter((p) => p.growId === g.id);
           const gh = harvests.filter((h) => h.growId === g.id);
@@ -85,9 +99,10 @@ export function History() {
               </div>
               <button
                 type="button"
-                onClick={() => reopen(g.id)}
+                onClick={() => setReopenTarget({ id: g.id, name: g.name })}
                 className="flex items-center gap-1 text-[11px] text-cream-300 hover:text-cream-100 px-2 py-1 rounded-md border border-moss-800"
                 title="Opna aftur"
+                aria-label={`Opna ræktun ${g.name} aftur`}
               >
                 <RotateCcw size={11} /> Opna
               </button>
@@ -95,6 +110,21 @@ export function History() {
           );
         })}
       </div>
+
+      <ConfirmDialog
+        open={reopenTarget !== null}
+        onClose={() => setReopenTarget(null)}
+        onConfirm={() => {
+          if (reopenTarget) void reopen(reopenTarget.id);
+        }}
+        title="Opna ræktun aftur"
+        body={
+          reopenTarget
+            ? `Viltu opna „${reopenTarget.name}" aftur? Hún færist aftur í virku ræktanirnar.`
+            : undefined
+        }
+        confirmLabel="Opna aftur"
+      />
     </motion.div>
   );
 }

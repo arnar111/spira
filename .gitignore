@@ -28,6 +28,7 @@ yarn-error.log*
 .env.*.local
 
 # Claude Code personal settings
+.claude/settings.json
 .claude/settings.local.json
 
 # Research: keep the HTML source guides as provenance; skip the heavy PDF/zip exports

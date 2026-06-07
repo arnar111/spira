@@ -6,6 +6,8 @@ import { Eyebrow } from '@/components/ui/Eyebrow';
 import { Card } from '@/components/ui/Card';
 import { Stat } from '@/components/ui/Stat';
 import { Sparkline } from '@/components/ui/Sparkline';
+import { RangeToggle } from '@/components/ui/RangeToggle';
+import { withinRange, type RangeDays } from '@/lib/range';
 import { Button } from '@/components/ui/Button';
 import { DaylightCard } from '@/components/DaylightCard';
 import { SeasonCard } from '@/components/SeasonCard';
@@ -14,11 +16,17 @@ import { db, newId } from '@/lib/db';
 import { growIsOutdoor } from '@/lib/season';
 import { cn } from '@/lib/cn';
 
+/** Íslenskt heiti á völdum tímaglugga fyrir línurits-merki. */
+function rangeLabel(range: RangeDays): string {
+  return range === null ? 'allt tímabilið' : `${range} dagar`;
+}
+
 export function Environment() {
   const env = useLiveQuery(() => db.environment.toArray());
   const allGrows = useLiveQuery(() => db.grows.toArray());
   const allPlants = useLiveQuery(() => db.plants.toArray());
   const [openGrowId, setOpenGrowId] = useState<string | null>(null);
+  const [range, setRange] = useState<RangeDays>(14);
 
   if (!allGrows || !env || !allPlants) return null;
   const active = allGrows.filter((g) => !g.archived);
@@ -32,20 +40,14 @@ export function Environment() {
       transition={{ duration: 0.3 }}
       className="px-5 sm:px-7 py-6"
     >
-      <header className="mb-5">
-        <Eyebrow color="var(--terra-300)">Umhverfis-skrá</Eyebrow>
-        <h1
-          className="sp-display"
-          style={{
-            fontSize: 30,
-            fontWeight: 500,
-            color: 'var(--cream-50)',
-            lineHeight: 1.05,
-            marginTop: 6,
-          }}
-        >
-          Hiti & raki
-        </h1>
+      <header className="flex items-end justify-between mb-5 gap-3">
+        <div>
+          <Eyebrow color="var(--terra-300)">Umhverfis-skrá</Eyebrow>
+          <h1 className="sp-h1" style={{ marginTop: 6 }}>
+            Hiti & raki
+          </h1>
+        </div>
+        {active.length > 0 && <RangeToggle value={range} onChange={setRange} />}
       </header>
 
       <div className="flex flex-col gap-3">
@@ -57,9 +59,10 @@ export function Environment() {
           </div>
         )}
         {active.map((g) => {
-          const samples = env
-            .filter((e) => e.growId === g.id)
-            .sort((a, b) => a.timestamp - b.timestamp);
+          const samples = withinRange(
+            env.filter((e) => e.growId === g.id).sort((a, b) => a.timestamp - b.timestamp),
+            range,
+          );
           const last = samples[samples.length - 1];
           const avgTemp =
             samples.length > 0
@@ -87,10 +90,7 @@ export function Environment() {
               <div className="flex items-baseline justify-between mb-3">
                 <div>
                   <Eyebrow>{g.location}</Eyebrow>
-                  <div
-                    className="sp-display"
-                    style={{ fontSize: 18, color: 'var(--cream-50)', fontWeight: 500 }}
-                  >
+                  <div className="sp-h3" style={{ fontSize: 18 }}>
                     {g.name}
                   </div>
                 </div>
@@ -110,24 +110,32 @@ export function Environment() {
               </div>
               <div className="mt-3">
                 <div className="text-[10px] uppercase tracking-[0.16em] text-cream-400/60 mb-1">
-                  Hiti — 14 dagar (meðal {avgTemp.toFixed(1)}°C)
+                  Hiti — {rangeLabel(range)} (meðal {avgTemp.toFixed(1)}°C)
                 </div>
                 <Sparkline
-                  points={tempPoints.length > 0 ? tempPoints : [0, 0, 0]}
+                  points={tempPoints}
                   width={320}
-                  height={32}
+                  height={36}
                   color="var(--terra-400)"
+                  smooth
+                  reference="avg"
+                  lastLabel
+                  formatValue={(v) => `${v.toFixed(1)}°`}
                 />
               </div>
               <div className="mt-2">
                 <div className="text-[10px] uppercase tracking-[0.16em] text-cream-400/60 mb-1">
-                  Raki — 14 dagar (meðal {avgHum.toFixed(0)}%)
+                  Raki — {rangeLabel(range)} (meðal {avgHum.toFixed(0)}%)
                 </div>
                 <Sparkline
-                  points={humPoints.length > 0 ? humPoints : [0, 0, 0]}
+                  points={humPoints}
                   width={320}
-                  height={32}
+                  height={36}
                   color="var(--moss-300)"
+                  smooth
+                  reference="avg"
+                  lastLabel
+                  formatValue={(v) => `${v.toFixed(0)}%`}
                 />
               </div>
             </Card>
@@ -178,10 +186,7 @@ function EnvDialog({ growId, onClose }: { growId: string; onClose: () => void })
         onClick={(e) => e.stopPropagation()}
       >
         <Eyebrow>Ný umhverfis-lestur</Eyebrow>
-        <h3
-          className="sp-display"
-          style={{ fontSize: 22, color: 'var(--cream-50)', fontWeight: 500, marginTop: 4 }}
-        >
+        <h3 className="sp-h3" style={{ marginTop: 4 }}>
           <Thermometer size={18} className="inline-block mr-1" />
           Skrá hita og raka
         </h3>

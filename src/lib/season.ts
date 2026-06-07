@@ -47,15 +47,19 @@ export const REYKJAVIK_SEASON: SeasonMonth[] = [
 
 /**
  * Is a grow outdoor? Uses `environment` when set, else infers from the location
- * (`garden`). The Rós engine additionally treats potato grows as outdoor; this
- * grow-only helper is for UI that doesn't have the plant list to hand.
+ * (`garden`). When the plant list is to hand (the Rós engine always has it),
+ * pass it: active potato plants make a grow outdoor too — potatoes are an
+ * outdoor crop in Iceland regardless of where the grow record says it lives.
+ * UI without plants simply omits the second argument (4.3: single source of
+ * truth — this replaced the engine's private copy).
  */
-export function growIsOutdoor(grow: {
-  environment?: GrowEnvironment;
-  locationKey?: string;
-}): boolean {
+export function growIsOutdoor(
+  grow: { environment?: GrowEnvironment; locationKey?: string },
+  plants?: ReadonlyArray<{ archived: boolean; category: string }>,
+): boolean {
   if (grow.environment) return grow.environment === 'outdoor';
-  return grow.locationKey === 'garden';
+  if (grow.locationKey === 'garden') return true;
+  return plants?.some((p) => !p.archived && p.category === 'potato') ?? false;
 }
 
 export function seasonForMonth(month: number): SeasonMonth {
