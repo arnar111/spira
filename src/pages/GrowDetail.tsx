@@ -21,6 +21,8 @@ import { PhaseBar } from '@/components/ui/PhaseBar';
 import { SeasonCard } from '@/components/SeasonCard';
 import { VeritableCard } from '@/components/VeritableCard';
 import { GrowMetricsSection } from '@/components/charts/GrowMetricsSection';
+import { GrowHarvestSection } from '@/components/charts/GrowHarvestSection';
+import { EnvBand } from '@/components/charts/EnvBand';
 import { PhotoGallery } from '@/components/gallery/PhotoGallery';
 import { growIsOutdoor } from '@/lib/season';
 import { Card } from '@/components/ui/Card';
@@ -88,6 +90,33 @@ const LOG_TYPES: { id: LogType; label: string; icon: typeof Droplet }[] = [
   { id: 'environment', label: 'Umhverfi', icon: Thermometer },
 ];
 
+/** Röðun fasa eftir framvindu — fyrir „lengst kominn" fulltrúa-fasa. */
+const PHASE_ORDER: GrowPhase[] = [
+  'planning',
+  'germinating',
+  'seedling',
+  'vegetative',
+  'flowering',
+  'fruiting',
+  'ripening',
+  'harvest',
+];
+
+/** Lengst kominn virkur plöntufasi (fyrir umhverfis-markgildi). */
+function pickRepresentativePhase(plants: Plant[]): GrowPhase {
+  let best: GrowPhase = 'vegetative';
+  let bestRank = -1;
+  for (const p of plants) {
+    if (p.archived) continue;
+    const rank = PHASE_ORDER.indexOf(p.currentPhase);
+    if (rank > bestRank) {
+      bestRank = rank;
+      best = p.currentPhase;
+    }
+  }
+  return best;
+}
+
 export function GrowDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -104,6 +133,11 @@ export function GrowDetail() {
     () => (id ? db.harvests.where('growId').equals(id).toArray() : []),
     [id],
   );
+  const latestEnv = useLiveQuery(async () => {
+    if (!id) return undefined;
+    const rows = await db.environment.where('growId').equals(id).reverse().sortBy('timestamp');
+    return rows[0];
+  }, [id]);
 
   const [openLog, setOpenLog] = useState(false);
   const [rosOpen, setRosOpen] = useState(false);
@@ -120,6 +154,8 @@ export function GrowDetail() {
   const loc = LOCATIONS.find((l) => l.key === grow.locationKey);
   const heroVariety = plants[0]?.variety ?? 'Habanero Helios';
   const totalHarvest = (harvests ?? []).reduce((s, h) => s + (h.weightG ?? 0), 0);
+  // Fulltrúa-fasi fyrir umhverfis-markgildi: lengst kominn virkur fasi.
+  const representativePhase = pickRepresentativePhase(plants);
 
   async function archiveGrow() {
     if (!grow) return;
@@ -227,6 +263,18 @@ export function GrowDetail() {
         </div>
       )}
 
+      {!growIsOutdoor(grow) &&
+        latestEnv &&
+        (latestEnv.tempC !== undefined || latestEnv.humidityPct !== undefined) && (
+          <Card tone="strong" radius={18} padding={16} className="mt-4">
+            <EnvBand
+              phase={representativePhase}
+              tempC={latestEnv.tempC}
+              humidityPct={latestEnv.humidityPct}
+            />
+          </Card>
+        )}
+
       <section className="mt-6">
         <div className="flex items-center justify-between mb-2">
           <h2 className="sp-display text-cream-50" style={{ fontSize: 20, fontWeight: 500 }}>
@@ -249,6 +297,13 @@ export function GrowDetail() {
       </section>
 
       <GrowMetricsSection growId={grow.id} logs={logs} className="mt-6" />
+
+      <GrowHarvestSection
+        plants={plants}
+        harvests={harvests ?? []}
+        now={Date.now()}
+        className="mt-6"
+      />
 
       <PhotoGallery
         growId={grow.id}

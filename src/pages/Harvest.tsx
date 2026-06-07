@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
 import { Chili } from '@/components/Chili';
+import { VarietyYieldList } from '@/components/charts/VarietyYieldList';
 import { db, newId, type Plant } from '@/lib/db';
 import { chiliForVarietyName, formatShu, varietyByName } from '@/lib/varieties';
 
@@ -139,6 +140,8 @@ export function Harvest() {
           );
         })}
       </div>
+
+      <VarietyYieldList className="mt-4" />
 
       {open && (
         <HarvestDialog
