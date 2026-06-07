@@ -98,8 +98,7 @@ export function AgendaSection({
           ))}
           {infoCount > 0 && (
             <p className="text-[11px] text-cream-300/55 mt-1 px-0.5">
-              {infoCount} {infoCount === 1 ? 'ráð til viðbótar' : 'ráð til viðbótar'} í
-              einstökum ræktunum.
+              {infoCount} ráð til viðbótar í einstökum ræktunum.
             </p>
           )}
         </div>
