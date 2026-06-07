@@ -21,7 +21,7 @@
 | 1. UX | ⬜ | ⬜ | ⬜ | ⬜ |
 | 2. UI | ⬜ | ⬜ | ⬜ | ⬜ |
 | 3. Features | ⬜ | ⬜ | ⬜ | ⬜ |
-| 4. Codebase | ✅ | ⬜ | ⬜ | ⬜ |
+| 4. Codebase | ✅ | ✅ | ⬜ | ⬜ |
 | 5. Other | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ⬜ not started · 🔶 in progress · ✅ done
@@ -337,21 +337,22 @@ screen.
 co-located `*.test.ts` — pick one convention and note it here. **Convention picked in 4.1: co-located
 `*.test.ts` next to the module** (see `src/lib/cn.test.ts`).
 
-- [ ] `phases.ts` — `daysSince`, `cycleProgress`, `getPhaseForDay`, boundaries (day 0, day 140, negatives).
-- [ ] `season.ts` — `frostRisk`/`seasonForMonth`/`seasonStatus` for all 12 months; `growIsOutdoor` cases
+- [x] `phases.ts` — `daysSince`, `cycleProgress`, `getPhaseForDay`, boundaries (day 0, day 140, negatives).
+- [x] `season.ts` — `frostRisk`/`seasonForMonth`/`seasonStatus` for all 12 months; `growIsOutdoor` cases
       (environment set, garden locationKey, neither).
-- [ ] `daylight.ts` — `needsGrowLight`/`daylightStatus` for all 12 months.
-- [ ] `logSchema.ts` — `formatLogData` per log type incl. missing/malformed data fields.
-- [ ] `ros/engine.ts` — `computeInsights` scenario tests (it's pure: feed fixed `now`/`month` + fixture
+- [x] `daylight.ts` — `needsGrowLight`/`daylightStatus` for all 12 months.
+- [x] `logSchema.ts` — `formatLogData` per log type incl. missing/malformed data fields.
+- [x] `ros/engine.ts` — `computeInsights` scenario tests (it's pure: feed fixed `now`/`month` + fixture
       grow/plants/logs): overdue water, feed cadence, topping window, strawberry deblossom vs pollinate,
       outdoor skips indoor insights, Véritable tank/lingot set, potato-is-outdoor. Also `engine.ts` vs
       `season.ts` `growIsOutdoor` divergence — characterize current behavior of BOTH (4.3 unifies them).
-- [ ] `ros/predict.ts` — window math, null cases (archived, no variety, no daysToHarvest, finished phase).
-- [ ] `sync.ts` — `exportSnapshot`→`importSnapshot` round-trip equality (use `fake-indexeddb` dev-dep for
-      Dexie in node), `isSnapshot` rejects garbage, photos/lastSyncedAt excluded.
-- [ ] `account.ts` — `normalizeCode`/`isValidCode` edge cases (lowercase, >3 chars, icelandic letters Þ/Ð
+- [x] `ros/predict.ts` — window math, null cases (archived, no variety, no daysToHarvest, finished phase).
+- [x] `sync.ts` — `exportSnapshot`→`importSnapshot` round-trip equality (use `fake-indexeddb` dev-dep for
+      Dexie in node), `isSnapshot` rejects garbage, photos/lastSyncedAt excluded. *(`isSnapshot` is now
+      exported from `sync.ts` — 5.2's import UI needs it anyway.)*
+- [x] `account.ts` — `normalizeCode`/`isValidCode` edge cases (lowercase, >3 chars, icelandic letters Þ/Ð
       rejected).
-- [ ] varieties guards — `isTomato`/`isStrawberry`/`isPotato`/`hasCare` over the real catalog (also acts
+- [x] varieties guards — `isTomato`/`isStrawberry`/`isPotato`/`hasCare` over the real catalog (also acts
       as a data-integrity test: every variety has germinate/harvest ranges).
 
 **Acceptance:** `npm run test` green; engine + sync + calendars covered; CI-able via `npm run check`.
@@ -511,3 +512,12 @@ session.
     `@` alias). 4.2 should follow this.
   - Prettier skipped (see 4.1 checkbox).
   - Pre-existing: vite build warns about the 845 kB main chunk — that's 5.4's code-splitting job, untouched.
+- **2026-06-07 — 4.2 Tests done** (same branch). 176 tests across 10 files (`*.test.ts` co-located),
+  all 9 planned modules covered; `fake-indexeddb` dev-dep added for the Dexie sync round-trip.
+  - `isSnapshot` is now **exported** from `sync.ts` (was private) — needed by the tests and by 5.2's
+    import-validation UI. No other source changes.
+  - **Characterized for 4.3/4.4:** (a) engine vs season `growIsOutdoor` divergence (potato-in-window is
+    outdoor to the engine, indoor to season.ts) — see `engine.test.ts` "kartöflur teljast útiræktun";
+    (b) latent quirk: the feed/topping/pollinate blocks do NOT gate on `grow.archived`/`growActive`, so an
+    archived grow still yields a `feed` due insight — locked in as-is, decide in 4.3 whether to fix.
+  - `importSnapshot` merges `meta` via bulkPut (doesn't clear) and leaves photos untouched — now pinned.

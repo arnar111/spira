@@ -85,7 +85,7 @@ export async function clearLocalData(): Promise<void> {
   );
 }
 
-function isSnapshot(value: unknown): value is SnapshotV1 {
+export function isSnapshot(value: unknown): value is SnapshotV1 {
   if (!value || typeof value !== 'object') return false;
   const v = value as Partial<SnapshotV1>;
   return (
