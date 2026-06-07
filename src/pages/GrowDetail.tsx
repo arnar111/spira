@@ -7,6 +7,7 @@ import {
   Archive,
   Droplet,
   Flame,
+  Images,
   Leaf,
   Plus,
   Scissors,
@@ -20,6 +21,7 @@ import { PhaseBar } from '@/components/ui/PhaseBar';
 import { SeasonCard } from '@/components/SeasonCard';
 import { VeritableCard } from '@/components/VeritableCard';
 import { GrowMetricsSection } from '@/components/charts/GrowMetricsSection';
+import { PhotoGallery } from '@/components/gallery/PhotoGallery';
 import { growIsOutdoor } from '@/lib/season';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -107,6 +109,7 @@ export function GrowDetail() {
   const [rosOpen, setRosOpen] = useState(false);
   const [rosEverOpened, setRosEverOpened] = useState(false);
   const [openAddPlant, setOpenAddPlant] = useState(false);
+  const [photosPlant, setPhotosPlant] = useState<Plant | null>(null);
 
   if (!grow || !plants || !logs) return null;
 
@@ -235,7 +238,7 @@ export function GrowDetail() {
         </div>
         <div className="flex flex-col gap-2">
           {plants.map((p) => (
-            <PlantRow key={p.id} plant={p} day={day} />
+            <PlantRow key={p.id} plant={p} day={day} onOpenPhotos={setPhotosPlant} />
           ))}
           {plants.length === 0 && (
             <div className="text-sm text-cream-300/60 border border-dashed border-moss-800/40 rounded-2xl p-5 text-center">
@@ -246,6 +249,13 @@ export function GrowDetail() {
       </section>
 
       <GrowMetricsSection growId={grow.id} logs={logs} className="mt-6" />
+
+      <PhotoGallery
+        growId={grow.id}
+        plants={plants}
+        logs={logs}
+        className="mt-6"
+      />
 
       <section className="mt-6">
         <div className="flex items-center justify-between mb-2">
@@ -291,6 +301,18 @@ export function GrowDetail() {
         onClose={() => setOpenAddPlant(false)}
       />
 
+      <Modal
+        open={photosPlant !== null}
+        onClose={() => setPhotosPlant(null)}
+        title={photosPlant ? `Myndir — ${photosPlant.nickname || photosPlant.variety}` : 'Myndir'}
+        size="lg"
+        fullHeight
+      >
+        {photosPlant && (
+          <PerPlantGallery growId={grow.id} plant={photosPlant} plants={plants} logs={logs} />
+        )}
+      </Modal>
+
       {rosEverOpened && (
         <Suspense fallback={null}>
           <RosWindow grow={grow} open={rosOpen} onClose={() => setRosOpen(false)} />
@@ -311,7 +333,15 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PlantRow({ plant, day }: { plant: Plant; day: number }) {
+function PlantRow({
+  plant,
+  day,
+  onOpenPhotos,
+}: {
+  plant: Plant;
+  day: number;
+  onOpenPhotos: (plant: Plant) => void;
+}) {
   const variety = varietyByName(plant.variety);
   const phase = PHASE_OPTIONS.find((p) => p.id === plant.currentPhase);
 
@@ -398,9 +428,20 @@ function PlantRow({ plant, day }: { plant: Plant; day: number }) {
           ))}
         </select>
       </div>
-      <span className="text-[10px] text-cream-300/60 uppercase tracking-wider">
-        {phase?.label ?? plant.currentPhase}
-      </span>
+      <div className="flex flex-col items-end gap-1.5 shrink-0">
+        <span className="text-[10px] text-cream-300/60 uppercase tracking-wider">
+          {phase?.label ?? plant.currentPhase}
+        </span>
+        <button
+          type="button"
+          onClick={() => onOpenPhotos(plant)}
+          aria-label={`Myndir af ${plant.nickname || plant.variety}`}
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-cream-300/70 hover:text-cream-100 transition-colors"
+          style={{ background: 'rgba(231,217,168,.08)' }}
+        >
+          <Images size={13} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -451,6 +492,31 @@ function LogRow({ log, plants }: { log: LogEntry; plants: Plant[] }) {
       </div>
     </div>
   );
+}
+
+function PerPlantGallery({
+  growId,
+  plant,
+  plants,
+  logs,
+}: {
+  growId: string;
+  plant: Plant;
+  plants: Plant[];
+  logs: LogEntry[];
+}) {
+  const photoCount = useLiveQuery(
+    () => db.photos.where('growId').equals(growId).filter((p) => p.plantId === plant.id).count(),
+    [growId, plant.id],
+  );
+  if (photoCount === 0) {
+    return (
+      <div className="text-sm text-cream-300/65 border border-dashed border-moss-800/40 rounded-2xl p-6 text-center">
+        Engar myndir af þessari plöntu enn. Skráðu mynd (📷) í dagbókina til að safna þeim hér.
+      </div>
+    );
+  }
+  return <PhotoGallery growId={growId} plantId={plant.id} plants={plants} logs={logs} />;
 }
 
 function PhotoViewer({
