@@ -18,11 +18,11 @@
 
 | Category | Ph 1 | Ph 2 | Ph 3 | Ph 4 |
 |---|---|---|---|---|
-| 1. UX | ⬜ | ⬜ | ⬜ | ⬜ |
-| 2. UI | ⬜ | ⬜ | ⬜ | ⬜ |
-| 3. Features | ⬜ | ⬜ | ⬜ | ⬜ |
+| 1. UX | 🔶 | 🔶 | 🔶 | 🔶 |
+| 2. UI | 🔶 | 🔶 | 🔶 | 🔶 |
+| 3. Features | 🔶 | 🔶 | 🔶 | 🔶 |
 | 4. Codebase | ✅ | ✅ | ⬜ | ⬜ |
-| 5. Other | ✅ | ⬜ | ⬜ | ⬜ |
+| 5. Other | ✅ | 🔶 | 🔶 | ⬜ |
 
 ⬜ not started · 🔶 in progress · ✅ done
 
@@ -531,3 +531,16 @@ session.
     the `check` script in a later phase (note for 5.4 docs).
   - The rate-limit migration must be applied to the Netlify DB before deploy benefits; the function
     fails open (console.warn) until then, so nothing breaks if deploy order slips.
+- **2026-06-07 — Agent team running** (team "juneimpro", lead owns the main checkout on
+  `claude/juneimpro-4.1-tooling`). Teammates in isolated worktrees under `.claude/worktrees/`:
+  cat1-ux → `claude/juneimpro-cat1-ux`, cat2-ui → `claude/juneimpro-cat2-ui-wt` (note `-wt`; the
+  un-suffixed cat2 branch is dead), cat3-features → `claude/juneimpro-cat3-features`,
+  cat5-other → `claude/juneimpro-cat5-other`. `ui/ConfirmDialog.tsx` was pre-built on base 2556edb.
+  - **Incident:** teammate "worktree isolation" failed at spawn — all four started in the shared main
+    checkout and interleaved uncommitted edits. Resolved by real `git worktree add` per teammate; the
+    mixed state is preserved on branch `wip/juneimpro-mixed` (6a22faf — delete after all categories merge).
+    Main-checkout gate now excludes `.claude/` in vitest + eslint (commit 3695511).
+  - Merge plan (lead): cat2 → cat1 → cat3 → cat5, `npm run check` after each, then 4.3 → 4.4 → 5.4.
+  - Reconcile at merge: cat3 used old Sparkline API + a local RangeToggle (swap to 2.4's ui/RangeToggle);
+    Environment-page pH/EC charts deferred to post-merge (cat3 avoided cat2's file); cat3's own lightbox
+    vs cat2's ui/Lightbox — pick one.
