@@ -19,6 +19,7 @@ import { Eyebrow } from '@/components/ui/Eyebrow';
 import { PhaseBar } from '@/components/ui/PhaseBar';
 import { SeasonCard } from '@/components/SeasonCard';
 import { VeritableCard } from '@/components/VeritableCard';
+import { GrowMetricsSection } from '@/components/charts/GrowMetricsSection';
 import { growIsOutdoor } from '@/lib/season';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -243,6 +244,8 @@ export function GrowDetail() {
           )}
         </div>
       </section>
+
+      <GrowMetricsSection growId={grow.id} logs={logs} className="mt-6" />
 
       <section className="mt-6">
         <div className="flex items-center justify-between mb-2">
