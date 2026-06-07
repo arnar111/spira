@@ -5,7 +5,7 @@ import { ArrowRight, KeyRound, Loader2, Sprout, UserPlus } from 'lucide-react';
 import { GrowingPlant } from '@/components/GrowingPlant';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { cn } from '@/lib/cn';
+import { Tabs } from '@/components/ui/Tabs';
 import {
   ApiError,
   CODE_LENGTH,
@@ -124,16 +124,22 @@ export function Login({ onSignedIn }: LoginProps) {
           transition={{ duration: 0.5, delay: 1.55 }}
           className="w-full"
         >
-          <div className="flex p-1 mb-6 rounded-2xl bg-moss-950/60 border border-moss-800/40">
-            <TabButton active={mode === 'signin'} onClick={() => setMode('signin')}>
-              <KeyRound size={15} />
-              Sláðu inn kóða
-            </TabButton>
-            <TabButton active={mode === 'signup'} onClick={() => setMode('signup')}>
-              <UserPlus size={15} />
-              Búa til kóða
-            </TabButton>
-          </div>
+          <Tabs
+            variant="segmented"
+            className="mb-6"
+            active={mode === 'signin' ? 0 : 1}
+            onChange={(i) => setMode(i === 0 ? 'signin' : 'signup')}
+            items={[
+              <>
+                <KeyRound size={15} />
+                Sláðu inn kóða
+              </>,
+              <>
+                <UserPlus size={15} />
+                Búa til kóða
+              </>,
+            ]}
+          />
 
           <Card className="space-y-5">
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -209,29 +215,6 @@ export function Login({ onSignedIn }: LoginProps) {
         </motion.div>
       </div>
     </motion.div>
-  );
-}
-
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'flex-1 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-all',
-        active ? 'bg-moss-800/80 text-cream-50 shadow' : 'text-cream-300 hover:text-cream-100',
-      )}
-    >
-      {children}
-    </button>
   );
 }
 

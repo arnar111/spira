@@ -3,6 +3,7 @@ import { Droplet, Lightbulb, Sparkles, Wrench } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { Pill } from '@/components/ui/Pill';
+import { TaskRow } from '@/components/ui/TaskRow';
 import { db, type LogEntry, type Plant } from '@/lib/db';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -192,27 +193,18 @@ export function VeritableCard({
           const tone = toneFor(item);
           const Icon = item.icon;
           return (
-            <div
+            <TaskRow
               key={item.key}
-              className="flex items-start gap-3 rounded-xl p-2.5 border bg-moss-900/30 border-moss-800/30"
-            >
-              <div
-                className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ background: 'rgba(231,217,168,.08)', color: 'var(--cream-300)' }}
-              >
-                <Icon size={14} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2 flex-wrap">
-                  <span className="text-cream-100 text-sm font-medium">{item.label}</span>
-                  <span className="text-[10px] text-cream-400/60 sp-mono">{dueText(item)}</span>
-                  <Pill tone={TONE_PILL[tone]} size="sm" className="ml-auto">
-                    {TONE_LABEL[tone]}
-                  </Pill>
-                </div>
-                <p className="text-[11.5px] text-cream-300/70 leading-snug mt-0.5">{item.note}</p>
-              </div>
-            </div>
+              icon={<Icon size={14} />}
+              label={item.label}
+              meta={dueText(item)}
+              badge={
+                <Pill tone={TONE_PILL[tone]} size="sm" className="ml-auto">
+                  {TONE_LABEL[tone]}
+                </Pill>
+              }
+              note={item.note}
+            />
           );
         })}
       </div>

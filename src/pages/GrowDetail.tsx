@@ -21,6 +21,7 @@ import { SeasonCard } from '@/components/SeasonCard';
 import { VeritableCard } from '@/components/VeritableCard';
 import { growIsOutdoor } from '@/lib/season';
 import { Card } from '@/components/ui/Card';
+import { HeroCard } from '@/components/ui/HeroCard';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { PlantGlyph } from '@/components/PlantGlyph';
@@ -139,21 +140,7 @@ export function GrowDetail() {
         Til baka
       </button>
 
-      <div
-        style={{
-          position: 'relative',
-          borderRadius: 22,
-          overflow: 'hidden',
-          background: 'rgba(36,56,39,.55)',
-          border: '1px solid rgba(64,104,67,.45)',
-          backdropFilter: 'blur(20px) saturate(160%)',
-          padding: 18,
-          paddingRight: 120,
-        }}
-      >
-        <div style={{ position: 'absolute', right: -8, top: -4 }}>
-          <PlantGlyph name={heroVariety} size={130} tilt={8} />
-        </div>
+      <HeroCard glyph={<PlantGlyph name={heroVariety} size={130} tilt={8} />}>
         <div className="flex gap-1.5 mb-2">
           {loc && <Pill tone="moss" size="sm">{loc.label}</Pill>}
           <Pill tone="cap" size="sm">D{day}</Pill>
@@ -193,7 +180,7 @@ export function GrowDetail() {
           <RosAvatar size={18} />
           Spyrja Rós
         </button>
-      </div>
+      </HeroCard>
 
       <div className="grid grid-cols-3 gap-2 mt-4">
         <Stat label="Dagur" value={String(day)} />

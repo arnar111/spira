@@ -5,6 +5,7 @@ import { ChevronRight, Plus, Search, Sparkles } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Pill } from '@/components/ui/Pill';
 import { Stat } from '@/components/ui/Stat';
+import { StatCard } from '@/components/ui/StatCard';
 import { Sparkline } from '@/components/ui/Sparkline';
 import { PhaseBar } from '@/components/ui/PhaseBar';
 import { Tabs } from '@/components/ui/Tabs';
@@ -171,9 +172,9 @@ function MobileHome({ active, plants, archivedCount }: ViewProps) {
           padding: '0 22px 16px',
         }}
       >
-        <QuickStat label="Plöntur" value={String(plants.length)} tone="cream" />
-        <QuickStat label="Ræktanir" value={String(active.length)} tone="moss" />
-        <QuickStat
+        <StatCard label="Plöntur" value={String(plants.length)} tone="cream" />
+        <StatCard label="Ræktanir" value={String(active.length)} tone="moss" />
+        <StatCard
           label="Dagur"
           value={active.length > 0 ? String(Math.max(...active.map((g) => g.day))) : '—'}
           tone="cap"
@@ -209,49 +210,6 @@ function MobileHome({ active, plants, archivedCount }: ViewProps) {
 
       <div style={{ height: 24 }} />
     </motion.div>
-  );
-}
-
-function QuickStat({
-  label,
-  value,
-  tone,
-  unit,
-}: {
-  label: string;
-  value: string;
-  tone: 'cream' | 'moss' | 'cap';
-  unit?: string;
-}) {
-  const map = {
-    cream: { fg: 'var(--cream-50)', acc: 'var(--cream-200)' },
-    moss: { fg: 'var(--moss-200)', acc: 'var(--moss-300)' },
-    cap: { fg: 'var(--cap-400)', acc: 'var(--terra-300)' },
-  }[tone];
-  return (
-    <div
-      style={{
-        flex: 1,
-        padding: 12,
-        borderRadius: 14,
-        background: 'rgba(36,56,39,.55)',
-        border: '1px solid rgba(64,104,67,.35)',
-        backdropFilter: 'blur(12px)',
-      }}
-    >
-      <div
-        className="sp-mono"
-        style={{ fontSize: 9, color: 'rgba(231,217,168,.55)', letterSpacing: '0.16em' }}
-      >
-        {label.toUpperCase()}
-      </div>
-      <div style={{ marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 3 }}>
-        <span className="sp-stat" style={{ fontSize: 24, color: map.fg }}>
-          {value}
-        </span>
-        {unit && <span className="sp-mono" style={{ fontSize: 10, color: map.acc }}>{unit}</span>}
-      </div>
-    </div>
   );
 }
 
