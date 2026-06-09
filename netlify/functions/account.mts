@@ -17,6 +17,7 @@ const RATE_LIMITS: Record<string, { max: number; windowMinutes: number }> = {
   signin: { max: 10, windowMinutes: 5 },
   signup: { max: 10, windowMinutes: 5 },
   sync: { max: 120, windowMinutes: 5 },
+  pull: { max: 60, windowMinutes: 5 },
 };
 
 export default async (req: Request, context: Context) => {
@@ -56,7 +57,7 @@ export default async (req: Request, context: Context) => {
     return json({ error: 'invalid_json' }, 400);
   }
 
-  if (action !== 'signup' && action !== 'signin' && action !== 'sync') {
+  if (action !== 'signup' && action !== 'signin' && action !== 'sync' && action !== 'pull') {
     return json({ error: 'unknown_action' }, 404);
   }
 
@@ -75,6 +76,7 @@ export default async (req: Request, context: Context) => {
 
   if (action === 'signup') return signup(body);
   if (action === 'signin') return signin(body);
+  if (action === 'pull') return pull(body);
   return sync(body);
 };
 
@@ -173,6 +175,29 @@ async function signin(body: Record<string, unknown>) {
   const [row] = await db.sql`SELECT code, name, data, updated_at FROM accounts WHERE code = ${code}`;
   if (!row) return json({ error: 'not_found', message: 'Enginn reikningur með þessum kóða.' }, 404);
   return json(row);
+}
+
+/**
+ * Sækir nýjustu skýjagögn fyrir tæki sem er þegar skráð inn (samleitni milli
+ * tækja — sjá syncManager.pull í src/lib/sync.ts). `since` er updated_at sem
+ * tækið sá síðast; sé það óbreytt skilum við bara { unchanged: true } í stað
+ * þess að senda allt JSONB-blobbið aftur.
+ */
+async function pull(body: Record<string, unknown>) {
+  const code = normalizeCode(body.code);
+  if (!code) return json({ error: 'invalid_code', message: 'Kóði verður að vera 3 stafir.' }, 400);
+  const since = typeof body.since === 'string' ? body.since : null;
+
+  const db = getDatabase();
+  const [row] = await db.sql`SELECT data, updated_at FROM accounts WHERE code = ${code}`;
+  if (!row) return json({ error: 'not_found', message: 'Enginn reikningur með þessum kóða.' }, 404);
+
+  const updatedAt =
+    row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at);
+  if (since && since === updatedAt) {
+    return json({ unchanged: true, updated_at: updatedAt });
+  }
+  return json({ data: row.data, updated_at: updatedAt });
 }
 
 async function sync(body: Record<string, unknown>) {

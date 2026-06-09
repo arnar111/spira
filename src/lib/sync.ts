@@ -7,7 +7,7 @@ import {
   type HarvestEntry,
   type AppMeta,
 } from './db';
-import { syncData } from './account';
+import { pullData, syncData } from './account';
 import { announce } from './announce';
 
 export interface SnapshotV1 {
@@ -22,6 +22,27 @@ export interface SnapshotV1 {
 
 const SNAPSHOT_VERSION = 1;
 const SYNC_DEBOUNCE_MS = 1200;
+/** Lágmarksbil milli sjálfvirkra pull-tékka (visibilitychange getur skotið ört). */
+const PULL_MIN_INTERVAL_MS = 60_000;
+
+/**
+ * Síðasta updated_at sem þetta tæki sá í skýinu — tækisbundið (localStorage,
+ * EKKI í synced meta). Notað til að þekkja hvort annað tæki hafi ýtt á eftir
+ * okkur, svo innskráð tæki sæki breytingar í stað þess að bara ýta (samleitni
+ * milli tækja; áður sótti tæki gögn aðeins einu sinni — við innskráningu).
+ */
+const CLOUD_STAMP_KEY = 'spira:cloudUpdatedAt';
+
+export function recordCloudUpdatedAt(stamp: string | null | undefined): void {
+  if (typeof localStorage === 'undefined') return;
+  if (stamp) localStorage.setItem(CLOUD_STAMP_KEY, stamp);
+  else localStorage.removeItem(CLOUD_STAMP_KEY);
+}
+
+function getCloudUpdatedAt(): string | null {
+  if (typeof localStorage === 'undefined') return null;
+  return localStorage.getItem(CLOUD_STAMP_KEY);
+}
 
 export async function exportSnapshot(): Promise<SnapshotV1> {
   const [grows, plants, logs, environment, harvests, meta] = await Promise.all([
@@ -132,6 +153,10 @@ class SyncManager {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private inFlight: Promise<void> | null = null;
   private pendingAfterFlight = false;
+  private pullInFlight: Promise<void> | null = null;
+  private lastPullAt = 0;
+  /** > 0 á meðan pull-innflutningur stendur — Dexie-hookarnir eiga ekki að ýta honum strax upp aftur. */
+  private suspendDepth = 0;
 
   setAccount(code: string | null) {
     if (this.code === code) return;
@@ -139,6 +164,8 @@ class SyncManager {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     this.lastError = null;
+    this.lastPullAt = 0;
+    if (code === null) recordCloudUpdatedAt(null);
     this.setStatus('idle', null);
   }
 
@@ -149,6 +176,7 @@ class SyncManager {
   schedule(): void {
     if (!this.code) return;
     if (this.isDemo()) return;
+    if (this.suspendDepth > 0) return;
     if (this.timer) clearTimeout(this.timer);
     this.setStatus('pending', this.lastSyncedAt);
     this.timer = setTimeout(() => {
@@ -196,6 +224,67 @@ class SyncManager {
     await this.flush();
   }
 
+  /**
+   * Sækir nýjustu gögn úr skýinu hafi annað tæki ýtt á eftir okkur (ræst við
+   * ræsingu, `online` og þegar flipinn verður sýnilegur). Push vinnur alltaf:
+   * bíði staðbundin breyting (timer/inFlight/villa) sleppum við — innflutningur
+   * myndi annars eyða henni. Whole-snapshot last-write-wins eins og push-leiðin.
+   */
+  async pull(opts?: { force?: boolean }): Promise<void> {
+    if (!this.code || this.isDemo()) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    if (this.pullInFlight) {
+      await this.pullInFlight;
+      return;
+    }
+    if (this.timer || this.inFlight || this.status === 'pending' || this.status === 'syncing') return;
+    if (this.lastError) return;
+    const now = Date.now();
+    if (!opts?.force && now - this.lastPullAt < PULL_MIN_INTERVAL_MS) return;
+    this.lastPullAt = now;
+    this.pullInFlight = this.runPull();
+    try {
+      await this.pullInFlight;
+    } finally {
+      this.pullInFlight = null;
+    }
+  }
+
+  private async runPull(): Promise<void> {
+    const code = this.code;
+    if (!code) return;
+    try {
+      const since = getCloudUpdatedAt();
+      const res = await pullData(code, since);
+      if (res.unchanged || !res.updated_at) return;
+      // Endurtékk eftir netbið: hafi notandinn breytt einhverju á meðan vinnur
+      // push-leiðin — næsta pull nær skýinu þegar allt er aftur í ró.
+      if (this.code !== code || this.timer || this.inFlight) return;
+      if (!since) {
+        // Fyrsta pull á þessu tæki (t.d. eftir uppfærslu) OG staðbundin gögn
+        // til: við vitum ekki hvort skýið er nýrra — ýtum staðbundnu gögnunum
+        // frekar upp (LWW) en að skrifa yfir þau þegjandi. Stimpillinn skráist
+        // við ýtinguna og samleitnin tekur við þaðan.
+        const hasLocalData = (await db.grows.count()) > 0 || (await db.plants.count()) > 0;
+        if (hasLocalData) {
+          await this.flush();
+          return;
+        }
+      }
+      if (!isSnapshot(res.data)) return;
+      this.suspendDepth++;
+      try {
+        await importSnapshot(res.data);
+      } finally {
+        this.suspendDepth--;
+      }
+      recordCloudUpdatedAt(res.updated_at);
+      announce('Gögn samstillt úr skýinu');
+    } catch (err) {
+      console.warn('[sync] pull failed', err);
+    }
+  }
+
   private snapshot(): SyncState {
     return {
       status: this.status,
@@ -210,7 +299,8 @@ class SyncManager {
     this.setStatus('syncing', this.lastSyncedAt);
     try {
       const snapshot = await exportSnapshot();
-      await syncData(this.code, snapshot);
+      const { updated_at } = await syncData(this.code, snapshot);
+      recordCloudUpdatedAt(updated_at);
       const now = Date.now();
       this.lastSyncedAt = now;
       this.lastError = null;
@@ -248,5 +338,15 @@ export function installAutoSyncHooks(): void {
     table.hook('creating', trigger);
     table.hook('updating', trigger);
     table.hook('deleting', trigger);
+  }
+  // Pull-kveikjur: nettenging kemur aftur / flipinn verður sýnilegur (notandi
+  // skiptir á milli tækja). Ræsingar-pull er kallað beint úr App.tsx.
+  if (typeof window !== 'undefined') {
+    window.addEventListener('online', () => void syncManager.pull());
+  }
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') void syncManager.pull();
+    });
   }
 }
