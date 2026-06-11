@@ -59,6 +59,9 @@ export default function App() {
         return;
       }
       syncManager.setAccount(account.code);
+      // Sækjum ský-breytingar frá öðrum tækjum strax við ræsingu (tæki sótti
+      // áður aðeins við innskráningu — sjá syncManager.pull).
+      void syncManager.pull({ force: true });
       const onboardingComplete = await getOnboardingComplete();
       setState({ kind: 'authenticated', account, onboardingComplete });
     })();

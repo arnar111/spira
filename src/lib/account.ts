@@ -90,4 +90,18 @@ export async function syncData(code: string, data: unknown): Promise<{ updated_a
   return postAction<{ updated_at: string }>('sync', { code, data });
 }
 
+export interface PullResponse {
+  unchanged?: boolean;
+  data?: unknown;
+  updated_at?: string;
+}
+
+/**
+ * Sækir nýjustu skýjagögn fyrir innskráð tæki. `since` er updated_at sem þetta
+ * tæki sá síðast — netþjónninn svarar { unchanged: true } sé ekkert nýtt.
+ */
+export async function pullData(code: string, since: string | null): Promise<PullResponse> {
+  return postAction<PullResponse>('pull', { code, since });
+}
+
 export { ApiError };

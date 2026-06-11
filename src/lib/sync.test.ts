@@ -1,6 +1,6 @@
 // fake-indexeddb VERÐUR að hlaðast á undan db.ts (Dexie þarf indexedDB í node).
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   db,
   type EnvironmentSample,
@@ -13,10 +13,19 @@ import {
   clearLocalData,
   exportSnapshot,
   importSnapshot,
+  installAutoSyncHooks,
   isSnapshot,
   migrateSnapshot,
+  syncManager,
   type SnapshotV1,
 } from '@/lib/sync';
+import { pullData, syncData } from '@/lib/account';
+
+// Netlagið er mockað — pull/push prófin hér fyrir neðan stýra svörunum.
+vi.mock('@/lib/account', () => ({
+  pullData: vi.fn(),
+  syncData: vi.fn(),
+}));
 
 const DAY_MS = 86_400_000;
 const NOW = Date.UTC(2026, 5, 7, 12);
@@ -217,5 +226,82 @@ describe('clearLocalData', () => {
     expect(await db.harvests.count()).toBe(0);
     expect(await db.meta.count()).toBe(0);
     expect(await db.photos.count()).toBe(0);
+  });
+});
+
+describe('syncManager.pull', () => {
+  const cloudGrow: Grow = { ...grow, id: 'g-cloud', name: 'Skýjaræktun' };
+  const cloudSnap: SnapshotV1 = {
+    version: 1,
+    grows: [cloudGrow],
+    plants: [],
+    logs: [],
+    environment: [],
+    harvests: [],
+    meta: [],
+  };
+
+  beforeEach(() => {
+    vi.mocked(pullData).mockReset();
+    vi.mocked(syncData).mockReset();
+    vi.mocked(syncData).mockResolvedValue({ updated_at: '2026-06-09T12:00:00.000Z' });
+  });
+
+  afterEach(() => {
+    syncManager.setAccount(null);
+  });
+
+  it('gerir ekkert fyrir demo-reikninginn', async () => {
+    syncManager.setAccount('123');
+    await syncManager.pull({ force: true });
+    expect(pullData).not.toHaveBeenCalled();
+  });
+
+  it('sleppir þegar staðbundin breyting bíður eftir push (push vinnur)', async () => {
+    syncManager.setAccount('AAA');
+    syncManager.schedule(); // staðbundin breyting í bið
+    await syncManager.pull({ force: true });
+    expect(pullData).not.toHaveBeenCalled();
+  });
+
+  it('óbreytt ský er no-op', async () => {
+    await seed();
+    syncManager.setAccount('AAA');
+    vi.mocked(pullData).mockResolvedValue({ unchanged: true, updated_at: 'T0' });
+    await syncManager.pull({ force: true });
+    expect(await db.grows.toArray()).toEqual([grow]);
+  });
+
+  it('flytur inn ský-gögn á tómu tæki', async () => {
+    syncManager.setAccount('AAA');
+    vi.mocked(pullData).mockResolvedValue({ data: cloudSnap, updated_at: 'T1' });
+    await syncManager.pull({ force: true });
+    expect(await db.grows.toArray()).toEqual([cloudGrow]);
+  });
+
+  it('fyrsta pull með staðbundin gögn ýtir þeim upp í stað þess að skrifa yfir', async () => {
+    // Engin grunnlína (since=null í node — ekkert localStorage) + gögn til:
+    // staðbundnu gögnin eiga að vinna (LWW), ekki hverfa þegjandi.
+    await seed();
+    syncManager.setAccount('AAA');
+    vi.mocked(pullData).mockResolvedValue({ data: cloudSnap, updated_at: 'T1' });
+    await syncManager.pull({ force: true });
+    expect(await db.grows.toArray()).toEqual([grow]); // ekkert skrifað yfir
+    expect(syncData).toHaveBeenCalledTimes(1); // ýtt í staðinn
+  });
+
+  it('pull-innflutningur ræsir ekki push í gegnum Dexie-hookana', async () => {
+    installAutoSyncHooks();
+    syncManager.setAccount('BBB');
+    vi.mocked(pullData).mockResolvedValue({ data: cloudSnap, updated_at: 'T2' });
+    await syncManager.pull({ force: true });
+    expect(await db.grows.toArray()).toEqual([cloudGrow]);
+    expect(syncData).not.toHaveBeenCalled();
+    let status = '';
+    const unsub = syncManager.subscribe((s) => {
+      status = s.status;
+    });
+    unsub();
+    expect(status).toBe('idle');
   });
 });
