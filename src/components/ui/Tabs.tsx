@@ -80,7 +80,7 @@ export function Tabs({
             padding: '6px 14px',
             borderRadius: 999,
             border: 'none',
-            background: i === active ? 'var(--moss-500)' : 'transparent',
+            background: i === active ? 'var(--moss-600)' : 'transparent',
             color: i === active ? '#fdfbf6' : 'rgba(231,217,168,.7)',
             fontSize: 12,
             fontWeight: 500,

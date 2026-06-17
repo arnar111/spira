@@ -82,7 +82,7 @@ export function Chip({
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-colors',
         active
-          ? 'bg-moss-500 border-moss-400 text-cream-50'
+          ? 'bg-moss-600 border-moss-400 text-cream-50'
           : 'bg-moss-900/40 border-moss-800/40 text-cream-300 hover:border-moss-600',
       )}
     >

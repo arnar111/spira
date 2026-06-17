@@ -32,7 +32,7 @@ export function ReportSection({
         onClick={onBuild}
         disabled={building}
         className="w-full h-11 rounded-xl flex items-center justify-center gap-2 text-[13px] font-medium text-cream-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[.99]"
-        style={{ background: 'var(--moss-500)' }}
+        style={{ background: 'var(--moss-600)' }}
       >
         {building ? (
           <>

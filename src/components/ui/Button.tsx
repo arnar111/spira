@@ -10,10 +10,14 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<Variant, string> = {
+  // moss-600 grunnur (ekki 500) svo cream-50 textinn nái WCAG AA 4.5:1 (≈6.2:1);
+  // hover ljósari (500), active dekkri (700) — heldur sama mynstri og áður.
   primary:
-    'bg-[var(--moss-500)] text-[var(--cream-50)] hover:bg-moss-400 active:bg-[var(--moss-600)] shadow-lg shadow-moss-900/30 border border-transparent',
+    'bg-[var(--moss-600)] text-[var(--cream-50)] hover:bg-[var(--moss-500)] active:bg-[var(--moss-700)] shadow-lg shadow-moss-900/30 border border-transparent',
+  // cap-600 grunnur (ekki 500) svo cream-50 nái WCAG AA 4.5:1 (≈5.25:1, líka á
+  // 12px texta); hover ljósari (500). Engir nýir litir — bara til í paletti.
   secondary:
-    'bg-[var(--cap-500)] text-[var(--cream-50)] hover:bg-[var(--cap-400)] active:bg-[var(--cap-600)] shadow-lg shadow-[rgba(226,62,29,0.25)] border border-transparent',
+    'bg-[var(--cap-600)] text-[var(--cream-50)] hover:bg-[var(--cap-500)] active:bg-[var(--cap-600)] shadow-lg shadow-[rgba(226,62,29,0.25)] border border-transparent',
   ghost:
     'bg-[rgba(231,217,168,0.06)] text-[var(--cream-100)] hover:bg-[rgba(231,217,168,0.12)] border border-[rgba(231,217,168,0.18)]',
   outline:

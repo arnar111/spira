@@ -153,5 +153,11 @@ export const LOCATIONS: LocationCategory[] = [
 ];
 
 export function getLocation(key: LocationKey): LocationCategory {
-  return LOCATIONS.find((l) => l.key === key) ?? LOCATIONS[2];
+  // Varagildi fyrir óþekkta lykla (t.d. úr eldra geymslusniði): 'window' — minnsti
+  // sameiginlegi nefnari (inni, ljósasnautt). Flett upp eftir lykli, ekki vísi,
+  // svo röðun LOCATIONS megi breytast án þess að varagildið breytist hljóðlega.
+  return (
+    LOCATIONS.find((l) => l.key === key) ??
+    LOCATIONS.find((l) => l.key === 'window')!
+  );
 }

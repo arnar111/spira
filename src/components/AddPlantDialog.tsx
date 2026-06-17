@@ -119,7 +119,7 @@ export function AddPlantDialog({
   return (
     <Modal open={open} onClose={onClose} eyebrow="Ný planta" title="Bæta við plöntu">
       {/* Tegundasía */}
-      <div className="flex gap-1.5 mb-3">
+      <div className="flex flex-wrap gap-1.5 mb-3">
         {([
           { id: 'all', label: 'Allt' },
           { id: 'pepper', label: 'Pipar' },
@@ -134,7 +134,7 @@ export function AddPlantDialog({
             className={cn(
               'rounded-full border px-3 py-1.5 text-xs transition-colors',
               cat === c.id
-                ? 'bg-moss-500 border-moss-400 text-cream-50'
+                ? 'bg-moss-600 border-moss-400 text-cream-50'
                 : 'bg-moss-900/40 border-moss-800/40 text-cream-300 hover:border-moss-600',
             )}
           >

@@ -48,11 +48,19 @@ export function yieldStats(harvests: HarvestEntry[], now: number): YieldStats {
   if (harvests.length === 0) return EMPTY;
   let totalG = 0;
   let totalPods = 0;
+  // g/pod má AÐEINS reikna úr þyngd tínslna sem raunverulega hafa pod-tölu.
+  // Annars blæs þyngd úr pod-lausum tínslum upp meðaltalið (t.d. [100g/5pod,
+  // 50g/engin pod] á að gefa 20 g/pod, ekki 30).
+  let podWeightG = 0;
   let firstAt = Infinity;
   let lastAt = -Infinity;
   for (const h of harvests) {
-    totalG += h.weightG ?? 0;
-    totalPods += h.podCount ?? 0;
+    const weightG = h.weightG ?? 0;
+    totalG += weightG;
+    if (h.podCount && h.podCount > 0) {
+      totalPods += h.podCount;
+      podWeightG += weightG;
+    }
     if (h.timestamp < firstAt) firstAt = h.timestamp;
     if (h.timestamp > lastAt) lastAt = h.timestamp;
   }
@@ -61,7 +69,7 @@ export function yieldStats(harvests: HarvestEntry[], now: number): YieldStats {
     totalG,
     totalPods,
     count: harvests.length,
-    gramsPerPod: totalPods > 0 ? totalG / totalPods : null,
+    gramsPerPod: totalPods > 0 ? podWeightG / totalPods : null,
     gramsPerDay: totalG / days,
     harvestsPerWeek: harvests.length / (days / 7),
     firstAt,
@@ -106,7 +114,9 @@ export function yieldByVariety(
   for (const h of harvests) {
     const plant = plantById.get(h.plantId);
     if (!plant) continue;
-    const key = plant.varietyId ?? plant.variety;
+    // `||` (ekki `??`): tómur strengur varietyId á að falla í afbrigðisheitið,
+    // svo plöntur með varietyId='' grúppist með nafna sínum en ekki undir ''.
+    const key = plant.varietyId || plant.variety;
     const label = plant.variety;
     const prev = map.get(key) ?? { key, label, totalG: 0, totalPods: 0, count: 0 };
     prev.totalG += h.weightG ?? 0;

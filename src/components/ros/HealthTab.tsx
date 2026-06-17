@@ -48,22 +48,33 @@ export function HealthTab({
   // (b) skráningu (log) sem ber plantId + photoId. (b) er sú tenging sem birtist í
   // skráningalistanum og er rétt jafnvel þótt myndin hafi verið valin áður en
   // plantan var valin (þá situr eftir gamalt/ótengt plantId á myndinni sjálfri).
-  const latestByPlant = useLiveQuery(async () => {
+  const latest = useLiveQuery(async () => {
     const rows = await db.photos.where('growId').equals(grow.id).toArray();
     const photoById = new Map(rows.map((ph) => [ph.id, ph] as const));
-    const map = new Map<string, LatestPhoto>();
+    const byPlant = new Map<string, LatestPhoto>();
     const consider = (plantId: string | undefined, photo?: PhotoBlob) => {
-      if (!plantId || !photo) return; // spjallmyndir (án plöntu) telja ekki með.
-      const cur = map.get(plantId);
+      if (!plantId || !photo) return; // án plöntu → skoðað sem varamynd að neðan.
+      const cur = byPlant.get(plantId);
       if (!cur || photo.takenAt > cur.takenAt) {
-        map.set(plantId, { id: photo.id, takenAt: photo.takenAt });
+        byPlant.set(plantId, { id: photo.id, takenAt: photo.takenAt, scope: 'plant' });
       }
     };
+    // Varamynd ræktunarinnar: nýjasta mynd sem skráð var á „Öll ræktunin"
+    // (skráning án plantId en með photoId) — t.d. ein mynd af Véritable-vélinni.
+    // Notuð fyrir plöntur sem eiga enga eigin mynd svo heilsumat sé samt mögulegt.
+    let growPhoto: LatestPhoto | undefined;
     for (const ph of rows) consider(ph.plantId, ph);
     for (const lg of logs) {
-      if (lg.photoId) consider(lg.plantId, photoById.get(lg.photoId));
+      if (!lg.photoId) continue;
+      const ph = photoById.get(lg.photoId);
+      if (!ph) continue;
+      if (lg.plantId) {
+        consider(lg.plantId, ph);
+      } else if (!growPhoto || ph.takenAt > growPhoto.takenAt) {
+        growPhoto = { id: ph.id, takenAt: ph.takenAt, scope: 'grow' };
+      }
     }
-    return map;
+    return { byPlant, growPhoto };
   }, [grow.id, logs]);
 
   // Vistuð heilsumöt (lifandi) — kort uppfærist um leið og nýtt mat er skrifað.
@@ -113,7 +124,14 @@ export function HealthTab({
         });
 
         const reply = await askRos({
-          messages: [{ role: 'user', text: buildAssessmentPrompt(plant) }],
+          messages: [
+            {
+              role: 'user',
+              text: buildAssessmentPrompt(plant, {
+                wholeGrowPhoto: photo.scope === 'grow',
+              }),
+            },
+          ],
           context,
           images: [image],
         });
@@ -173,14 +191,15 @@ export function HealthTab({
   return (
     <div className="flex-1 overflow-y-auto flex flex-col gap-3 pr-0.5">
       <p className="text-[12px] text-cream-300/70 leading-relaxed px-0.5">
-        Rós skoðar nýjustu mynd hverrar plöntu og gefur heilsumat. Þú getur
-        alltaf greint aftur — hún notar þá nýjustu myndina sem til er.
+        Rós skoðar nýjustu mynd hverrar plöntu og gefur heilsumat. Eigi planta
+        enga sérmynd notar Rós nýjustu myndina af allri ræktuninni (t.d. af
+        Véritable-vélinni). Þú getur alltaf greint aftur.
       </p>
       {activePlants.map((plant) => (
         <PlantHealthCard
           key={plant.id}
           plant={plant}
-          photo={latestByPlant?.get(plant.id)}
+          photo={latest?.byPlant.get(plant.id) ?? latest?.growPhoto}
           history={historyByPlant.get(plant.id) ?? []}
           busy={!!busy[plant.id]}
           error={errors[plant.id]}
@@ -266,18 +285,30 @@ function PlantHealthCard({
 
       {/* Mynd eða „engin mynd" reitur */}
       {photo ? (
-        <div
-          className="rounded-xl overflow-hidden mb-2.5"
-          style={{ background: 'rgba(18,31,20,.6)', border: '1px solid rgba(64,104,67,.4)' }}
-        >
-          {thumbUrl ? (
-            <img
-              src={thumbUrl}
-              alt={`Nýjasta mynd af ${plantLabel(plant)}`}
-              className="w-full max-h-52 object-cover"
-            />
-          ) : (
-            <div className="w-full h-28" />
+        <div className="mb-2.5">
+          <div
+            className="rounded-xl overflow-hidden"
+            style={{ background: 'rgba(18,31,20,.6)', border: '1px solid rgba(64,104,67,.4)' }}
+          >
+            {thumbUrl ? (
+              <img
+                src={thumbUrl}
+                alt={
+                  photo.scope === 'grow'
+                    ? 'Nýjasta mynd af allri ræktuninni'
+                    : `Nýjasta mynd af ${plantLabel(plant)}`
+                }
+                className="w-full max-h-52 object-cover"
+              />
+            ) : (
+              <div className="w-full h-28" />
+            )}
+          </div>
+          {photo.scope === 'grow' && (
+            <div className="flex items-center gap-1.5 text-[10px] text-cream-300/60 mt-1 px-0.5">
+              <Camera size={11} className="shrink-0" />
+              <span>Mynd af allri ræktuninni — engin sérmynd af þessari plöntu enn.</span>
+            </div>
           )}
         </div>
       ) : (
@@ -378,7 +409,7 @@ function PlantHealthCard({
         onClick={() => photo && onRun(plant, photo)}
         disabled={!canRun}
         className="w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[13px] font-medium text-cream-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[.99]"
-        style={{ background: 'var(--moss-500)' }}
+        style={{ background: 'var(--moss-600)' }}
       >
         {busy ? (
           <>

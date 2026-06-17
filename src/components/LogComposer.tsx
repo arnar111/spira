@@ -242,7 +242,7 @@ export function LogComposer({
       title={isEdit ? 'Breyta viðburði' : 'Skrá viðburð'}
     >
       {/* Quick actions */}
-      <div className="grid grid-cols-4 gap-1.5 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-4">
         {quick.map((m) => {
           const Icon = iconFor(m.icon);
           return (
@@ -270,7 +270,7 @@ export function LogComposer({
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors',
                 active
-                  ? 'bg-moss-500 border-moss-400 text-cream-50'
+                  ? 'bg-moss-600 border-moss-400 text-cream-50'
                   : 'bg-moss-900/40 border-moss-800/40 text-cream-300 hover:border-moss-600',
               )}
             >
@@ -313,11 +313,12 @@ export function LogComposer({
 
       {/* Photo attach */}
       <div className="mb-3">
+        {/* Ekkert `capture` — svo farsímar bjóði bæði myndavél OG myndasafn
+            (annars þvingast myndavélin og ekki hægt að velja úr albúmi). */}
         <input
           ref={fileRef}
           type="file"
           accept="image/*"
-          capture="environment"
           className="hidden"
           onChange={onPickFile}
         />

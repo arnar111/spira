@@ -380,7 +380,7 @@ function PlantYieldRow({
         onClick={() => photo && onCount(plant, photo)}
         disabled={!photo || busy}
         className="w-full h-9 mt-2.5 rounded-xl flex items-center justify-center gap-2 text-[12px] font-medium text-cream-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[.99]"
-        style={{ background: 'var(--moss-500)' }}
+        style={{ background: 'var(--moss-600)' }}
       >
         {busy ? (
           <>

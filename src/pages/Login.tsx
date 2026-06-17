@@ -284,6 +284,7 @@ function CodeInput({
             inputs.current[i] = el;
           }}
           inputMode="text"
+          aria-label={`Aðgangskóði — stafur ${i + 1} af ${CODE_LENGTH}`}
           maxLength={CODE_LENGTH}
           value={c}
           onChange={(e) => handleInput(i, e.target.value)}

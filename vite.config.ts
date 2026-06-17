@@ -5,6 +5,7 @@ import netlify from '@netlify/vite-plugin';
 import { VitePWA } from 'vite-plugin-pwa';
 import { visualizer } from 'rollup-plugin-visualizer';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   plugins: [
@@ -63,9 +64,46 @@ export default defineConfig({
     host: true,
   },
   test: {
-    environment: 'node',
-    // Teymis-worktrees liggja undir .claude/worktrees/ — án þessa myndi vitest
-    // í aðal-checkoutinu líka keyra próf úr worktrees hinna (4.2 session log).
-    exclude: [...configDefaults.exclude, '**/.claude/**'],
+    // Multi-project setup: 'node' fyrir hreinar kjarnaeiningar, 'jsdom' fyrir
+    // React-íhluti. Playwright e2e eru EKKI hluti af þessum keyrslu.
+    projects: [
+      {
+        // ---------------------------------------------------------------
+        // node — hreinar einingar, Dexie (fake-indexeddb), rök o.fl.
+        // Sama hegðun og áður — öll *.test.ts skrár í src/lib/.
+        // ---------------------------------------------------------------
+        test: {
+          name: 'node',
+          environment: 'node',
+          include: ['src/**/*.test.ts'],
+          exclude: [...configDefaults.exclude, '**/.claude/**'],
+        },
+        resolve: {
+          alias: { '@': path.resolve(__dirname, './src') },
+        },
+      },
+      {
+        // ---------------------------------------------------------------
+        // jsdom — React-íhluta próf (*.test.tsx).
+        // Setup-skrá sér um jest-dom matchers og cleanup afterEach.
+        // ---------------------------------------------------------------
+        plugins: [react()],
+        test: {
+          name: 'jsdom',
+          environment: 'jsdom',
+          // globals: true needed so @testing-library/jest-dom can extend
+          // the global `expect` when the setup file imports it.
+          globals: true,
+          include: ['src/**/*.test.tsx'],
+          exclude: [...configDefaults.exclude, '**/.claude/**'],
+          setupFiles: ['src/test/setup.ts'],
+        },
+        resolve: {
+          alias: {
+            '@': fileURLToPath(new URL('./src', import.meta.url)),
+          },
+        },
+      },
+    ],
   },
 });

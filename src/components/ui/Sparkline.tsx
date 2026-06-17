@@ -65,7 +65,8 @@ export function Sparkline({
     return (
       <div
         style={{
-          width,
+          width: '100%',
+          maxWidth: width,
           height,
           display: 'flex',
           alignItems: 'center',
@@ -102,8 +103,15 @@ export function Sparkline({
   const lastY = coords[coords.length - 1].y;
 
   return (
-    <div style={{ width }}>
-      <svg width={width} height={height} style={{ overflow: 'visible', display: 'block' }}>
+    // Svarar stærð íláts (skalast niður á mjóum skjá) en fer aldrei yfir `width`.
+    // viewBox heldur innra hnitakerfinu föstu svo línuritið afmyndast ekki á síma.
+    <div style={{ width: '100%', maxWidth: width }}>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="xMidYMid meet"
+        width="100%"
+        style={{ overflow: 'visible', display: 'block', height: 'auto' }}
+      >
         {fill && (
           <>
             <defs>

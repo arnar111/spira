@@ -269,7 +269,7 @@ export function DiagnosisTab({
         onClick={() => void runDiagnosis()}
         disabled={!canRun}
         className="w-full h-11 rounded-xl flex items-center justify-center gap-2 text-[13px] font-medium text-cream-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[.99]"
-        style={{ background: 'var(--moss-500)' }}
+        style={{ background: 'var(--moss-600)' }}
       >
         {busy ? (
           <>
@@ -320,7 +320,7 @@ export function DiagnosisTab({
               onClick={() => void saveToLog()}
               disabled={logged}
               className="h-9 px-4 rounded-xl flex items-center justify-center gap-2 text-[13px] font-medium text-cream-50 transition-all disabled:opacity-70 disabled:cursor-default active:scale-[.99]"
-              style={{ background: logged ? 'var(--moss-700)' : 'var(--cap-500)' }}
+              style={{ background: logged ? 'var(--moss-700)' : 'var(--cap-600)' }}
             >
               {logged ? 'Skráð ✓' : 'Skrá í dagbók'}
             </button>
