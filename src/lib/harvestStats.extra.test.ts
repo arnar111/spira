@@ -65,7 +65,7 @@ describe('yieldStats — edge cases', () => {
     expect(s.totalG).toBe(150);
   });
 
-  it('blönduð: ein tínsla með pod og ein án — gramsPerPod er totalG/totalPods (þ.m.t. þyngd tínslna án pod)', () => {
+  it('blönduð: ein tínsla með pod og ein án — gramsPerPod telur AÐEINS þyngd pod-tínslna', () => {
     const s = yieldStats(
       [
         h({ weightG: 100, podCount: 5, timestamp: NOW - DAY }),
@@ -73,11 +73,9 @@ describe('yieldStats — edge cases', () => {
       ],
       NOW,
     );
-    // totalG = 150, totalPods = 5 → gramsPerPod = 150/5 = 30
-    // NOTE: yieldStats sums ALL weights for totalG, divides by pods from
-    // entries that HAVE a pod count. This inflates g/pod when some harvests
-    // lack a pod count — intentional design choice (caller must be aware).
-    expect(s.gramsPerPod).toBeCloseTo(30, 6);
+    // totalG = 150 (öll þyngd), en gramsPerPod = podWeightG/totalPods = 100/5 = 20.
+    // Þyngd pod-lausu tínslunnar (50 g) blæs EKKI upp g/pod meðaltalið.
+    expect(s.gramsPerPod).toBeCloseTo(20, 6);
     expect(s.totalG).toBe(150);
     expect(s.totalPods).toBe(5);
   });
@@ -126,18 +124,33 @@ describe('harvestTimeline — stable sort', () => {
 });
 
 describe('yieldByVariety — edge cases', () => {
-  it('tómt varietyId string (?? null-coalescing) notar TÓMAN streng sem lykil', () => {
-    // yieldByVariety uses `plant.varietyId ?? plant.variety`.
-    // The nullish coalescing operator ?? treats only null/undefined as nullish —
-    // an empty string '' IS a valid (if incorrect) key.
-    // BUG/EDGE-CASE: '' stays as key, not falling through to variety name.
-    // This test documents the current actual behaviour.
+  it('tómt varietyId string fellur í afbrigðisheitið sem lykil', () => {
+    // yieldByVariety uses `plant.varietyId || plant.variety`, svo tómur strengur
+    // (falskur) fellur í afbrigðisheitið — plöntur með varietyId='' grúppast
+    // með nafna sínum í stað þess að safnast allar undir ''.
     const out = yieldByVariety(
       [h({ plantId: 'p1', weightG: 50 })],
       [plant({ id: 'p1', varietyId: '', variety: 'Nafnlaus' })],
     );
-    expect(out[0].key).toBe(''); // '' is the key because ?? does not catch empty string
-    expect(out[0].label).toBe('Nafnlaus'); // label is always variety name
+    expect(out[0].key).toBe('Nafnlaus'); // '' fellur í afbrigðisheitið
+    expect(out[0].label).toBe('Nafnlaus');
+  });
+
+  it('plöntur með tómt varietyId en sama heiti grúppast saman', () => {
+    const out = yieldByVariety(
+      [
+        h({ plantId: 'p1', weightG: 40 }),
+        h({ plantId: 'p2', weightG: 60 }),
+      ],
+      [
+        plant({ id: 'p1', varietyId: '', variety: 'Nafnlaus' }),
+        plant({ id: 'p2', varietyId: '', variety: 'Nafnlaus' }),
+      ],
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0].key).toBe('Nafnlaus');
+    expect(out[0].totalG).toBe(100);
+    expect(out[0].count).toBe(2);
   });
 
   it('fleiri afbrigði raðast rétt eftir þyngd', () => {

@@ -13,11 +13,11 @@ describe('getLocation', () => {
     }
   });
 
-  it('varagildi (shower) þegar lykill er óþekktur', () => {
+  it('varagildi (window) þegar lykill er óþekktur', () => {
     // TypeScript leyfir ekki beint cast á ógild gildi án as unknown, en forritið
     // ætti að meðhöndla gögn sem geta verið úr gömlu geymslusniði.
     const loc = getLocation('óþekktur' as LocationKey);
-    expect(loc.key).toBe('shower'); // LOCATIONS[2] = shower
+    expect(loc.key).toBe('window'); // skynsamlegt sjálfgefið inni-gildi
   });
 
   it('hvort environment er rétt á hverjum stað', () => {
