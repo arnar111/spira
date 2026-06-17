@@ -20,7 +20,7 @@ export function ActionTile({ icon, label, active = false, onClick }: ActionTileP
       className={cn(
         'flex flex-col items-center justify-center gap-1 rounded-2xl border py-3 transition-colors',
         active
-          ? 'bg-moss-500 border-moss-400 text-cream-50'
+          ? 'bg-moss-600 border-moss-400 text-cream-50'
           : 'bg-moss-900/40 border-moss-800/40 text-cream-200 hover:border-moss-600',
       )}
     >

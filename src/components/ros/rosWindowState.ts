@@ -104,6 +104,12 @@ export function scoreColor(score: number | null): string {
 export interface LatestPhoto {
   id: string;
   takenAt: number;
+  /**
+   * Hvaðan myndin kemur: `plant` = mynd merkt þessari plöntu, `grow` = mynd af
+   * allri ræktuninni („Öll ræktunin" — t.d. ein mynd af Véritable-vélinni) sem
+   * við notum sem varamynd fyrir plöntur sem eiga enga eigin mynd.
+   */
+  scope?: 'plant' | 'grow';
 }
 
 /** Íslenskar tillöguspurningar fyrir hverja innsýnar-gerð (efstu ráð → spjall). */

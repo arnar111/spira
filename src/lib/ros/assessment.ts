@@ -16,10 +16,19 @@ export const MAX_HEALTH_SCORE = 10;
  * Leiðbeiningar til Rósar fyrir heilsumat á EINNI plöntu út frá meðfylgjandi mynd.
  * Krefst fasts sniðs svo við getum lesið einkunnina og birt hana snyrtilega.
  */
-export function buildAssessmentPrompt(plant: Plant): string {
+export function buildAssessmentPrompt(
+  plant: Plant,
+  opts: { wholeGrowPhoto?: boolean } = {},
+): string {
   const label = plantLabel(plant);
   return [
     `Greindu heilsu plöntunnar „${label}" (${plant.variety}, fasi: ${phaseLabel(plant.currentPhase)}) út frá meðfylgjandi mynd.`,
+    ...(opts.wholeGrowPhoto
+      ? [
+          '',
+          `ATH: Myndin sýnir ALLA ræktunina (t.d. Véritable-vélina með fleiri plöntum), ekki bara þessa einu plöntu. Einbeittu þér að „${label}" ef þú getur greint hana; annars metðu heildarástand ræktunarinnar og taktu fram að myndin sýni ekki plöntuna sérstaklega.`,
+        ]
+      : []),
     '',
     'Svaraðu á íslensku og notaðu NÁKVÆMLEGA þetta snið:',
     `- Fyrsta línan: **Heilsa: N/10 — <stutt einkunnarorð>** (N er heiltala 0–${MAX_HEALTH_SCORE}).`,

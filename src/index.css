@@ -53,6 +53,19 @@ html {
   text-size-adjust: 100%;
 }
 
+/* iOS/Android Safari auto-zoom inn á reit þegar fókusinn fer á form-reit með
+   letur < 16px — og þysjar svo aldrei út aftur. Það er meginorsök þess að appið
+   „þysjar inn og út" og afmyndast í farsíma. Þvingum öll innsláttarsvæði í ≥16px
+   á snertitækjum. `!important` þarf því Tailwind-utility (text-sm o.fl.) vinnur
+   annars á sértækni; snertitæki eingöngu svo skjáborð haldist óbreytt. */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);

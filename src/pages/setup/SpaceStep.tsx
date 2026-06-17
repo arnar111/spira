@@ -42,7 +42,12 @@ export function SpaceStep({
           <label className="text-sm text-cream-200 font-medium mb-2 block">
             {outdoor ? 'Stærð beðs' : 'Stærð rýmis'}
           </label>
-          <div className={cn('grid gap-2', outdoor ? 'grid-cols-2' : 'grid-cols-3')}>
+          <div
+            className={cn(
+              'grid gap-2',
+              outdoor ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-3',
+            )}
+          >
             <NumberInput
               value={state.spaceWidthCm}
               onChange={(v) => set({ spaceWidthCm: v })}

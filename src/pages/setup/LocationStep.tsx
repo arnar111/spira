@@ -57,7 +57,7 @@ function LocationCard({
       <div
         className={cn(
           'shrink-0 rounded-xl p-3 transition-colors',
-          selected ? 'bg-moss-500 text-cream-50' : 'bg-moss-800/60 text-moss-300',
+          selected ? 'bg-moss-600 text-cream-50' : 'bg-moss-800/60 text-moss-300',
         )}
       >
         <Icon size={22} />

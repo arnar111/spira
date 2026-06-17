@@ -30,6 +30,12 @@ yarn-error.log*
 # Claude Code personal settings
 .claude/settings.json
 .claude/settings.local.json
+.claude/worktrees/
+
+# Playwright e2e artifacts
+playwright-report/
+test-results/
+/playwright/.cache/
 
 # Research: keep the HTML source guides as provenance; skip the heavy PDF/zip exports
 research/*.pdf
