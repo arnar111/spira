@@ -7,7 +7,7 @@ import {
   type ChangeEvent,
 } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Bookmark, ImagePlus, Send, X } from 'lucide-react';
+import { Bookmark, ImagePlus, Leaf, Send, Sprout, X } from 'lucide-react';
 import { RosAvatar } from '@/components/ros/RosAvatar';
 import { MarkdownText } from '@/components/ros/RosMarkdown';
 import {
@@ -20,7 +20,12 @@ import {
   type RosMessage,
 } from '@/lib/db';
 import { addPhotoFromFile, getPhotoBlob, usePhotoUrl } from '@/lib/photos';
-import { computeInsights, buildContextDigest } from '@/lib/ros/engine';
+import {
+  computeInsights,
+  buildContextDigest,
+  phaseLabel,
+  plantLabel,
+} from '@/lib/ros/engine';
 import {
   askRosStream,
   blobToInlineImage,
@@ -28,6 +33,9 @@ import {
   type RosInlineImage,
 } from '@/lib/ros/chat';
 import { SUGGESTION_BY_KIND, FALLBACK_SUGGESTION } from '@/components/ros/rosWindowState';
+
+/** Umfang spjallsins: ein planta eða öll ræktunin. `null` = veljarinn er sýndur. */
+type ChatScope = { type: 'plant'; plantId: string } | { type: 'grow' };
 
 /* — SPJALL — */
 
@@ -45,10 +53,57 @@ export function ChatTab({
   /** Forskrifaður texti í inntakslínuna (t.d. „Spurning vikunnar" af /ros). */
   initialDraft?: string;
 }) {
-  const messages = useLiveQuery(
-    () => db.rosMessages.where('growId').equals(grow.id).sortBy('timestamp'),
-    [grow.id],
+  const activePlants = useMemo(() => plants.filter((p) => !p.archived), [plants]);
+
+  // Upphafsumfang: forskrifuð spurning er almenn → grow; ein virk planta → sú planta;
+  // engin virk planta → grow; annars sýnum við veljarann fyrst (null).
+  const [scope, setScope] = useState<ChatScope | null>(() => {
+    if (initialDraft) return { type: 'grow' };
+    const active = plants.filter((p) => !p.archived);
+    if (active.length === 1) return { type: 'plant', plantId: active[0].id };
+    if (active.length === 0) return { type: 'grow' };
+    return null;
+  });
+
+  const selectedPlant =
+    scope?.type === 'plant'
+      ? activePlants.find((p) => p.id === scope.plantId)
+      : undefined;
+
+  // Gögn afmörkuð að völdu umfangi — fæða bæði samhengi LLM og tillöguflögur.
+  const scopedPlants = useMemo(
+    () => (scope?.type === 'plant' ? (selectedPlant ? [selectedPlant] : []) : plants),
+    [scope, selectedPlant, plants],
   );
+  const scopedLogs = useMemo(() => {
+    if (scope?.type !== 'plant') return logs;
+    const pid = scope.plantId;
+    // Grow-stigs færslur (engin plantId — t.d. „vökvaði allar") eiga við plöntuna.
+    return logs.filter((l) => l.plantId === pid || l.plantId == null);
+  }, [scope, logs]);
+  const scopedHarvests = useMemo(() => {
+    if (scope?.type !== 'plant') return harvests;
+    const pid = scope.plantId;
+    return harvests.filter((h) => h.plantId === pid);
+  }, [scope, harvests]);
+
+  // Stöðugur lykill svo lifandi fyrirspurnin keyri aftur þegar umfang breytist.
+  const scopeKey =
+    grow.id + '|' + (scope ? (scope.type === 'plant' ? scope.plantId : 'grow') : 'none');
+
+  const messages = useLiveQuery(() => {
+    if (!scope) return Promise.resolve([] as RosMessage[]);
+    const coll = db.rosMessages.where('growId').equals(grow.id);
+    if (scope.type === 'grow') {
+      return coll.filter((m) => m.plantId == null).sortBy('timestamp');
+    }
+    const pid = scope.plantId;
+    // Einnar-plöntu ræktun: taktu líka með eldri skilaboð (fyrir v8, engin plantId).
+    if (activePlants.length === 1) {
+      return coll.filter((m) => m.plantId === pid || m.plantId == null).sortBy('timestamp');
+    }
+    return coll.filter((m) => m.plantId === pid).sortBy('timestamp');
+  }, [scopeKey, activePlants.length]);
 
   // Forskrifaður texti er settur EINU sinni við opnun; notandi getur breytt/sent.
   const [text, setText] = useState(() => initialDraft ?? '');
@@ -65,7 +120,14 @@ export function ChatTab({
   const suggestions = useMemo(() => {
     const now = Date.now();
     const month = new Date(now).getMonth() + 1;
-    const insights = computeInsights({ grow, plants, logs, harvests, now, month });
+    const insights = computeInsights({
+      grow,
+      plants: scopedPlants,
+      logs: scopedLogs,
+      harvests: scopedHarvests,
+      now,
+      month,
+    });
     const seen = new Set<string>();
     const out: string[] = [];
     for (const ins of insights) {
@@ -79,7 +141,7 @@ export function ChatTab({
     // Vara-tillagan bætist við í mesta lagi EINU sinni — aldrei tvær eins flögur.
     if (out.length < 2) out.push(FALLBACK_SUGGESTION);
     return out.slice(0, 3);
-  }, [grow, plants, logs, harvests]);
+  }, [grow, scopedPlants, scopedLogs, scopedHarvests]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end' });
@@ -90,14 +152,15 @@ export function ChatTab({
       const files = e.target.files;
       if (!files || files.length === 0) return;
       const ids: string[] = [];
+      const plantId = scope?.type === 'plant' ? scope.plantId : undefined;
       for (const file of Array.from(files)) {
-        const id = await addPhotoFromFile(file, { growId: grow.id });
+        const id = await addPhotoFromFile(file, { growId: grow.id, plantId });
         ids.push(id);
       }
       setPendingPhotos((prev) => [...prev, ...ids]);
       if (fileRef.current) fileRef.current.value = '';
     },
-    [grow.id],
+    [grow.id, scope],
   );
 
   function removePending(id: string) {
@@ -113,11 +176,14 @@ export function ChatTab({
 
     const now = Date.now();
     const month = new Date(now).getMonth() + 1;
+    // Skeyti afmarkast við valda plöntu (eða óskilgreint fyrir alla ræktunina).
+    const plantId = scope?.type === 'plant' ? scope.plantId : undefined;
 
     // Vista skilaboð notanda strax.
     const userMsg: RosMessage = {
       id: newId(),
       growId: grow.id,
+      plantId,
       role: 'user',
       content: trimmed,
       timestamp: now,
@@ -137,6 +203,7 @@ export function ChatTab({
     await db.rosMessages.add({
       id: pendingId,
       growId: grow.id,
+      plantId,
       role: 'ros',
       content: '',
       timestamp: now + 1,
@@ -162,11 +229,12 @@ export function ChatTab({
 
       const context = buildContextDigest({
         grow,
-        plants,
-        logs,
-        harvests,
+        plants: scopedPlants,
+        logs: scopedLogs,
+        harvests: scopedHarvests,
         now,
         month,
+        focusPlant: selectedPlant,
       });
 
       const result = await askRosStream(
@@ -208,8 +276,67 @@ export function ChatTab({
     }
   }
 
+  // Veljari: notandi velur fyrst plöntu (eða alla ræktunina) áður en spjall opnast.
+  if (!scope) {
+    return (
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 pr-0.5">
+        <p className="text-[11px] uppercase tracking-wide text-cream-300/60 px-1 pt-1">
+          Veldu plöntu fyrir spjallið
+        </p>
+        {activePlants.map((p) => (
+          <ScopeTile
+            key={p.id}
+            icon={<Sprout size={18} />}
+            title={plantLabel(p)}
+            subtitle={p.variety}
+            chip={phaseLabel(p.currentPhase)}
+            ariaLabel={`Spjalla um ${plantLabel(p)}`}
+            onClick={() => setScope({ type: 'plant', plantId: p.id })}
+          />
+        ))}
+        <ScopeTile
+          icon={<Leaf size={18} />}
+          title="Öll ræktunin"
+          subtitle="Almennt spjall um ræktunina"
+          ariaLabel="Spjalla um alla ræktunina"
+          dashed
+          onClick={() => setScope({ type: 'grow' })}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 min-h-0 flex flex-col">
+      {/* Umfangsstika: sýnir valið og leyfir að skipta (þegar fleiri en ein planta). */}
+      <div className="shrink-0 flex items-center gap-2 pb-2">
+        <span
+          className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-cream-100"
+          style={{
+            background: 'rgba(18,31,20,.6)',
+            border: '1px solid rgba(64,104,67,.5)',
+          }}
+        >
+          {scope.type === 'plant' ? <Sprout size={15} /> : <Leaf size={15} />}
+        </span>
+        <span className="min-w-0 flex-1 text-sm font-semibold text-cream-50 truncate">
+          {scope.type === 'plant'
+            ? selectedPlant
+              ? plantLabel(selectedPlant)
+              : 'Planta'
+            : 'Öll ræktunin'}
+        </span>
+        {activePlants.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setScope(null)}
+            className="shrink-0 text-[12px] text-cream-300/70 hover:text-cream-100 transition-colors"
+          >
+            Skipta
+          </button>
+        )}
+      </div>
+
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 pr-0.5">
         {list.length === 0 && (
           <div
@@ -219,8 +346,9 @@ export function ChatTab({
               border: '1px dashed rgba(64,104,67,.45)',
             }}
           >
-            Spjallaðu við Rós um ræktunina. Spyrðu um vökvun, áburð, meindýr eða
-            sýndu henni mynd af plöntunum þínum.
+            {scope.type === 'plant' && selectedPlant
+              ? `Spjallaðu við Rós um ${plantLabel(selectedPlant)} — spurðu um vökvun, áburð, meindýr eða sýndu mynd.`
+              : 'Spjallaðu við Rós um ræktunina. Spyrðu um vökvun, áburð, meindýr eða sýndu henni mynd af plöntunum þínum.'}
           </div>
         )}
         {list.map((m) => (
@@ -306,6 +434,57 @@ export function ChatTab({
         </button>
       </div>
     </div>
+  );
+}
+
+/** Valspjald í umfangsveljaranum — sama útlit fyrir plöntu og „Öll ræktunin". */
+function ScopeTile({
+  icon,
+  title,
+  subtitle,
+  chip,
+  dashed,
+  ariaLabel,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  chip?: string;
+  dashed?: boolean;
+  ariaLabel: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      className="w-full text-left rounded-2xl px-3.5 py-3 flex items-center gap-3 transition-all hover:brightness-110 active:scale-[.99]"
+      style={{
+        background: dashed ? 'rgba(18,31,20,.5)' : 'rgba(36,56,39,.7)',
+        border: dashed ? '1px dashed rgba(64,104,67,.5)' : '1px solid rgba(64,104,67,.45)',
+      }}
+    >
+      <span
+        className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-cream-100"
+        style={{ background: 'rgba(18,31,20,.6)', border: '1px solid rgba(64,104,67,.5)' }}
+      >
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-cream-50 truncate">{title}</span>
+        <span className="block text-[12px] text-cream-300/70 truncate">{subtitle}</span>
+      </span>
+      {chip && (
+        <span
+          className="shrink-0 rounded-full px-2 py-0.5 text-[11px] text-cream-100 whitespace-nowrap"
+          style={{ background: 'rgba(18,31,20,.6)', border: '1px solid rgba(64,104,67,.5)' }}
+        >
+          {chip}
+        </span>
+      )}
+    </button>
   );
 }
 

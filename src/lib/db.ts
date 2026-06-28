@@ -151,6 +151,13 @@ export interface AppMeta {
 export interface RosMessage {
   id: string;
   growId: string;
+  /**
+   * Hvaða plöntu spjallið á við (per-plöntu samhengi, db v8). Óskilgreint =
+   * spjall um ALLA ræktunina („Öll ræktunin"). Eldri skilaboð (fyrir v8) hafa
+   * enga plantId og teljast því grow-stigs; í einnar-plöntu ræktun birtast þau
+   * áfram með þeirri plöntu (sjá ChatTab fyrirspurnina).
+   */
+  plantId?: string;
   role: 'user' | 'ros';
   content: string;
   timestamp: number;
@@ -285,6 +292,12 @@ class SpiraDB extends Dexie {
     // eins og rosAssessments — EKKI í sync-snapshot (myndafleidd/handvirk talning).
     this.version(7).stores({
       rosYieldChecks: 'id, plantId, growId',
+    });
+    // v8: per-plöntu spjall — bætir `plantId` index á rosMessages svo spjall
+    // megi fyrirspyrja per plöntu (eða grow-stigs þegar plantId er óskilgreint).
+    // Hreint index-viðbót: eldri skilaboð halda sér (plantId verður óskilgreint).
+    this.version(8).stores({
+      rosMessages: 'id, growId, plantId, timestamp',
     });
   }
 }
