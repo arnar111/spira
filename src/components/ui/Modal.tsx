@@ -14,6 +14,14 @@ interface ModalProps {
   eyebrow?: string;
   size?: ModalSize;
   fullHeight?: boolean;
+  /**
+   * Aðeins með `fullHeight`: á glugginn sjálfur að skruna meginmálið (sjálfgefið)
+   * eða á innihaldið að sjá um eigin skrun? RosWindow setur þetta `false` því
+   * RosPanel er sjálft `flex`-dálkur með fastan haus/flipa-stöng efst og fastan
+   * skilaboðareit neðst — aðeins miðjan (spjallið) skrunar. Gallerí/umhirðu-
+   * gluggar nota sjálfgefið (allt meginmálið skrunar undir föstum titli).
+   */
+  bodyScroll?: boolean;
 }
 
 const SIZE_MAX_WIDTH: Record<ModalSize, string> = {
@@ -33,6 +41,7 @@ export function Modal({
   eyebrow,
   size = 'md',
   fullHeight = false,
+  bodyScroll = true,
 }: ModalProps) {
   useScrollLock(open);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -144,7 +153,13 @@ export function Modal({
               </div>
             )}
             {fullHeight ? (
-              <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+              <div
+                className={`min-h-0 flex-1 ${
+                  bodyScroll ? 'overflow-y-auto' : 'flex flex-col'
+                }`}
+              >
+                {children}
+              </div>
             ) : (
               children
             )}

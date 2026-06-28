@@ -62,7 +62,7 @@ export function RosWindow({
   }, [isDesktop, initialChatDraft]);
 
   return (
-    <Modal open={open} onClose={onClose} fullHeight size="lg">
+    <Modal open={open} onClose={onClose} fullHeight bodyScroll={false} size="lg">
       <RosPanel
         grow={grow}
         tabs={tabs}
