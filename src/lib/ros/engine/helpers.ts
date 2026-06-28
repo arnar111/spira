@@ -36,6 +36,13 @@ export interface EngineInput {
   now: number;
   /** Núverandi mánuður 1–12 (berst inn). */
   month: number;
+  /**
+   * Þegar spjall er bundið EINNI plöntu (per-plöntu samhengi) er hún sett hér.
+   * buildContextDigest bætir þá við ítarlegum „Planta í fókus"-kafla og opnar
+   * textann á því að spjallið snúist um þessa einu plöntu. Óskilgreint =
+   * grow-stigs samhengi (óbreytt hegðun). computeInsights hunsar þetta svið.
+   */
+  focusPlant?: Plant;
 }
 
 /**

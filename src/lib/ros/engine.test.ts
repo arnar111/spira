@@ -551,4 +551,46 @@ describe('röðun og samhengi', () => {
     expect(digest).toContain('Véritable SMART');
     expect(digest).toContain('EKKI moldarækt');
   });
+
+  it('buildContextDigest án focusPlant: óbreytt grow-stigs samhengi', () => {
+    const base = {
+      grow: mkGrow(),
+      plants: [mkPlant()],
+      logs: [mkLog({ type: 'water', timestamp: NOW - 1 * DAY_MS })],
+      harvests: [],
+      now: NOW,
+      month: JUNE,
+    };
+    const digest = buildContextDigest(base);
+    // Engin fókus-lína né fókus-kafli án focusPlant.
+    expect(digest).not.toContain('Spjall um eina plöntu:');
+    expect(digest).not.toContain('Planta í fókus:');
+    expect(digest).toContain('Plöntur:');
+    // focusPlant: undefined má ekki breyta úttakinu (byte-fyrir-byte).
+    expect(buildContextDigest({ ...base, focusPlant: undefined })).toBe(digest);
+  });
+
+  it('buildContextDigest með focusPlant: opnunarlína + „Planta í fókus"-kafli', () => {
+    const plant = mkPlant({
+      nickname: 'Rauðhetta',
+      startedFrom: 'seed',
+      sowDate: NOW - 50 * DAY_MS,
+      germinatedDate: NOW - 44 * DAY_MS,
+    });
+    const digest = buildContextDigest({
+      grow: mkGrow(),
+      plants: [plant],
+      logs: [],
+      harvests: [],
+      now: NOW,
+      month: JUNE,
+      focusPlant: plant,
+    });
+    expect(digest).toContain('Spjall um eina plöntu: Rauðhetta (Prófpipar) — fasi vegfasi.');
+    expect(digest).toContain('Planta í fókus:');
+    expect(digest).toContain('- Uppruni: fræ');
+    expect(digest).toContain('- Gælunafn: Rauðhetta');
+    // Fókus-kaflinn kemur í stað almenna „Plöntur:" listans.
+    expect(digest).not.toContain('Plöntur:');
+  });
 });

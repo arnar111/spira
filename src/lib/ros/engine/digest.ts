@@ -7,6 +7,7 @@
  * milli digest og index er skaðlaus.
  */
 
+import type { Plant } from '@/lib/db';
 import { needsGrowLight, daylightForMonth } from '@/lib/daylight';
 import { seasonForMonth, frostRisk, growIsOutdoor } from '@/lib/season';
 import { predictHarvestWindow } from '../predict';
@@ -18,10 +19,27 @@ import {
   lastLogTs,
   phaseLabel,
   plantLabel,
+  plantStartTs,
   plantVariety,
 } from './helpers';
 import { shortDate } from '@/lib/dates';
 import { computeInsights } from './index';
+
+/** Íslensk lýsing á uppruna plöntu (StartedFrom). Fellur aftur á hrátt gildi. */
+function startedFromLabel(from: Plant['startedFrom']): string {
+  switch (from) {
+    case 'seed':
+      return 'fræ';
+    case 'seedling':
+      return 'forræktuð planta';
+    case 'clone':
+      return 'græðlingur';
+    case 'purchased':
+      return 'keypt planta';
+    default:
+      return from;
+  }
+}
 
 /**
  * Hnitmiðaður íslenskur samhengistexti fyrir LLM (Rós).
@@ -29,13 +47,18 @@ import { computeInsights } from './index';
  * nýleg minnispunkta og virkar innsýnir.
  */
 export function buildContextDigest(input: EngineInput): string {
-  const { grow, plants, logs, harvests, now, month } = input;
+  const { grow, plants, logs, harvests, now, month, focusPlant } = input;
   const lines: string[] = [];
 
   const activePlants = plants.filter((p) => !p.archived);
   const growDay = Math.max(0, daysSince(now, grow.startDate));
 
   lines.push(`Ræktun: ${grow.name} (dagur ${growDay})`);
+  if (focusPlant) {
+    lines.push(
+      `Spjall um eina plöntu: ${plantLabel(focusPlant)} (${focusPlant.variety}) — fasi ${phaseLabel(focusPlant.currentPhase)}.`,
+    );
+  }
   if (grow.location) lines.push(`Staðsetning: ${grow.location}`);
 
   if (growIsVeritable(grow)) {
@@ -58,8 +81,19 @@ export function buildContextDigest(input: EngineInput): string {
     );
   }
 
-  // Plöntulisti með fösum.
-  if (activePlants.length > 0) {
+  // Plöntulisti með fösum — eða ítarlegur fókus-kafli ef spjall snýst um eina plöntu.
+  if (focusPlant) {
+    const p = focusPlant;
+    lines.push('Planta í fókus:');
+    const ageDays = daysSince(now, plantStartTs(p));
+    lines.push(`- Aldur: ${ageDays} ${dayWord(ageDays)}`);
+    lines.push(`- Uppruni: ${startedFromLabel(p.startedFrom)}`);
+    lines.push(`- Afbrigði: ${p.variety}`);
+    if (p.nickname?.trim()) lines.push(`- Gælunafn: ${p.nickname.trim()}`);
+    if (p.sowDate !== undefined) lines.push(`- Sáning: ${shortDate(p.sowDate)}`);
+    if (p.germinatedDate !== undefined) lines.push(`- Spírun: ${shortDate(p.germinatedDate)}`);
+    if (p.transplantDate !== undefined) lines.push(`- Umpottun: ${shortDate(p.transplantDate)}`);
+  } else if (activePlants.length > 0) {
     lines.push('Plöntur:');
     for (const p of activePlants) {
       lines.push(`- ${plantLabel(p)} (${p.variety}) — ${phaseLabel(p.currentPhase)}`);
