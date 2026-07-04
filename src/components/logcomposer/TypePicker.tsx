@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { ActionTile } from '@/components/ui/ActionTile';
 import { LOG_GROUPS, LOG_TYPE_META } from '@/lib/logSchema';
@@ -11,8 +12,22 @@ import { logIcon } from './shared';
  * stað 4 reita + 9 þröngra flaga áður. Valið fer beint í einbeitt form.
  */
 export function TypePicker({ onPick }: { onPick: (type: LogType) => void }): JSX.Element {
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Fókus á fyrsta reitinn um leið og valskrefið birtist — bæði við opnun og
+  // þegar komið er „til baka" úr forminu (formið afhleðst með fókusaða
+  // hnappnum og fókusinn dytti annars út úr fókusgildru gluggans á body).
+  // Effektið keyrir við mount, sem gerist EFTIR að AnimatePresence-skiptin
+  // klárast, svo hér er enginn tímakappakstur.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      rootRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   return (
-    <motion.div variants={listStagger} initial="hidden" animate="show">
+    <motion.div ref={rootRef} variants={listStagger} initial="hidden" animate="show">
       {LOG_GROUPS.map((group) => {
         const types = LOG_TYPE_META.filter((m) => m.group === group.id);
         if (types.length === 0) return null;

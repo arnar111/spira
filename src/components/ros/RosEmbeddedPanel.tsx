@@ -20,7 +20,7 @@ export function RosEmbeddedPanel({
 }: {
   grow: Grow;
   /** Flýtiskráning af ráði — GrowDetail opnar skráningargluggann forvalinn. */
-  onQuickLog?: (type: LogType, plantId?: string) => void;
+  onQuickLog?: (type: LogType, plantId?: string, data?: Record<string, string>) => void;
 }): JSX.Element {
   const tabs = useMemo<RosPanelTab[]>(
     () => [

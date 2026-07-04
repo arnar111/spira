@@ -25,8 +25,13 @@ export function HomeDesktop({ active, plants, archivedCount, agenda }: ViewProps
   // án onChange) — nú alvöru sía byggð á flokkunum sem raunverulega eru til.
   const [catTab, setCatTab] = useState(0);
   const categories = Array.from(new Set(active.map((g) => g.category)));
+  // Lifandi gögn geta fækkað flokkum eftir að flipi var valinn — klemmum
+  // vísitöluna svo listinn tæmist ekki hljóðlaust ef flokkur hverfur.
+  const effectiveTab = catTab >= 1 && catTab <= categories.length ? catTab : 0;
   const visibleGrows =
-    catTab === 0 ? active : active.filter((g) => g.category === categories[catTab - 1]);
+    effectiveTab === 0
+      ? active
+      : active.filter((g) => g.category === categories[effectiveTab - 1]);
   // Nýjasta umhverfismæling aðalræktunarinnar (1.4) — kemur í stað gervikorts.
   const primaryGrow = active[0];
   const primaryGrowId = primaryGrow?.id;
@@ -152,7 +157,7 @@ export function HomeDesktop({ active, plants, archivedCount, agenda }: ViewProps
             {categories.length > 1 && (
               <Tabs
                 tabs={['Allar', ...categories.map((c) => categoryLabel(c))]}
-                active={catTab}
+                active={effectiveTab}
                 onChange={setCatTab}
               />
             )}

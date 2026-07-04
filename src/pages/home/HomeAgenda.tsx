@@ -1,7 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PenLine, Sparkles } from 'lucide-react';
-import { KIND_ICON, KIND_TO_LOG, SEVERITY_STYLE } from '@/components/ros/rosWindowState';
+import {
+  KIND_ICON,
+  KIND_TO_LOG,
+  KIND_TO_LOG_DATA,
+  SEVERITY_STYLE,
+} from '@/components/ros/rosWindowState';
 import type { HomeAgendaItem } from './useHomeData';
 
 /**
@@ -34,6 +39,7 @@ export function HomeAgenda({ agenda }: { agenda: HomeAgendaItem[] }): JSX.Elemen
             const sev = SEVERITY_STYLE[insight.severity];
             const Icon = KIND_ICON[insight.kind] ?? Sparkles;
             const logType = KIND_TO_LOG[insight.kind];
+            const task = KIND_TO_LOG_DATA[insight.kind]?.task;
             return (
               <motion.div
                 key={`${growId}:${insight.id}`}
@@ -73,7 +79,7 @@ export function HomeAgenda({ agenda }: { agenda: HomeAgendaItem[] }): JSX.Elemen
                       navigate(
                         `/grow/${growId}?skra=${logType}${
                           insight.plantId ? `&planta=${insight.plantId}` : ''
-                        }`,
+                        }${task ? `&verk=${task}` : ''}`,
                       )
                     }
                     className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-moss-700 bg-moss-800/60 px-2.5 py-1.5 text-[11px] font-medium text-cream-100 transition-all duration-150 hover:border-moss-500 active:scale-95"

@@ -40,11 +40,12 @@ export function RosOverview() {
     navigate(`/grow/${growId}?spyrja=1&q=${encodeURIComponent(question)}`);
   // Flýtiskráning af dagskrárlið (5.x) — opnar skráningargluggann forvalinn
   // í ræktuninni gegnum ?skra-djúptenginguna (sama mynstur og ?spyrja).
-  const quickLogInGrow = (growId: string, type: string, plantId?: string) =>
+  // `verk` forvelur viðhaldsverkið (Véritable) svo ráðið lokist raunverulega.
+  const quickLogInGrow = (growId: string, type: string, plantId?: string, task?: string) =>
     navigate(
       `/grow/${growId}?skra=${encodeURIComponent(type)}${
         plantId ? `&planta=${encodeURIComponent(plantId)}` : ''
-      }`,
+      }${task ? `&verk=${encodeURIComponent(task)}` : ''}`,
     );
 
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);

@@ -12,6 +12,7 @@ import {
   Move,
   Package,
   Scissors,
+  ShieldAlert,
   Snowflake,
   Sparkles,
   SprayCan,
@@ -23,7 +24,7 @@ import {
 import { PenLine } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RosAvatar } from '@/components/ros/RosAvatar';
-import { KIND_TO_LOG } from '@/components/ros/rosWindowState';
+import { KIND_TO_LOG, KIND_TO_LOG_DATA } from '@/components/ros/rosWindowState';
 import type { RosInsightKind, RosSeverity } from '@/lib/ros/types';
 import { SectionTitle } from './parts';
 import type { TaggedInsight } from './useRosOverviewData';
@@ -48,6 +49,7 @@ const KIND_ICON: Record<RosInsightKind, LucideIcon> = {
   ec: FlaskConical,
   transplant: Move,
   pest: Bug,
+  disease: ShieldAlert,
   // — Véritable SMART (vatnsrækt) —
   tank: Container,
   clean: SprayCan,
@@ -88,8 +90,9 @@ export function AgendaSection({
   dueAndSoon: TaggedInsight[];
   infoCount: number;
   onOpen: (growId: string) => void;
-  /** Flýtiskráning (5.x): „Skrá"-hnappur á lið → skráningargluggi ræktunar forvalinn. */
-  onQuickLog?: (growId: string, type: string, plantId?: string) => void;
+  /** Flýtiskráning (5.x): „Skrá"-hnappur á lið → skráningargluggi ræktunar forvalinn.
+   * `task` forvelur viðhaldsverkið (Véritable) þegar það á við. */
+  onQuickLog?: (growId: string, type: string, plantId?: string, task?: string) => void;
 }) {
   return (
     <section className="mb-8">
@@ -134,7 +137,7 @@ function AgendaRow({
 }: {
   tagged: TaggedInsight;
   onOpen: () => void;
-  onQuickLog?: (growId: string, type: string, plantId?: string) => void;
+  onQuickLog?: (growId: string, type: string, plantId?: string, task?: string) => void;
 }) {
   const { insight, growName } = tagged;
   const sev = SEVERITY_STYLE[insight.severity];
@@ -184,7 +187,14 @@ function AgendaRow({
         {onQuickLog && logType && (
           <button
             type="button"
-            onClick={() => onQuickLog(tagged.growId, logType, insight.plantId)}
+            onClick={() =>
+              onQuickLog(
+                tagged.growId,
+                logType,
+                insight.plantId,
+                KIND_TO_LOG_DATA[insight.kind]?.task,
+              )
+            }
             className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-moss-700 bg-moss-800/60 px-2.5 py-1 text-[11px] font-medium text-cream-100 transition-all duration-150 hover:border-moss-500 active:scale-95"
           >
             <PenLine size={11} />

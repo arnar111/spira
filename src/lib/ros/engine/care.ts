@@ -72,7 +72,10 @@ export function pestFollowUpInsights(ctx: EngineContext): RosInsight[] {
 
   out.push({
     id: `pestcheck-${grow.id}`,
-    kind: 'pest',
+    // Sjúkdóms-eftirfylgni fær eigin gerð svo flýtiskráningin skrifi
+    // 'disease'-færslu (ekki 'pest') — annars flokkaðist endurskoðun
+    // sjúkdóms sem meindýr í dagbókinni upp frá því.
+    kind: type === 'disease' ? 'disease' : 'pest',
     severity: cadence.severity,
     title: type === 'pest' ? 'Athugaðu meindýrin aftur' : 'Athugaðu sjúkdóminn aftur',
     detail: `Fyrir ${age} ${dayWord(age)} skráðir þú ${what}${sevLabel ? ` (umfang: ${sevLabel})` : ''}. Skoðaðu plönturnar aftur — sérstaklega bakhlið blaða og nývöxt — og skráðu hvort ástandið hefur batnað eða versnað.`,

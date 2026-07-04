@@ -6,7 +6,7 @@ import {
   type Band,
   type BandStatus,
 } from '@/lib/envTargets';
-import type { GrowPhase } from '@/lib/db';
+import type { GrowPhase, PlantCategory } from '@/lib/db';
 
 const STATUS_COLOR: Record<BandStatus, string> = {
   in: 'var(--moss-300)',
@@ -59,15 +59,18 @@ function Row({
  */
 export function EnvBand({
   phase,
+  category,
   tempC,
   humidityPct,
 }: {
   phase: GrowPhase;
+  /** Flokkur ráðandi plöntu — kryddjurtir/lauf fá sín eigin bönd (5.x). */
+  category?: PlantCategory;
   tempC?: number;
   humidityPct?: number;
 }) {
   if (tempC === undefined && humidityPct === undefined) return null;
-  const target = envTargetForPhase(phase);
+  const target = envTargetForPhase(phase, category);
   return (
     <div className="flex flex-col gap-1.5">
       <div className="text-[10px] uppercase tracking-[0.16em] text-cream-400/60">

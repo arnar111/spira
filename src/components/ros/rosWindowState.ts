@@ -12,6 +12,7 @@ import {
   Move,
   Package,
   Scissors,
+  ShieldAlert,
   Snowflake,
   Sparkles,
   SprayCan,
@@ -49,6 +50,7 @@ export const KIND_ICON: Record<RosInsightKind, LucideIcon> = {
   ec: FlaskConical,
   transplant: Move,
   pest: Bug,
+  disease: ShieldAlert,
   // — Véritable SMART (vatnsrækt) —
   tank: Container,
   clean: SprayCan,
@@ -96,19 +98,34 @@ export const KIND_TO_LOG: Partial<Record<RosInsightKind, LogType>> = {
   deblossom: 'prune',
   runner: 'prune',
   hill: 'prune',
-  harvest: 'harvest',
+  // ATH: 'harvest' er viljandi EKKI hér — uppskera býr í db.harvests (Uppskeru-
+  // síðan og tölfræðin lesa hana þaðan), svo flýtiskráning í dagbókar-log myndi
+  // hvorki uppfæra tölur né loka ráðinu. 'mulch' er líka sleppt: mánaðarbundið
+  // úti-ráð sem engin skráning þaggar.
   env: 'environment',
   envBand: 'environment',
   ph: 'water',
   ec: 'water',
   transplant: 'transplant',
   pest: 'pest',
-  mulch: 'maintenance',
+  disease: 'disease',
   tank: 'water',
   clean: 'maintenance',
   wick: 'maintenance',
   thin: 'maintenance',
   lingot: 'maintenance',
+};
+
+/**
+ * Forútfyllt skipulögð gögn fyrir flýtiskráningu (5.x). Véritable-viðhaldsráðin
+ * lokast aðeins þegar RÉTT verk er valið (vélin les data.task), svo flýtihnappurinn
+ * forvelur verkið — annars varð til tómt viðhaldslog sem þaggaði aldrei ráðið.
+ */
+export const KIND_TO_LOG_DATA: Partial<Record<RosInsightKind, Record<string, string>>> = {
+  clean: { task: 'clean_tank' },
+  thin: { task: 'thin_seedlings' },
+  wick: { task: 'inspect_wicks' },
+  lingot: { task: 'replace_lingot' },
 };
 
 /** Íslensk fleirtölu-/eintölumeðferð fyrir „dag(a)". */

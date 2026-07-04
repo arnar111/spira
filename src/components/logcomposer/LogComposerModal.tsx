@@ -43,6 +43,7 @@ export function LogComposer({
   onClose,
   defaultType,
   defaultPlantId,
+  defaultData,
   existing,
 }: {
   growId: string;
@@ -52,6 +53,8 @@ export function LogComposer({
   defaultType?: LogType;
   /** Forvalin planta (t.d. þegar ráð Rósar á við tiltekna plöntu). */
   defaultPlantId?: string;
+  /** Forútfyllt skipulögð gögn (t.d. rétt Véritable-verk af flýtiskráningu ráðs). */
+  defaultData?: Record<string, string>;
   /** Þegar sett: gluggi opnast forfylltur og vistar með put() (1.4 — breyta skráningu). */
   existing?: LogEntry;
 }): JSX.Element {
@@ -64,7 +67,7 @@ export function LogComposer({
   const [note, setNote] = useState(existing?.note ?? '');
   const [sel, setSel] = useState<string>(existing?.plantId ?? defaultPlantId ?? 'all');
   const [data, setData] = useState<Record<string, string>>(() =>
-    stringifyLogData(existing?.data),
+    existing ? stringifyLogData(existing.data) : { ...(defaultData ?? {}) },
   );
   const [photoId, setPhotoId] = useState<string | undefined>(existing?.photoId);
   const [busy, setBusy] = useState(false);
@@ -98,13 +101,13 @@ export function LogComposer({
       setType(defaultType ?? 'water');
       setNote('');
       setSel(defaultPlantId ?? 'all');
-      setData({});
+      setData({ ...(defaultData ?? {}) });
       setPhotoId(undefined);
       setStep(defaultType ? 'form' : 'pick');
       setMoreOpen(false);
     }
     setBusy(false);
-  }, [open, defaultType, defaultPlantId, existing]);
+  }, [open, defaultType, defaultPlantId, defaultData, existing]);
 
   // Í formskrefi: fókus á fyrsta reitinn (eða athugasemd ef engir reitir).
   // Sleppum mynd — hún opnar skráarvalið beint. Lítill biðtími svo
@@ -117,6 +120,7 @@ export function LogComposer({
     }, 120);
     return () => window.clearTimeout(id);
   }, [open, step, type]);
+
 
   // Síðasta skráning sömu tegundar í þessari ræktun — „sama og síðast".
   const lastOfType = useLiveQuery(async () => {
@@ -247,16 +251,6 @@ export function LogComposer({
       eyebrow={isEdit ? 'Breyta skráningu' : 'Ný skráning'}
       title={isEdit ? 'Breyta viðburði' : 'Skrá viðburð'}
     >
-      {/* Falinn skráar-reitur er alltaf tengdur svo myndaval virki úr báðum skrefum.
-          Ekkert `capture` — svo farsímar bjóði bæði myndavél OG myndasafn. */}
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={onPickFile}
-      />
-
       <AnimatePresence mode="wait" initial={false}>
         {step === 'pick' ? (
           <motion.div
@@ -447,6 +441,17 @@ export function LogComposer({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Falinn skráar-reitur — alltaf tengdur svo myndaval virki úr báðum
+          skrefum, en AFTAST svo hann taki ekki upphafsfókus gluggans.
+          Ekkert `capture` — svo farsímar bjóði bæði myndavél OG myndasafn. */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={onPickFile}
+      />
     </Modal>
   );
 }

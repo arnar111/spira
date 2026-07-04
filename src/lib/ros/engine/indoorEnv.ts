@@ -66,8 +66,11 @@ export function envBandInsights(ctx: EngineContext): RosInsight[] {
   if (growActive && !outdoor && !veritable) {
     const envLog = lastLogOfType(logs, 'environment');
     if (envLog && now - envLog.timestamp <= ENV_FRESH_MS) {
+      // Sama flokks-næmni og EC-reglan/digest: kryddjurtir/lauf fá sín bönd —
+      // annars nagaði hita-/rakaráðið basilíku eftir Capsicum-mörkum.
+      const lead = furthestPlant(activePlants);
       const phase = furthestPhase(activePlants);
-      const target = envTargetForPhase(phase);
+      const target = envTargetForPhase(phase, lead?.category);
       const { tempC: temp, humidityPct: humidity } = logData('environment', envLog.data);
 
       if (temp !== undefined) {

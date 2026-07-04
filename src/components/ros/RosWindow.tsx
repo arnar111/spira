@@ -20,7 +20,7 @@ interface RosWindowProps {
   /** Forskrifaður texti í spjall-inntakið (t.d. „Spurning vikunnar" af /ros). */
   initialChatDraft?: string;
   /** Flýtiskráning af ráði (símaflipinn „Ráð") — kallarinn lokar glugganum og opnar skráningu. */
-  onQuickLog?: (type: LogType, plantId?: string) => void;
+  onQuickLog?: (type: LogType, plantId?: string, data?: Record<string, string>) => void;
 }
 
 /**

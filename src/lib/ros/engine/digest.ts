@@ -72,10 +72,21 @@ function ago(days: number): string {
   return days === 0 ? 'í dag' : `fyrir ${days} ${dayWord(days)}`;
 }
 
-/** Fyrsta setning umhirðu-samantektar (fellur á allan textann ef enginn punktur). */
+/**
+ * Fyrsta setning umhirðu-samantektar (fellur á allan textann ef enginn punktur).
+ * Íslenskar skammstafanir (t.d., þ.e., o.s.frv., u.þ.b., m.a., t.a.m.) eru
+ * huldar áður en skipt er — annars klipptist „…(t.d. Bell/Padrón)…" í miðjunni.
+ */
 function firstSentence(text: string): string {
-  const m = text.match(/^[^.!?]*[.!?]/);
-  return (m ? m[0] : text).trim();
+  // Felutákn sem kemur aldrei fyrir í umhirðutexta.
+  const MASK = '\u0000';
+  const masked = text.replace(
+    /(?:t\.d\.|\u00fe\.e\.|o\.s\.frv\.|u\.\u00fe\.b\.|m\.a\.|t\.a\.m\.)/gi,
+    (m) => m.replaceAll('.', MASK),
+  );
+  const m = masked.match(/^[^.!?]*[.!?]/);
+  const out = m ? m[0] : masked;
+  return out.replaceAll(MASK, '.').trim();
 }
 
 /**

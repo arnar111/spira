@@ -50,6 +50,17 @@ export function Varieties() {
   const [mother, setMother] = useState<MotherSpecies | 'all'>('all');
   const [color, setColor] = useState<PepperColor | 'all'>('all');
 
+  // Pipar-síurnar núllast þegar farið er úr pipar-samhengi — annars héldu
+  // faldar móðurtegundar-/lita-síur áfram að útiloka allt („0 afbrigði")
+  // án sýnilegrar ástæðu eða leiðar til að hreinsa þær.
+  function pickType(next: typeof type) {
+    setType(next);
+    if (next !== 'all' && next !== 'pepper') {
+      setMother('all');
+      setColor('all');
+    }
+  }
+
   const list = useMemo(() => {
     const needle = q.toLowerCase().trim();
     return BUILT_IN_VARIETIES.filter((v) => {
@@ -119,25 +130,25 @@ export function Varieties() {
       </div>
 
       <FilterRow label="Tegund">
-        <Chip active={type === 'all'} onClick={() => setType('all')}>
+        <Chip active={type === 'all'} onClick={() => pickType('all')}>
           Allar
         </Chip>
-        <Chip active={type === 'pepper'} onClick={() => setType('pepper')}>
+        <Chip active={type === 'pepper'} onClick={() => pickType('pepper')}>
           Pipar
         </Chip>
-        <Chip active={type === 'tomato'} onClick={() => setType('tomato')}>
+        <Chip active={type === 'tomato'} onClick={() => pickType('tomato')}>
           Tómatar
         </Chip>
-        <Chip active={type === 'strawberry'} onClick={() => setType('strawberry')}>
+        <Chip active={type === 'strawberry'} onClick={() => pickType('strawberry')}>
           Jarðarber
         </Chip>
-        <Chip active={type === 'potato'} onClick={() => setType('potato')}>
+        <Chip active={type === 'potato'} onClick={() => pickType('potato')}>
           Kartöflur
         </Chip>
-        <Chip active={type === 'herb'} onClick={() => setType('herb')}>
+        <Chip active={type === 'herb'} onClick={() => pickType('herb')}>
           Kryddjurtir
         </Chip>
-        <Chip active={type === 'leafy'} onClick={() => setType('leafy')}>
+        <Chip active={type === 'leafy'} onClick={() => pickType('leafy')}>
           Salat
         </Chip>
       </FilterRow>

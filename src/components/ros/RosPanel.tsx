@@ -18,9 +18,9 @@ export interface RosPanelContext {
   harvests: HarvestEntry[];
   /**
    * Flýtiskráning af ráði (5.x): opnar skráningargluggann forvalinn á tegund
-   * (og plöntu ef ráðið á við eina). Ósett í samhengjum án skráningarglugga.
+   * (og plöntu/verki ef ráðið á við). Ósett í samhengjum án skráningarglugga.
    */
-  onQuickLog?: (type: LogType, plantId?: string) => void;
+  onQuickLog?: (type: LogType, plantId?: string, data?: Record<string, string>) => void;
 }
 
 /** Einn flipi: merki á stönginni + fall sem birtir innihaldið úr samhenginu. */
@@ -41,7 +41,7 @@ interface RosPanelProps {
    */
   initialTab?: string;
   /** Flýtiskráning af ráði — rennur inn í samhengi flipanna (sjá RosPanelContext). */
-  onQuickLog?: (type: LogType, plantId?: string) => void;
+  onQuickLog?: (type: LogType, plantId?: string, data?: Record<string, string>) => void;
 }
 
 /**

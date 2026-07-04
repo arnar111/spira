@@ -27,6 +27,8 @@ export type RosInsightKind =
   | 'ec'
   /** Meindýrahætta (t.d. þurrt loft → spunamaur). */
   | 'pest'
+  /** Sjúkdóms-eftirfylgni (endurskoðun eftir disease-skráningu). */
+  | 'disease'
   /** Umpottun/prikklun tímabær. */
   | 'transplant'
   // — Véritable SMART (vatnsrækt) —

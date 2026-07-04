@@ -37,7 +37,7 @@ const RosEmbeddedPanel = lazy(() =>
   import('@/components/ros/RosEmbeddedPanel').then((m) => ({ default: m.RosEmbeddedPanel })),
 );
 import { db, type LogEntry, type LogType, type Plant } from '@/lib/db';
-import { LOG_TYPE_META } from '@/lib/logSchema';
+import { LOG_FIELDS, LOG_TYPE_META } from '@/lib/logSchema';
 import { deletePhoto } from '@/lib/photos';
 import { announce } from '@/lib/announce';
 import {
@@ -87,6 +87,8 @@ export function GrowDetail() {
   const [logRequest, setLogRequest] = useState<{
     type?: LogType;
     plantId?: string;
+    /** Forútfyllt skipulögð gögn (t.d. Véritable-verk af flýtiskráningu ráðs). */
+    data?: Record<string, string>;
   } | null>(null);
   const [rosOpen, setRosOpen] = useState(false);
   const [rosEverOpened, setRosEverOpened] = useState(false);
@@ -129,10 +131,22 @@ export function GrowDetail() {
     const skra = searchParams.get('skra');
     if (skra === null) return;
     const valid = LOG_TYPES_ALL.has(skra as LogType) ? (skra as LogType) : undefined;
-    setLogRequest({ type: valid, plantId: searchParams.get('planta') ?? undefined });
+    // `verk` forvelur viðhaldsverk — aðeins gild verk úr LOG_FIELDS sleppa í gegn.
+    const verk = searchParams.get('verk');
+    const validTask = LOG_FIELDS.maintenance?.find((f) => f.key === 'task')?.options?.some(
+      (o) => o.value === verk,
+    )
+      ? verk
+      : null;
+    setLogRequest({
+      type: valid,
+      plantId: searchParams.get('planta') ?? undefined,
+      data: valid === 'maintenance' && validTask ? { task: validTask } : undefined,
+    });
     const next = new URLSearchParams(searchParams);
     next.delete('skra');
     next.delete('planta');
+    next.delete('verk');
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
@@ -229,7 +243,14 @@ export function GrowDetail() {
         <div className="sp-h2" style={{ marginTop: 4, marginBottom: 10 }}>
           {grow.name}
         </div>
-        <PhaseBar phases={timeline.phases} currentDay={stageDay} totalDays={timeline.totalDays} />
+        {/* Fasamerkin komast ekki fyrir á síma (6 merki á ~310px) og runnu
+            saman í bendu — fasaheitið er hvort eð er í mónó-línunni neðar. */}
+        <PhaseBar
+          phases={timeline.phases}
+          currentDay={stageDay}
+          totalDays={timeline.totalDays}
+          showLabels={isDesktop}
+        />
         <div
           className="sp-mono"
           style={{
@@ -285,6 +306,7 @@ export function GrowDetail() {
           <Card tone="strong" radius={18} padding={16} className="mt-4">
             <EnvBand
               phase={representativePhase}
+              category={grow.category}
               tempC={latestEnv.tempC}
               humidityPct={latestEnv.humidityPct}
             />
@@ -411,7 +433,7 @@ export function GrowDetail() {
             <Suspense fallback={null}>
               <RosEmbeddedPanel
                 grow={grow}
-                onQuickLog={(type, plantId) => setLogRequest({ type, plantId })}
+                onQuickLog={(type, plantId, data) => setLogRequest({ type, plantId, data })}
               />
             </Suspense>
           </Card>
@@ -460,6 +482,7 @@ export function GrowDetail() {
         open={logRequest !== null}
         defaultType={logRequest?.type}
         defaultPlantId={logRequest?.plantId}
+        defaultData={logRequest?.data}
         onClose={() => setLogRequest(null)}
       />
 
@@ -521,10 +544,10 @@ export function GrowDetail() {
             onClose={() => setRosOpen(false)}
             initialTab={rosInitialTab}
             initialChatDraft={rosChatDraft}
-            onQuickLog={(type, plantId) => {
+            onQuickLog={(type, plantId, data) => {
               // Lokum Rós fyrst svo skráningarglugginn taki fókusinn.
               setRosOpen(false);
-              setLogRequest({ type, plantId });
+              setLogRequest({ type, plantId, data });
             }}
           />
         </Suspense>

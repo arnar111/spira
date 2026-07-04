@@ -205,6 +205,9 @@ describe('meindýra-eftirfylgni (5.5)', () => {
     expect(ins?.severity).toBe('soon');
     expect(ins?.title).toContain('sjúkdóminn');
     expect(ins?.detail).toContain('Grámygla');
+    // Gerðin er 'disease' (ekki 'pest') svo flýtiskráningin skrifi rétta
+    // dagbókartegund — annars flokkaðist endurskoðun sjúkdóms sem meindýr.
+    expect(ins?.kind).toBe('disease');
   });
 
   it('óvirk ræktun (allt í skipulagi) → engin eftirfylgni', () => {
@@ -489,6 +492,23 @@ describe('digest-viðbætur (5.5)', () => {
   it('fókus-planta utan vörulistans fær enga umhirðu-samantekt', () => {
     const plant = mkPlant();
     expect(digest({ plants: [plant], focusPlant: plant })).not.toContain('Umhirða afbrigðis:');
+  });
+
+  it('umhirðu-samantekt klippist EKKI á skammstöfun (t.d.) — pipar með tier-korti', () => {
+    // Paprikur leysast í móðurtegunda-þrep (PEPPER_CARE) þar sem allar
+    // samantektir innihalda „t.d." — punktar skammstöfunar mega ekki slíta
+    // fyrstu setninguna í miðju kafi.
+    const plant = mkPlant({
+      category: 'pepper',
+      variety: 'Jalapeño',
+      varietyId: 'pepper-jalapeno',
+    });
+    const d = digest({ plants: [plant], focusPlant: plant });
+    const line = d.split('\n').find((l) => l.startsWith('Umhirða afbrigðis:'));
+    expect(line).toBeDefined();
+    // Slitni setningin á „t.d." endar línan á „(t.d." — heil setning gerir það ekki.
+    expect(line).not.toMatch(/t\.d\.$/);
+    expect((line ?? '').length).toBeGreaterThan(60);
   });
 
   it('nýleg meindýraskráning (≤ 21 dags) birtist með íslensku heiti', () => {

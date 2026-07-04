@@ -7,6 +7,7 @@ import type { RosInsight } from '@/lib/ros/types';
 import {
   KIND_ICON,
   KIND_TO_LOG,
+  KIND_TO_LOG_DATA,
   SEVERITY_STYLE,
   dueLabel,
 } from '@/components/ros/rosWindowState';
@@ -25,7 +26,7 @@ export function InsightsTab({
   logs: LogEntry[];
   harvests: HarvestEntry[];
   /** Flýtiskráning (5.x): „Skrá"-hnappur á ráðum sem eiga sér skráningartegund. */
-  onQuickLog?: (type: LogType, plantId?: string) => void;
+  onQuickLog?: (type: LogType, plantId?: string, data?: Record<string, string>) => void;
 }) {
   const now = Date.now();
   const month = new Date(now).getMonth() + 1;
@@ -78,7 +79,7 @@ function InsightCard({
   onQuickLog,
 }: {
   insight: RosInsight;
-  onQuickLog?: (type: LogType, plantId?: string) => void;
+  onQuickLog?: (type: LogType, plantId?: string, data?: Record<string, string>) => void;
 }) {
   const sev = SEVERITY_STYLE[insight.severity];
   const Icon = KIND_ICON[insight.kind] ?? Sparkles;
@@ -119,7 +120,9 @@ function InsightCard({
         {canQuickLog && (
           <button
             type="button"
-            onClick={() => onQuickLog?.(logType!, insight.plantId)}
+            onClick={() =>
+              onQuickLog?.(logType!, insight.plantId, KIND_TO_LOG_DATA[insight.kind])
+            }
             className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-moss-700 bg-moss-800/60 px-2.5 py-1 text-[11px] font-medium text-cream-100 transition-all duration-150 hover:border-moss-500 active:scale-95"
           >
             <PenLine size={11} />

@@ -94,6 +94,9 @@ export function computeInsights(input: EngineInput): RosInsight[] {
   return stableSortBySeverity(insights);
 }
 
-export { buildContextDigest } from './digest';
+// ATH: buildContextDigest er EKKI endur-flutt héðan — digest.ts flytur inn
+// computeInsights úr þessari skrá, svo endur-útflutningur hér myndaði hring
+// milli knippa (Rollup-viðvörun þegar vélin er ákaf en digest letihlaðin).
+// Opinbera API-ið (@/lib/ros/engine) flytur digest beint úr ./digest.
 export { plantLabel, phaseLabel } from './helpers';
 export type { EngineInput } from './helpers';
