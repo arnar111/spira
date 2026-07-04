@@ -93,3 +93,23 @@ describe('envTargetForPhase — fasa-traust', () => {
     }
   });
 });
+
+describe('envTargetForPhase — flokkur (5.5) fallgildi og einhæfni', () => {
+  it('herb/leafy falla á eigin fallgildi fyrir fasa utan töflu (ekki DEFAULT_TARGET)', () => {
+    expect(envTargetForPhase('planning', 'herb')).not.toBe(DEFAULT_TARGET);
+    expect(envTargetForPhase('flowering', 'leafy')).not.toBe(DEFAULT_TARGET);
+  });
+
+  it('EC-bönd sjálfgefna sniðsins hækka einhæft frá spírun að aldinfasa (min)', () => {
+    const order = ['germinating', 'seedling', 'vegetative', 'flowering', 'fruiting'] as const;
+    let prevMin = -Infinity;
+    for (const p of order) {
+      const ec = envTargetForPhase(p).ec;
+      expect(ec, p).toBeDefined();
+      if (ec) {
+        expect(ec.min, p).toBeGreaterThanOrEqual(prevMin);
+        prevMin = ec.min;
+      }
+    }
+  });
+});

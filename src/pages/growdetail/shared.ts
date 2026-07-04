@@ -3,7 +3,22 @@
  * Deilt milli skeljarinnar og hluta-eininganna (PlantRow, LogRow, LogFilters).
  */
 
-import { Droplet, Flame, Leaf, Scissors, Sparkles, StickyNote, Thermometer } from 'lucide-react';
+import {
+  Bug,
+  Camera,
+  Droplet,
+  Flame,
+  GitBranch,
+  Leaf,
+  Move,
+  Scissors,
+  ShieldAlert,
+  Sparkles,
+  Sprout,
+  StickyNote,
+  Thermometer,
+  Wrench,
+} from 'lucide-react';
 import type { GrowPhase, LogType, Plant } from '@/lib/db';
 
 export const PHASE_OPTIONS: { id: GrowPhase; label: string }[] = [
@@ -17,14 +32,26 @@ export const PHASE_OPTIONS: { id: GrowPhase; label: string }[] = [
   { id: 'harvest', label: 'Uppskera' },
 ];
 
+/**
+ * ALLAR skráningartegundir með íslensk heiti + tákn (5.x — áður aðeins 7 af 14,
+ * svo tímalínan sýndi hráa strengi á borð við „phase_change" og „harvest").
+ * Röðin er birtingarröð síu-flaganna.
+ */
 export const LOG_TYPES: { id: LogType; label: string; icon: typeof Droplet }[] = [
   { id: 'water', label: 'Vökva', icon: Droplet },
   { id: 'feed', label: 'Næring', icon: Leaf },
   { id: 'note', label: 'Nóta', icon: StickyNote },
+  { id: 'photo', label: 'Mynd', icon: Camera },
   { id: 'prune', label: 'Klippt', icon: Scissors },
   { id: 'top', label: 'Toppað', icon: Sparkles },
   { id: 'pollinate', label: 'Frjóvgun', icon: Flame },
+  { id: 'transplant', label: 'Umpottað', icon: Move },
+  { id: 'maintenance', label: 'Viðhald', icon: Wrench },
   { id: 'environment', label: 'Umhverfi', icon: Thermometer },
+  { id: 'harvest', label: 'Uppskera', icon: Sprout },
+  { id: 'pest', label: 'Meindýr', icon: Bug },
+  { id: 'disease', label: 'Sjúkdómur', icon: ShieldAlert },
+  { id: 'phase_change', label: 'Fasabreyting', icon: GitBranch },
 ];
 
 /** Merki (tákn + heiti) fyrir logtegund; fellur aftur á tegundarstrenginn. */

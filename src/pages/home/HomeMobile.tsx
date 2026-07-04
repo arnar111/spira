@@ -6,13 +6,19 @@ import { StatCard } from '@/components/ui/StatCard';
 import { PhaseBar } from '@/components/ui/PhaseBar';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { PlantGlyph } from '@/components/PlantGlyph';
+import { getCurrentAccount } from '@/lib/account';
 import type { Plant } from '@/lib/db';
 import { categoryLabel } from './helpers';
 import { EmptyGrowsCard } from './EmptyGrowsCard';
+import { HomeAgenda } from './HomeAgenda';
 import type { DerivedGrow, ViewProps } from './useHomeData';
 
-export function HomeMobile({ active, plants, archivedCount }: ViewProps) {
+export function HomeMobile({ active, plants, archivedCount, agenda }: ViewProps) {
   const navigate = useNavigate();
+  // Raunverulegt nafn reikningsins í stað harðkóðaðs „Arnar" (5.x).
+  const account = getCurrentAccount();
+  const greetName = account?.name?.trim() || 'ræktandi';
+  const initial = (account?.name?.trim() || account?.code || 'S')[0].toUpperCase();
   const today = new Date();
   // Ekkert useMemo — `today` er nýtt í hverri umferð svo memo héldi aldrei,
   // og útreikningurinn er hvort eð er ódýr.
@@ -51,7 +57,7 @@ export function HomeMobile({ active, plants, archivedCount }: ViewProps) {
               Góðan dag,
               <br />
               <span className="sp-italic" style={{ color: 'var(--terra-300)' }}>
-                Arnar
+                {greetName}
               </span>
             </div>
           </div>
@@ -69,7 +75,7 @@ export function HomeMobile({ active, plants, archivedCount }: ViewProps) {
               fontWeight: 500,
             }}
           >
-            A
+            {initial}
           </div>
         </div>
 
@@ -123,6 +129,12 @@ export function HomeMobile({ active, plants, archivedCount }: ViewProps) {
           tone="cap"
         />
       </div>
+
+      {agenda.length > 0 && (
+        <div style={{ padding: '0 22px 18px' }}>
+          <HomeAgenda agenda={agenda} />
+        </div>
+      )}
 
       <div
         style={{

@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Plant } from '@/lib/db';
+import type { GrowPhase, Plant } from '@/lib/db';
 import {
   PHASES,
+  PHASE_TO_DAY,
   TOTAL_CYCLE_DAYS,
   cycleProgress,
   daysSince,
@@ -110,6 +111,60 @@ describe('timelineForCategory', () => {
     expect(timelineForCategory('tomato').totalDays).toBe(85);
     expect(timelineForCategory('strawberry').totalDays).toBe(90);
     expect(timelineForCategory('potato').totalDays).toBe(115);
+    expect(timelineForCategory('herb').totalDays).toBe(150);
+    expect(timelineForCategory('leafy').totalDays).toBe(90);
+  });
+});
+
+describe('kryddjurta- og lauftímalínur', () => {
+  const herb = timelineForCategory('herb');
+  const leafy = timelineForCategory('leafy');
+
+  it('kryddjurtir: uppskera hefst um dag 40 og heldur út lotuna', () => {
+    expect(getPhaseForDay(0, herb.phases).name).toBe('spírun');
+    expect(getPhaseForDay(12, herb.phases).name).toBe('seedling');
+    expect(getPhaseForDay(39, herb.phases).name).toBe('veg');
+    expect(getPhaseForDay(40, herb.phases).name).toBe('harvest');
+    expect(getPhaseForDay(149, herb.phases).name).toBe('harvest');
+  });
+
+  it('lauf: hraðari lota með klippingu frá degi 30', () => {
+    expect(getPhaseForDay(0, leafy.phases).name).toBe('spírun');
+    expect(getPhaseForDay(8, leafy.phases).name).toBe('seedling');
+    expect(getPhaseForDay(29, leafy.phases).name).toBe('veg');
+    expect(getPhaseForDay(30, leafy.phases).name).toBe('harvest');
+  });
+
+  it('phaseToDay dekkar hvern einasta vaxtarfasa á báðum línum', () => {
+    // Pipar-varpanin ber alla GrowPhase-lykla — hún er viðmiðið.
+    const allPhases = Object.keys(PHASE_TO_DAY) as GrowPhase[];
+    for (const tl of [herb, leafy]) {
+      for (const phase of allPhases) {
+        expect(tl.phaseToDay[phase], `${phase} vantar`).toBeTypeOf('number');
+        expect(tl.phaseToDay[phase], phase).toBeGreaterThanOrEqual(0);
+        expect(tl.phaseToDay[phase], phase).toBeLessThanOrEqual(tl.totalDays);
+      }
+    }
+  });
+
+  it('dormant varpar á 0 og finished á lotulok', () => {
+    expect(herb.phaseToDay.dormant).toBe(0);
+    expect(herb.phaseToDay.finished).toBe(150);
+    expect(leafy.phaseToDay.dormant).toBe(0);
+    expect(leafy.phaseToDay.finished).toBe(90);
+  });
+
+  it('blómgun/aldin (njóli) varpast inn í uppskerutímabilið', () => {
+    for (const tl of [herb, leafy]) {
+      expect(tl.phaseToDay.flowering).toBeGreaterThanOrEqual(tl.phaseToDay.harvest);
+      expect(tl.phaseToDay.fruiting).toBeGreaterThanOrEqual(tl.phaseToDay.harvest);
+      expect(tl.phaseToDay.ripening).toBeGreaterThanOrEqual(tl.phaseToDay.harvest);
+    }
+  });
+
+  it('phaseToDay-fallið virðir kryddjurtavörpunina', () => {
+    expect(phaseToDay('harvest', herb.phaseToDay)).toBe(40);
+    expect(phaseToDay('harvest', leafy.phaseToDay)).toBe(30);
   });
 });
 

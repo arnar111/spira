@@ -1,9 +1,9 @@
 /**
- * LogComposer.tsx — structured log form:
- *   - renders type selector tiles and chips
- *   - switching type shows correct structured fields
- *   - edit mode (existing prop) pre-fills the form
- *   - submitting a new log writes to db.logs
+ * LogComposer — tveggja skrefa skráningarflæði (5.x):
+ *   - skref 1: tegundaval í hópum (allar 13 tegundir sem reitir)
+ *   - skref 2: einbeitt form — plöntuflögur, þreparetir, „Meira"-felling
+ *   - defaultType/existing stökkva beint í formið
+ *   - submit skrifar í db.logs (add) / uppfærir með put() í breytingarham
  * run: npm run test:components
  */
 
@@ -59,85 +59,109 @@ function renderComposer(props: Partial<Parameters<typeof LogComposer>[0]> = {}) 
   );
 }
 
-describe('LogComposer — tegundaval (quick tiles)', () => {
+describe('LogComposer — skref 1: tegundaval', () => {
   beforeEach(resetDb);
 
-  it('sýnir quick-tile-hnappa: Vökva, Næring, Mynd, Nóta', () => {
+  it('sýnir daglegu tegundirnar: Vökva, Næring, Mynd, Nóta', () => {
     renderComposer();
     expect(screen.getByRole('button', { name: /Vökva/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Næring/i })).toBeInTheDocument();
-    // Use exact tile label — "Bæta við mynd" also contains "mynd" so getAllBy
-    const myndButtons = screen.getAllByRole('button', { name: /Mynd/i });
-    expect(myndButtons.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole('button', { name: /Mynd/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Nóta/i })).toBeInTheDocument();
   });
 
-  it('sýnir viðbótarchip-hnappa: Umhverfi, Frjóvgun, Klippt', () => {
+  it('sýnir líka hinar tegundirnar sem reiti: Umhverfi, Frjóvgun, Klippt', () => {
     renderComposer();
     expect(screen.getByRole('button', { name: /Umhverfi/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Frjóvgun/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Klippt/i })).toBeInTheDocument();
   });
 
-  it('sýnir plöntuvalsreitinn með „Öll ræktunin" og plöntunni', () => {
+  it('sýnir hópamerkin', () => {
     renderComposer();
-    expect(screen.getByRole('option', { name: 'Öll ræktunin' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Rauða' })).toBeInTheDocument();
+    expect(screen.getByText('Daglegt')).toBeInTheDocument();
+    expect(screen.getByText('Umhirða')).toBeInTheDocument();
+    expect(screen.getByText('Mælingar')).toBeInTheDocument();
+    expect(screen.getByText('Vandamál')).toBeInTheDocument();
+  });
+
+  it('formreitir (Vista, planta) birtast EKKI fyrr en tegund er valin', () => {
+    renderComposer();
+    expect(screen.queryByRole('button', { name: /Vista/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Rauða' })).not.toBeInTheDocument();
+  });
+
+  it('val á tegund opnar formið með reitum hennar', async () => {
+    const user = userEvent.setup();
+    renderComposer();
+    await user.click(screen.getByRole('button', { name: /Vökva/i }));
+    expect(await screen.findByPlaceholderText(/t.d. 200/i)).toBeInTheDocument(); // amountMl
+    expect(screen.getByRole('button', { name: /Vista/i })).toBeInTheDocument();
   });
 });
 
-describe('LogComposer — skipulögð svið eftir tegund', () => {
+describe('LogComposer — skref 2: form eftir tegund', () => {
   beforeEach(resetDb);
 
-  it('sýnir Magn og pH reitina þegar water er valin', () => {
+  it('defaultType stekkur beint í formið (water: Magn sjáanlegt)', () => {
     renderComposer({ defaultType: 'water' });
-    expect(screen.getByPlaceholderText(/t.d. 200/i)).toBeInTheDocument(); // amountMl
-    expect(screen.getByPlaceholderText(/t.d. 6.2/i)).toBeInTheDocument(); // ph
+    expect(screen.getByPlaceholderText(/t.d. 200/i)).toBeInTheDocument();
   });
 
-  it('sýnir Hiti, Raki og Ljóstíma þegar environment er valin', async () => {
+  it('sýnir plöntuflögur: „Öll ræktunin" og plöntuna', () => {
+    renderComposer({ defaultType: 'water' });
+    expect(screen.getByRole('button', { name: 'Öll ræktunin' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Rauða' })).toBeInTheDocument();
+  });
+
+  it('water: pH er ítarlegri reitur — falinn þar til „Meira" er opnað', async () => {
     const user = userEvent.setup();
     renderComposer({ defaultType: 'water' });
-    await user.click(screen.getByRole('button', { name: /Umhverfi/i }));
-    expect(screen.getByPlaceholderText(/t.d. 24/i)).toBeInTheDocument(); // tempC
+    expect(screen.queryByPlaceholderText(/t.d. 6.2/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Meira/i }));
+    expect(await screen.findByPlaceholderText(/t.d. 6.2/i)).toBeInTheDocument();
+  });
+
+  it('þrepahnappur eykur Magn um skrefið (50 ml)', async () => {
+    const user = userEvent.setup();
+    renderComposer({ defaultType: 'water' });
+    await user.click(screen.getByRole('button', { name: 'Magn — auka' }));
+    const amountInput = screen.getByPlaceholderText(/t.d. 200/i) as HTMLInputElement;
+    expect(amountInput.value).toBe('50');
+    await user.click(screen.getByRole('button', { name: 'Magn — auka' }));
+    expect(amountInput.value).toBe('100');
+  });
+
+  it('til baka-hnappur fer aftur í tegundaval og skipti hreinsar reiti', async () => {
+    const user = userEvent.setup();
+    renderComposer({ defaultType: 'water' });
+    expect(screen.getByPlaceholderText(/t.d. 200/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Velja aðra tegund' }));
+    await user.click(await screen.findByRole('button', { name: /Nóta/i }));
+    await waitFor(() =>
+      expect(screen.queryByPlaceholderText(/t.d. 200/i)).not.toBeInTheDocument(),
+    );
+  });
+
+  it('environment: Hiti, Raki og Ljóstími', async () => {
+    const user = userEvent.setup();
+    renderComposer({ defaultType: 'water' });
+    await user.click(screen.getByRole('button', { name: 'Velja aðra tegund' }));
+    await user.click(await screen.findByRole('button', { name: /Umhverfi/i }));
+    expect(await screen.findByPlaceholderText(/t.d. 24/i)).toBeInTheDocument(); // tempC
     expect(screen.getByPlaceholderText(/t.d. 60/i)).toBeInTheDocument(); // humidity
     expect(screen.getByPlaceholderText(/t.d. 18/i)).toBeInTheDocument(); // lightHours
   });
 
-  it('sýnir Þyngd og Fjöldi reitina þegar harvest er valin', async () => {
-    const user = userEvent.setup();
-    renderComposer({ defaultType: 'water' });
-    await user.click(screen.getByRole('button', { name: /Uppskera/i }));
-    expect(screen.getByPlaceholderText(/t.d. 120/i)).toBeInTheDocument(); // weightG
-    expect(screen.getByPlaceholderText(/t.d. 8/i)).toBeInTheDocument(); // podCount
-  });
-
-  it('sýnir Aðferð select þegar pollinate er valin', async () => {
-    const user = userEvent.setup();
-    renderComposer({ defaultType: 'water' });
-    await user.click(screen.getByRole('button', { name: /Frjóvgun/i }));
-    expect(screen.getByRole('option', { name: 'Pensill' })).toBeInTheDocument();
-  });
-
-  it('hreinsar skipulögð svið þegar skipt er um tegund', async () => {
-    const user = userEvent.setup();
-    renderComposer({ defaultType: 'water' });
-    // water has amountMl
-    expect(screen.getByPlaceholderText(/t.d. 200/i)).toBeInTheDocument();
-    // switch to note — no structured fields
-    await user.click(screen.getByRole('button', { name: /Nóta/i }));
-    expect(screen.queryByPlaceholderText(/t.d. 200/i)).not.toBeInTheDocument();
+  it('pollinate: Aðferð sem flögur (Pensill o.fl.)', async () => {
+    renderComposer({ defaultType: 'pollinate' });
+    expect(await screen.findByRole('button', { name: 'Pensill' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hristing' })).toBeInTheDocument();
   });
 });
 
 describe('LogComposer — Vista (submit) — ný skráning', () => {
   beforeEach(resetDb);
-
-  it('Vista-hnappur er til staðar og virkur', () => {
-    renderComposer();
-    expect(screen.getByRole('button', { name: /Vista/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Vista/i })).not.toBeDisabled();
-  });
 
   it('skrifar water-skráningu í db.logs', async () => {
     const onClose = vi.fn();
@@ -175,14 +199,23 @@ describe('LogComposer — Vista (submit) — ný skráning', () => {
     expect(logs[0].note).toBe('Lítið eitt gulnar á blöðunum');
   });
 
-  it('tengir plantId þegar planta er valin', async () => {
+  it('tengir plantId þegar plöntuflaga er valin', async () => {
     const onClose = vi.fn();
     const user = userEvent.setup();
     renderComposer({ defaultType: 'note', onClose });
 
-    // Select the plant instead of "Öll ræktunin"
-    const select = screen.getByRole('combobox');
-    await user.selectOptions(select, 'plant-1');
+    await user.click(screen.getByRole('button', { name: 'Rauða' }));
+
+    await user.click(screen.getByRole('button', { name: /Vista/i }));
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    const logs = await db.logs.toArray();
+    expect(logs[0].plantId).toBe('plant-1');
+  });
+
+  it('defaultPlantId forvelur plöntuna', async () => {
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    renderComposer({ defaultType: 'water', defaultPlantId: 'plant-1', onClose });
 
     await user.click(screen.getByRole('button', { name: /Vista/i }));
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
@@ -193,12 +226,34 @@ describe('LogComposer — Vista (submit) — ný skráning', () => {
   it('hætta við lokar án þess að skrifa', async () => {
     const onClose = vi.fn();
     const user = userEvent.setup();
-    renderComposer({ onClose });
+    renderComposer({ defaultType: 'water', onClose });
 
     await user.click(screen.getByRole('button', { name: /Hætta við/i }));
     expect(onClose).toHaveBeenCalledOnce();
     const logs = await db.logs.toArray();
     expect(logs).toHaveLength(0);
+  });
+});
+
+describe('LogComposer — „sama og síðast"', () => {
+  beforeEach(resetDb);
+
+  it('sýnir síðustu gildi og „Nota" forfyllir formið', async () => {
+    await db.logs.add({
+      id: 'log-prev',
+      growId: GROW_ID,
+      timestamp: Date.now() - 24 * 60 * 60 * 1000,
+      type: 'water',
+      data: { amountMl: 250, ph: 6.4 },
+    });
+    const user = userEvent.setup();
+    renderComposer({ defaultType: 'water' });
+
+    expect(await screen.findByText(/Síðast/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Nota' }));
+
+    const amountInput = screen.getByPlaceholderText(/t.d. 200/i) as HTMLInputElement;
+    expect(amountInput.value).toBe('250');
   });
 });
 
@@ -228,11 +283,22 @@ describe('LogComposer — breytingarham (existing prop)', () => {
     expect((noteArea as HTMLTextAreaElement).value).toBe('Upprunalegar athugasemdir');
   });
 
-  it('forfyllir water-reitinn amountMl', async () => {
+  it('forfyllir water-reitinn amountMl og opnar „Meira" fyrir pH-gildið', async () => {
     await db.logs.add(EXISTING_ENTRY);
     renderComposer({ existing: EXISTING_ENTRY });
     const amountInput = screen.getByPlaceholderText(/t.d. 200/i) as HTMLInputElement;
     expect(amountInput.value).toBe('150');
+    // pH er ítarlegri reitur en ber gildi — fellingin á að vera opin.
+    const phInput = screen.getByPlaceholderText(/t.d. 6.2/i) as HTMLInputElement;
+    expect(phInput.value).toBe('6.1');
+  });
+
+  it('sýnir ekki til baka-hnappinn í breytingarham', async () => {
+    await db.logs.add(EXISTING_ENTRY);
+    renderComposer({ existing: EXISTING_ENTRY });
+    expect(
+      screen.queryByRole('button', { name: 'Velja aðra tegund' }),
+    ).not.toBeInTheDocument();
   });
 
   it('skrifar uppfærslu með put() þegar vistað', async () => {

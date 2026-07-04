@@ -475,12 +475,22 @@ describe('pH utan bils (3.4)', () => {
     expect(byId(insights, 'ph-g1')?.severity).toBe('info');
   });
 
-  it('pH 7.5 → ph info; pH 6.2 (innan 5.5–6.8) → ekkert', () => {
+  it('pH 7.5 → ph soon (meira en 0,5 yfir bili); pH 6.2 (innan 5.5–6.8) → ekkert', () => {
+    // 5.5-reglan: frávik > 0,5 út fyrir bilið hækkar í 'soon' (7,5 er 0,7 yfir 6,8).
     expect(
       byId(run({ logs: [mkLog({ type: 'feed', data: { ph: 7.5 } })] }), 'ph-g1')?.severity,
-    ).toBe('info');
+    ).toBe('soon');
     expect(
       byId(run({ logs: [mkLog({ type: 'water', data: { ph: 6.2 } })] }), 'ph-g1'),
+    ).toBeUndefined();
+  });
+
+  it('gamall pH-lestur (> 7 daga) kveikir ekki lengur (5.5)', () => {
+    expect(
+      byId(
+        run({ logs: [mkLog({ type: 'water', timestamp: NOW - 8 * DAY_MS, data: { ph: 5.0 } })] }),
+        'ph-g1',
+      ),
     ).toBeUndefined();
   });
 });

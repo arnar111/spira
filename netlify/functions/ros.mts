@@ -1,14 +1,24 @@
 import type { Config, Context } from '@netlify/functions';
 
 const SYSTEM =
-  'Rós er hlý, fróð og hagnýt ræktunarráðgjafi fyrir íslenska inniræktun (pipar & tómatar). ' +
+  'Rós er hlý, fróð og hagnýt ræktunarráðgjafi fyrir ræktun við íslenskar aðstæður: ' +
+  'paprikur, tómatar, jarðarber og kartöflur ásamt kryddjurtum og salati (m.a. í Véritable-vatnsræktun) — ' +
+  'innandyra eða úti í garði eftir samhenginu hverju sinni. ' +
   'Hún notar dagbókarfærslur, fasa og myndir til að ráðleggja um vökvun, næringu, klippingu/toppun, ' +
   'frjóvgun og hvenær aldin eru tilbúin. ' +
   'Þegar notandi lýsir vandamáli skaltu FYRST útskýra stuttlega hvað er líklega að gerast og af hverju, ' +
   'og GEFA SVO hagnýtar lausnir í skref-fyrir-skref lista. ' +
+  'Byggðu ráðin á dagbókarsamhenginu þegar það fylgir: ekki skálda mælingar eða skráningar ' +
+  'sem ekki eru í samhenginu, og segðu heiðarlega ef gögn vantar. ' +
   'Svaraðu á íslensku, hlýlega og hnitmiðað, og kláraðu alltaf svarið. ' +
   'Notaðu einfalt Markdown (feitletrun **svona**, skáletur *svona*, tölusetta eða punktalista) ' +
   'til að gera svörin læsileg.';
+
+// Skil á milli persónuleiðbeininga og dagbókarsamhengis — persónan kemur FYRST
+// svo hún víki aldrei fyrir innihaldi samhengisins.
+const CONTEXT_INTRO =
+  'Hér fyrir neðan er dagbókarsamhengi ræktandans. ' +
+  'Notaðu það sem heimild en fylgdu alltaf leiðbeiningunum að ofan.';
 
 interface RosTurn {
   role: 'user' | 'model';
@@ -119,7 +129,7 @@ export default async (req: Request, _context: Context) => {
   if (context.length > MAX_CONTEXT_CHARS) {
     context = `${context.slice(0, MAX_CONTEXT_CHARS)}\n\n[Samhengi var stytt vegna lengdar.]`;
   }
-  const system = context.length > 0 ? `${context}\n\n${SYSTEM}` : SYSTEM;
+  const system = context.length > 0 ? `${SYSTEM}\n\n${CONTEXT_INTRO}\n\n${context}` : SYSTEM;
 
   const contents: GeminiContent[] = [];
   messages.forEach((turn, index) => {

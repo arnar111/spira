@@ -9,8 +9,9 @@ import { SearchInput, NoResults } from '@/components/ui/SearchInput';
 import { PlantGlyph } from '@/components/PlantGlyph';
 import { PlantsSkeleton } from '@/components/PageSkeletons';
 import { useDelayedFlag } from '@/lib/useDelayedFlag';
-import { db, type Plant } from '@/lib/db';
+import { db, type Plant, type PlantCategory } from '@/lib/db';
 import { daysSince, getPhaseForDay, timelineForCategory } from '@/lib/phases';
+import { categoryLabel } from './home/helpers';
 import {
   COLOR_HEX,
   COLOR_LABEL,
@@ -33,7 +34,7 @@ export function Plants() {
   const grows = useLiveQuery(() => db.grows.toArray());
 
   const [query, setQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'pepper' | 'tomato'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | PlantCategory>('all');
   const [filterMother, setFilterMother] = useState<MotherSpecies | 'all'>('all');
   const [filterColor, setFilterColor] = useState<PepperColor | 'all'>('all');
   const [phaseFilter, setPhaseFilter] = useState<string>('all');
@@ -68,10 +69,16 @@ export function Plants() {
 
   const activePlants = useMemo(() => (plants ?? []).filter((p) => !p.archived), [plants]);
 
-  const hasTomatoes = useMemo(
-    () => !!plants?.some((p) => (varietyByName(p.variety)?.category ?? p.category) === 'tomato'),
-    [plants],
-  );
+  // Flokkarnir sem raunverulega eru til — Tegund-röðin byggist á þeim (5.x;
+  // áður aðeins Pipar/Tómatar svo krydd/jarðarber/kartöflur voru ósíanleg).
+  const availableCategories = useMemo(() => {
+    const set = new Set<PlantCategory>();
+    plants?.forEach((p) => {
+      if (p.archived) return;
+      set.add(varietyByName(p.variety)?.category ?? p.category);
+    });
+    return Array.from(set);
+  }, [plants]);
 
   const availableMothers = useMemo(() => {
     const set = new Set<MotherSpecies>();
@@ -117,50 +124,58 @@ export function Plants() {
         />
       </div>
 
-      {hasTomatoes && (
+      {availableCategories.length > 1 && (
         <FilterRow icon={<Filter size={11} />} label="Tegund">
           <Chip active={typeFilter === 'all'} onClick={() => setTypeFilter('all')}>
             Allar
           </Chip>
-          <Chip active={typeFilter === 'pepper'} onClick={() => setTypeFilter('pepper')}>
-            Pipar
-          </Chip>
-          <Chip active={typeFilter === 'tomato'} onClick={() => setTypeFilter('tomato')}>
-            Tómatar
-          </Chip>
-        </FilterRow>
-      )}
-      <FilterRow icon={hasTomatoes ? undefined : <Filter size={11} />} label="Móðurtegund">
-        <Chip active={filterMother === 'all'} onClick={() => setFilterMother('all')}>
-          Allar
-        </Chip>
-        {MOTHER_SPECIES.filter((m) => availableMothers.has(m)).map((m) => (
-          <Chip
-            key={m}
-            active={filterMother === m}
-            onClick={() => setFilterMother(m)}
-          >
-            {m}
-          </Chip>
-        ))}
-      </FilterRow>
-      <FilterRow label="Litur">
-        <Chip active={filterColor === 'all'} onClick={() => setFilterColor('all')}>
-          Allir
-        </Chip>
-        {(Object.keys(COLOR_LABEL) as PepperColor[])
-          .filter((c) => availableColors.has(c))
-          .map((c) => (
-            <Chip
-              key={c}
-              swatch={COLOR_HEX[c]}
-              active={filterColor === c}
-              onClick={() => setFilterColor(c)}
-            >
-              {COLOR_LABEL[c]}
+          {availableCategories.map((c) => (
+            <Chip key={c} active={typeFilter === c} onClick={() => setTypeFilter(c)}>
+              {categoryLabel(c)}
             </Chip>
           ))}
-      </FilterRow>
+        </FilterRow>
+      )}
+      {/* Pipar-sértæku raðirnar birtast aðeins þegar piprar eru til — annars
+          stóðu einmana „Allar/Allir" flögur sem gerðu ekkert. */}
+      {availableMothers.size > 0 && (
+        <FilterRow
+          icon={availableCategories.length > 1 ? undefined : <Filter size={11} />}
+          label="Móðurtegund"
+        >
+          <Chip active={filterMother === 'all'} onClick={() => setFilterMother('all')}>
+            Allar
+          </Chip>
+          {MOTHER_SPECIES.filter((m) => availableMothers.has(m)).map((m) => (
+            <Chip
+              key={m}
+              active={filterMother === m}
+              onClick={() => setFilterMother(m)}
+            >
+              {m}
+            </Chip>
+          ))}
+        </FilterRow>
+      )}
+      {availableColors.size > 0 && (
+        <FilterRow label="Litur">
+          <Chip active={filterColor === 'all'} onClick={() => setFilterColor('all')}>
+            Allir
+          </Chip>
+          {(Object.keys(COLOR_LABEL) as PepperColor[])
+            .filter((c) => availableColors.has(c))
+            .map((c) => (
+              <Chip
+                key={c}
+                swatch={COLOR_HEX[c]}
+                active={filterColor === c}
+                onClick={() => setFilterColor(c)}
+              >
+                {COLOR_LABEL[c]}
+              </Chip>
+            ))}
+        </FilterRow>
+      )}
       <FilterRow label="Fasi">
         <Chip active={phaseFilter === 'all'} onClick={() => setPhaseFilter('all')}>
           Allir

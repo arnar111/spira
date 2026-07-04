@@ -23,8 +23,14 @@ export type RosInsightKind =
   | 'envBand'
   /** Sýrustig (pH) utan ráðlagðs bils. */
   | 'ph'
+  /** Leiðni næringarlausnar (EC) utan fasa-bands (sjá envTargets). */
+  | 'ec'
   /** Meindýrahætta (t.d. þurrt loft → spunamaur). */
   | 'pest'
+  /** Sjúkdóms-eftirfylgni (endurskoðun eftir disease-skráningu). */
+  | 'disease'
+  /** Umpottun/prikklun tímabær. */
+  | 'transplant'
   // — Véritable SMART (vatnsrækt) —
   /** Vatnsstaða/áfylling tanks. */
   | 'tank'

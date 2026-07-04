@@ -9,8 +9,10 @@ import {
   Leaf,
   Lightbulb,
   Mountain,
+  Move,
   Package,
   Scissors,
+  ShieldAlert,
   Snowflake,
   Sparkles,
   SprayCan,
@@ -19,6 +21,7 @@ import {
   Waves,
   type LucideIcon,
 } from 'lucide-react';
+import type { LogType } from '@/lib/db';
 import type { RosInsightKind, RosSeverity } from '@/lib/ros/types';
 
 /**
@@ -44,7 +47,10 @@ export const KIND_ICON: Record<RosInsightKind, LucideIcon> = {
   env: Thermometer,
   envBand: Thermometer,
   ph: FlaskConical,
+  ec: FlaskConical,
+  transplant: Move,
   pest: Bug,
+  disease: ShieldAlert,
   // — Véritable SMART (vatnsrækt) —
   tank: Container,
   clean: SprayCan,
@@ -74,6 +80,52 @@ export const SEVERITY_STYLE: Record<
     iconBg: 'rgba(115,159,115,.16)',
     iconColor: 'var(--moss-300)',
   },
+};
+
+/**
+ * Vörpun ráða-gerðar í skráningartegund (5.x) — knýr „Skrá"-flýtihnappinn á
+ * ráðum: eitt tapp opnar skráningargluggann forvalinn á réttri tegund í stað
+ * þess að notandi rati sjálfur gegnum tegundavalið. Gerðir sem eiga sér ekki
+ * augljósa skráningu (season, frost, light-upplýsingar …) eru viljandi ekki
+ * með — þar er ekkert að „ljúka".
+ */
+export const KIND_TO_LOG: Partial<Record<RosInsightKind, LogType>> = {
+  water: 'water',
+  feed: 'feed',
+  top: 'top',
+  prune: 'prune',
+  pollinate: 'pollinate',
+  deblossom: 'prune',
+  runner: 'prune',
+  hill: 'prune',
+  // ATH: 'harvest' er viljandi EKKI hér — uppskera býr í db.harvests (Uppskeru-
+  // síðan og tölfræðin lesa hana þaðan), svo flýtiskráning í dagbókar-log myndi
+  // hvorki uppfæra tölur né loka ráðinu. 'mulch' er líka sleppt: mánaðarbundið
+  // úti-ráð sem engin skráning þaggar.
+  env: 'environment',
+  envBand: 'environment',
+  ph: 'water',
+  ec: 'water',
+  transplant: 'transplant',
+  pest: 'pest',
+  disease: 'disease',
+  tank: 'water',
+  clean: 'maintenance',
+  wick: 'maintenance',
+  thin: 'maintenance',
+  lingot: 'maintenance',
+};
+
+/**
+ * Forútfyllt skipulögð gögn fyrir flýtiskráningu (5.x). Véritable-viðhaldsráðin
+ * lokast aðeins þegar RÉTT verk er valið (vélin les data.task), svo flýtihnappurinn
+ * forvelur verkið — annars varð til tómt viðhaldslog sem þaggaði aldrei ráðið.
+ */
+export const KIND_TO_LOG_DATA: Partial<Record<RosInsightKind, Record<string, string>>> = {
+  clean: { task: 'clean_tank' },
+  thin: { task: 'thin_seedlings' },
+  wick: { task: 'inspect_wicks' },
+  lingot: { task: 'replace_lingot' },
 };
 
 /** Íslensk fleirtölu-/eintölumeðferð fyrir „dag(a)". */
@@ -127,6 +179,8 @@ export const SUGGESTION_BY_KIND: Partial<Record<RosInsightKind, string>> = {
   wick: 'Hvernig veit ég hvort skipta þurfi um hárpípu-dúkana?',
   thin: 'Hvernig grisja ég ungplönturnar í Lingot?',
   lingot: 'Hvenær á ég að skipta um Lingot?',
+  ec: 'Hvað þýðir EC-gildið og hvernig stilli ég það?',
+  transplant: 'Hvenær og hvernig umpotta ég rétt?',
 };
 
 /** Almenn vara-tillaga ef of fáar innsýnir gefa spurningu. */

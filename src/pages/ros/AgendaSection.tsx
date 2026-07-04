@@ -9,8 +9,10 @@ import {
   Leaf,
   Lightbulb,
   Mountain,
+  Move,
   Package,
   Scissors,
+  ShieldAlert,
   Snowflake,
   Sparkles,
   SprayCan,
@@ -19,7 +21,10 @@ import {
   Waves,
   type LucideIcon,
 } from 'lucide-react';
+import { PenLine } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { RosAvatar } from '@/components/ros/RosAvatar';
+import { KIND_TO_LOG, KIND_TO_LOG_DATA } from '@/components/ros/rosWindowState';
 import type { RosInsightKind, RosSeverity } from '@/lib/ros/types';
 import { SectionTitle } from './parts';
 import type { TaggedInsight } from './useRosOverviewData';
@@ -41,7 +46,10 @@ const KIND_ICON: Record<RosInsightKind, LucideIcon> = {
   env: Thermometer,
   envBand: Thermometer,
   ph: FlaskConical,
+  ec: FlaskConical,
+  transplant: Move,
   pest: Bug,
+  disease: ShieldAlert,
   // — Véritable SMART (vatnsrækt) —
   tank: Container,
   clean: SprayCan,
@@ -77,10 +85,14 @@ export function AgendaSection({
   dueAndSoon,
   infoCount,
   onOpen,
+  onQuickLog,
 }: {
   dueAndSoon: TaggedInsight[];
   infoCount: number;
   onOpen: (growId: string) => void;
+  /** Flýtiskráning (5.x): „Skrá"-hnappur á lið → skráningargluggi ræktunar forvalinn.
+   * `task` forvelur viðhaldsverkið (Véritable) þegar það á við. */
+  onQuickLog?: (growId: string, type: string, plantId?: string, task?: string) => void;
 }) {
   return (
     <section className="mb-8">
@@ -89,13 +101,24 @@ export function AgendaSection({
         <AllGoodCard infoCount={infoCount} />
       ) : (
         <div className="flex flex-col gap-2">
-          {dueAndSoon.map((t) => (
-            <AgendaRow
-              key={`${t.growId}:${t.insight.id}`}
-              tagged={t}
-              onOpen={() => onOpen(t.growId)}
-            />
-          ))}
+          <AnimatePresence mode="popLayout" initial={false}>
+            {dueAndSoon.map((t) => (
+              <motion.div
+                key={`${t.growId}:${t.insight.id}`}
+                layout
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.2 } }}
+                transition={{ duration: 0.25 }}
+              >
+                <AgendaRow
+                  tagged={t}
+                  onOpen={() => onOpen(t.growId)}
+                  onQuickLog={onQuickLog}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
           {infoCount > 0 && (
             <p className="text-[11px] text-cream-300/55 mt-1 px-0.5">
               {infoCount} ráð til viðbótar í einstökum ræktunum.
@@ -110,19 +133,20 @@ export function AgendaSection({
 function AgendaRow({
   tagged,
   onOpen,
+  onQuickLog,
 }: {
   tagged: TaggedInsight;
   onOpen: () => void;
+  onQuickLog?: (growId: string, type: string, plantId?: string, task?: string) => void;
 }) {
   const { insight, growName } = tagged;
   const sev = SEVERITY_STYLE[insight.severity];
   const Icon = KIND_ICON[insight.kind] ?? Sparkles;
+  const logType = KIND_TO_LOG[insight.kind];
 
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="w-full text-left rounded-2xl p-3 flex gap-3 transition-colors active:scale-[.995]"
+    <div
+      className="w-full rounded-2xl p-3 flex gap-3"
       style={{
         background: 'rgba(36,56,39,.55)',
         border: '1px solid rgba(64,104,67,.4)',
@@ -136,24 +160,49 @@ function AgendaRow({
         <Icon size={16} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-cream-50 text-sm font-medium">{insight.title}</span>
-          <span
-            className="text-[10px] sp-mono px-1.5 py-0.5 rounded-full ml-auto shrink-0"
-            style={{
-              background: 'rgba(18,31,20,.55)',
-              color: 'rgba(231,217,168,.7)',
-              border: '1px solid rgba(64,104,67,.4)',
-            }}
+        {/* Meginflöturinn er áfram hnappur sem opnar ræktunina … */}
+        <button
+          type="button"
+          onClick={onOpen}
+          className="block w-full text-left transition-colors active:scale-[.995]"
+        >
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-cream-50 text-sm font-medium">{insight.title}</span>
+            <span
+              className="text-[10px] sp-mono px-1.5 py-0.5 rounded-full ml-auto shrink-0"
+              style={{
+                background: 'rgba(18,31,20,.55)',
+                color: 'rgba(231,217,168,.7)',
+                border: '1px solid rgba(64,104,67,.4)',
+              }}
+            >
+              {growName}
+            </span>
+          </div>
+          <p className="text-[12px] text-cream-300/80 mt-1 leading-relaxed">
+            {insight.detail}
+          </p>
+        </button>
+        {/* … en liðnum má ljúka beint héðan með einni snertingu. */}
+        {onQuickLog && logType && (
+          <button
+            type="button"
+            onClick={() =>
+              onQuickLog(
+                tagged.growId,
+                logType,
+                insight.plantId,
+                KIND_TO_LOG_DATA[insight.kind]?.task,
+              )
+            }
+            className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-moss-700 bg-moss-800/60 px-2.5 py-1 text-[11px] font-medium text-cream-100 transition-all duration-150 hover:border-moss-500 active:scale-95"
           >
-            {growName}
-          </span>
-        </div>
-        <p className="text-[12px] text-cream-300/80 mt-1 leading-relaxed">
-          {insight.detail}
-        </p>
+            <PenLine size={11} />
+            Skrá núna
+          </button>
+        )}
       </div>
-    </button>
+    </div>
   );
 }
 

@@ -250,6 +250,12 @@ body {
   .sp-skeleton::after {
     animation: none;
   }
+  /* Skraut-hreyfingar (sway/pulse) virða líka reduced-motion; hleðslu-spinnerar
+     halda sér því þeir bera merkingu. Framer-hreyfingar sér MotionConfig um. */
+  .animate-sway,
+  .sp-pulse {
+    animation: none;
+  }
 }
 
 @layer utilities {

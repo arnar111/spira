@@ -7,19 +7,21 @@ import { Card } from '@/components/ui/Card';
 import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
-import { Chili } from '@/components/Chili';
+import { PlantGlyph } from '@/components/PlantGlyph';
 import { HarvestSkeleton } from '@/components/PageSkeletons';
 import { useDelayedFlag } from '@/lib/useDelayedFlag';
 import { VarietyYieldList } from '@/components/charts/VarietyYieldList';
 import { db, newId, type Plant } from '@/lib/db';
 import { announce } from '@/lib/announce';
-import { chiliForVarietyName, formatShu, varietyByName } from '@/lib/varieties';
+import { celebrate } from '@/lib/celebrate';
+import { formatShu, varietyByName } from '@/lib/varieties';
 
 export function Harvest() {
   const harvests = useLiveQuery(() => db.harvests.toArray());
   const plants = useLiveQuery(() => db.plants.toArray());
   const grows = useLiveQuery(() => db.grows.toArray());
   const [open, setOpen] = useState(false);
+  const activePlants = useMemo(() => (plants ?? []).filter((p) => !p.archived), [plants]);
 
   const stats = useMemo(() => {
     const list = harvests ?? [];
@@ -61,7 +63,14 @@ export function Harvest() {
             <Scale size={22} className="inline-block mr-1" /> {stats.total.toFixed(0)}g
           </h1>
         </div>
-        <Button size="sm" onClick={() => setOpen(true)}>
+        {/* Án virkra plantna er ekkert að skrá — hnappurinn segir það frekar
+            en að opna tóman glugga með læstum Vista-hnappi. */}
+        <Button
+          size="sm"
+          disabled={activePlants.length === 0}
+          title={activePlants.length === 0 ? 'Engar virkar plöntur til að skrá á' : undefined}
+          onClick={() => setOpen(true)}
+        >
           <Plus size={14} /> Skrá
         </Button>
       </header>
@@ -101,7 +110,7 @@ export function Harvest() {
               key={plant.id}
               className="flex items-center gap-3 rounded-2xl p-3 border bg-moss-900/40 border-moss-800/40"
             >
-              <Chili variety={chiliForVarietyName(plant.variety)} size={44} tilt={-4} />
+              <PlantGlyph name={plant.variety} size={44} tilt={-4} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-cream-50 font-medium text-sm">
@@ -137,12 +146,7 @@ export function Harvest() {
 
       <VarietyYieldList className="mt-4" />
 
-      {open && (
-        <HarvestDialog
-          plants={plants.filter((p) => !p.archived)}
-          onClose={() => setOpen(false)}
-        />
-      )}
+      {open && <HarvestDialog plants={activePlants} onClose={() => setOpen(false)} />}
     </motion.div>
   );
 }
@@ -183,6 +187,7 @@ function HarvestDialog({
     });
     setBusy(false);
     announce('Uppskera skráð');
+    celebrate('harvest');
     onClose();
   }
 

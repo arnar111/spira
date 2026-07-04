@@ -168,9 +168,10 @@ export interface PotatoVariety extends VarietyCommon {
 }
 
 /**
- * Aromatic herbs (basil, parsley, mint…) grown indoors — primarily in a
- * Véritable hydroponic garden or a sunny window. Care is optional: only a few
- * reference crops (e.g. basil) carry a full hydroponic care guide.
+ * Aromatic herbs (basil, parsley, mint…) grown indoors — in a Véritable
+ * hydroponic garden, a sunny window or a DIY setup. Care is optional but most
+ * popular crops carry a guide: hydroponic (lingotCare) or window-pot
+ * (windowHerbCare).
  */
 export interface HerbVariety extends VarietyCommon {
   category: 'herb';
@@ -231,8 +232,9 @@ export function isLeafy(v?: Variety): v is LeafyVariety {
 
 /**
  * Any variety that carries a structured care guide. Tomatoes, strawberries and
- * potatoes always have one; herbs and leafy greens carry it only on the few
- * reference crops (basil, arugula), so we additionally check the runtime field.
+ * potatoes always have one; herbs and leafy greens carry it only on the more
+ * popular crops (basil, mint, thyme, butterhead…), so we additionally check
+ * the runtime field.
  */
 export type CaredVariety =
   | TomatoVariety
@@ -1855,6 +1857,66 @@ function lingotCare(summary: string): CropCare {
   };
 }
 
+/** Viðbótarefni sem sníður gluggapotta-kortið að einstakri kryddjurt. */
+interface WindowHerbCareInput {
+  summary: string;
+  /** Auka markmiðsraðir aftan við sameiginlegu pottaröðina (ljós/hiti/raki/pottur/vökvun). */
+  targets?: CareTarget[];
+  /** Auka vökvunarráð aftan við fingurprófs-grunninn. */
+  watering?: string[];
+  troubleshooting?: TroubleItem[];
+  normal?: string[];
+  concern?: string[];
+}
+
+/**
+ * Gluggapotta-umhirða fyrir kryddjurtir í mold — hliðstæða lingotCare() fyrir
+ * hefðbundna pottarækt í glugga með gróðurljósi. Grunnurinn (fingurpróf,
+ * vægur áburður, skammdegisráð, lús/mygla) er sameiginlegur; hver jurt fær
+ * sitt ágrip og sérráð gegnum WindowHerbCareInput.
+ */
+function windowHerbCare(opts: WindowHerbCareInput): CropCare {
+  return {
+    summary: opts.summary,
+    targets: [
+      { label: 'Ljós', value: 'Suðurgluggi + LED 12–14 klst á veturna', hint: 'Íslenskt skammdegi dugar engri kryddjurt — gróðurljós frá okt–mars' },
+      { label: 'Hiti', value: '18–24°C', hint: 'Varist heitan ofn beint undir gluggakistunni' },
+      { label: 'Raki', value: '40–60%', hint: 'Venjulegur inniraki dugar' },
+      { label: 'Pottur', value: '1–3 L með frárennslisgötum', hint: 'Standandi vatn í botni = rótarfúi' },
+      { label: 'Vökvun', value: 'Fingurpróf', hint: 'Vökvaðu þegar efstu 2 cm moldar eru þurrir' },
+      ...(opts.targets ?? []),
+    ],
+    watering: [
+      'Fingurpróf: stingdu fingri 2 cm í moldina og vökvaðu aðeins þegar hún er þurr — ofvökvun drepur fleiri gluggakryddjurtir en þurrkur.',
+      'Vökvaðu rólega þar til rennur úr botngötunum og tæmdu undirskálina eftir korter.',
+      'Í skammdeginu hægist á vexti og vatnsþörfin minnkar — vökvaðu sjaldnar frá nóvember fram í febrúar.',
+      ...(opts.watering ?? []),
+    ],
+    fertilizer: [
+      { stage: 'Vöxtur (mars–okt)', npk: 'Vægur alhliða áburður, hálfur skammtur', freq: 'Á 2–4 vikna fresti', note: 'Kryddjurtir þurfa lítið — ofáburður gefur stór en bragðdauf blöð' },
+      { stage: 'Vetur (nóv–feb)', npk: 'Enginn eða örlítill', freq: 'Mest á 6 vikna fresti', note: 'Hægur skammdegisvöxtur kallar á nær enga næringu' },
+    ],
+    troubleshooting: [
+      { problem: 'Teygður, renglulegur vöxtur', cause: 'Of lítil birta — klassískt í íslensku skammdegi', fix: 'Bættu við LED-gróðurljósi 12–14 klst og snúðu pottinum vikulega' },
+      { problem: 'Gulnandi blöð og slöpp planta', cause: 'Ofvökvun eða vatn í undirskálinni', fix: 'Leyfðu moldinni að þorna vel og tæmdu undirskálina eftir hverja vökvun' },
+      { problem: 'Blaðlús á nývexti', cause: 'Algengur plágugestur inniplantna, sérstaklega á vorin', fix: 'Skolaðu plöntuna í sturtunni og úðaðu með mildri sápulausn' },
+      { problem: 'Hvít skán eða mygla á moldaryfirborði', cause: 'Sírök mold og lítið loftflæði', fix: 'Vökvaðu sjaldnar, skiptu um efsta moldarlagið og loftaðu betur um gluggann' },
+      ...(opts.troubleshooting ?? []),
+    ],
+    normal: [
+      'Hægari vöxtur en í vatnsræktun er eðlilegur — sérstaklega yfir dimmustu mánuðina.',
+      'Klipptu reglulega rétt ofan við blaðpar (mest 1/3 af plöntunni í einu) — það heldur henni þéttri og bragðgóðri.',
+      'Elstu neðri blöðin gulna og falla með aldri — fjarlægðu þau bara.',
+      ...(opts.normal ?? []),
+    ],
+    concern: [
+      'Plantan fellir blöð í stórum stíl — athugaðu dragsúg frá glugganum, ofvökvun og birtu.',
+      'Klístruð blöð eða hvítir hnoðrar í blaðöxlum — lús í uppsiglingu, bregstu strax við.',
+      ...(opts.concern ?? []),
+    ],
+  };
+}
+
 interface HInput {
   id: string;
   category: 'herb' | 'leafy';
@@ -1895,9 +1957,11 @@ function h(input: HInput): HerbVariety | LeafyVariety {
 }
 
 /**
- * Lingot herb & leafy-green presets for the Véritable hydroponic garden,
- * distilled from Report 05 §9.3. Herbs also grow in a sunny window or DIY
- * setup; the day/harvest figures come straight from the Lingot crop table.
+ * Herb & leafy-green presets. The original five herbs + four leafy crops come
+ * from the Véritable Lingot crop table (Report 05 §9.3); the window-pot
+ * expansion adds classic kitchen herbs (thai-basil, oregano, thyme, dill,
+ * sage, rosemary…) and salad greens. Woody Mediterranean herbs (rosemary,
+ * thyme, sage) do poorly in Lingots and only list window/diy.
  */
 const HERBS: (HerbVariety | LeafyVariety)[] = [
   h({
@@ -1936,6 +2000,17 @@ const HERBS: (HerbVariety | LeafyVariety)[] = [
     lifespanDays: 180,
     harvestFrequency: 'Á 10 daga fresti',
     suitableLocations: ['veritable', 'window', 'diy'],
+    care: windowHerbCare({
+      summary:
+        'Steinselja í gluggapotti — sein af stað en gjafmild mánuðum saman. Leggðu fræin í bleyti yfir nótt, gefðu henni djúpan pott og klipptu alltaf ystu stilkana við grunn.',
+      targets: [
+        { label: 'Spírun', value: '2–3 vikur', hint: 'Bleyting fræja yfir nótt flýtir spírun' },
+        { label: 'Pottdýpt', value: '15+ cm', hint: 'Stólparót — djúpur pottur gefur þéttari plöntu' },
+      ],
+      normal: [
+        'Klipptu ystu stilkana við grunn — miðjuvöxturinn heldur þá áfram að gefa svo mánuðum skiptir.',
+      ],
+    }),
   }),
   h({
     id: 'herb-cilantro',
@@ -1953,6 +2028,17 @@ const HERBS: (HerbVariety | LeafyVariety)[] = [
     lifespanDays: 120,
     harvestFrequency: 'Á 7 daga fresti',
     suitableLocations: ['veritable', 'window', 'diy'],
+    care: windowHerbCare({
+      summary:
+        'Kóríander í gluggapotti — fljótur en njólagjarn. Svalt og bjart sæti hægir á blómgun; sáðu þétt beint í pottinn og aftur á ~3 vikna fresti því hann þolir illa umplöntun.',
+      targets: [
+        { label: 'Njólavörn', value: 'Svalt (16–21°C) og bjart', hint: 'Hiti yfir 24°C flýtir blómgun' },
+        { label: 'Sáning', value: 'Beint í pottinn', hint: 'Þolir illa umplöntun — sáðu þar sem hann á að vaxa' },
+      ],
+      concern: [
+        'Fíngerð, þráðlaga blöð birtast efst — plantan er á leið í blóm; taktu uppskeruna og sáðu nýrri.',
+      ],
+    }),
   }),
   h({
     id: 'herb-mint',
@@ -1970,6 +2056,19 @@ const HERBS: (HerbVariety | LeafyVariety)[] = [
     lifespanDays: 180,
     harvestFrequency: 'Á 7 daga fresti',
     suitableLocations: ['veritable', 'window', 'diy'],
+    care: windowHerbCare({
+      summary:
+        'Minta í gluggapotti — kraftmikil og fyrirgefandi. Eina kryddjurtin sem vill jafnraka mold; klipptu grimmt og umpottaðu árlega því ræturnar fylla pottinn á einu sumri.',
+      targets: [
+        { label: 'Umpottun', value: 'Árlega í ferska mold', hint: 'Renglurætur fylla pottinn á einu sumri' },
+      ],
+      watering: [
+        'Öfugt við flestar kryddjurtir vill minta jafnraka mold — láttu hana aldrei skrælna alveg.',
+      ],
+      normal: [
+        'Renglur skjóta upp nýjum sprotum út um allan pott — eðlilegt og fínt hráefni í te.',
+      ],
+    }),
   }),
   h({
     id: 'herb-chives',
@@ -1987,6 +2086,233 @@ const HERBS: (HerbVariety | LeafyVariety)[] = [
     lifespanDays: 180,
     harvestFrequency: 'Á 14 daga fresti',
     suitableLocations: ['veritable', 'window', 'diy'],
+    care: windowHerbCare({
+      summary:
+        'Graslaukur í gluggapotti — nægjusamur og nánast ódrepandi. Klipptu stráin 2–3 cm yfir mold og þau vaxa aftur hvað eftir annað; stutt kaldhvíld endurnýjar kraftinn.',
+      targets: [
+        { label: 'Kaldhvíld', value: '2–3 vikur á svölum stað', hint: 'Stutt kuldatímabil (t.d. á svölum) endurnýjar vöxtinn' },
+      ],
+      normal: [
+        'Fjólubláu blómin eru æt og falleg í salat — en klipping fyrir blómgun heldur stráunum mýkri.',
+      ],
+    }),
+  }),
+  h({
+    id: 'herb-thai-basil',
+    category: 'herb',
+    commonName: 'Thai-basilíka',
+    glyph: 'sprig',
+    scientificName: 'Ocimum basilicum var. thyrsiflora',
+    flavor: 'Anís og lakkrís — taílensk og víetnömsk matargerð',
+    origin: 'Suðaustur-Asía',
+    daysToGerminate: [7, 14],
+    daysToHarvest: [30, 40],
+    notes:
+      'Bragðsterkari og hitakærari en sæt basilíka — anískeimurinn helst vel við eldun. Þarf hlýjasta, bjartasta staðinn og gróðurljós yfir veturinn. Klíptu blómtoppana jafnóðum; blómgun gerir blöðin beisk.',
+    matureHeightCm: 35,
+    lifespanDays: 150,
+    harvestFrequency: 'Á 7 daga fresti',
+    suitableLocations: ['veritable', 'window', 'diy'],
+    care: windowHerbCare({
+      summary:
+        'Thai-basilíka í gluggapotti — hitakær og bragðsterk. Þarf hlýjasta, bjartasta staðinn og gróðurljós yfir íslenska veturinn; klíptu blómtoppa jafnóðum svo blöðin haldist mild.',
+      targets: [
+        { label: 'Blómklípa', value: 'Klíptu blómtoppa strax', hint: 'Blómgun gerir blöðin beisk' },
+      ],
+      watering: [
+        'Thai-basilíka þolir þurrk verr en Miðjarðarhafsjurtir — haltu moldinni jafnri en aldrei blautri.',
+      ],
+      normal: [
+        'Anís-ilmurinn dýpkar með nægri birtu og hlýju — dauft bragð bendir til ljósskorts.',
+      ],
+    }),
+  }),
+  h({
+    id: 'herb-purple-basil',
+    category: 'herb',
+    commonName: 'Dökk basilíka',
+    glyph: 'sprig',
+    scientificName: 'Ocimum basilicum',
+    flavor: 'Kryddað með negulkeim — dökkfjólublá skrautblöð',
+    origin: 'Ræktað afbrigði basilíku',
+    daysToGerminate: [7, 14],
+    daysToHarvest: [30, 42],
+    notes:
+      'Fjólubláu blöðin gefa salötum og ediki fallegan lit. Viðkvæmari og aðeins hægari en græn basilíka — gefðu henni bestu birtuna og 18–24°C. Klipptu ofan við blaðpar svo hún greinist.',
+    matureHeightCm: 30,
+    lifespanDays: 130,
+    harvestFrequency: 'Á 7 daga fresti',
+    suitableLocations: ['veritable', 'window', 'diy'],
+  }),
+  h({
+    id: 'herb-oregano',
+    category: 'herb',
+    commonName: 'Óreganó',
+    glyph: 'sprig',
+    scientificName: 'Origanum vulgare',
+    flavor: 'Kryddað, jarðbundið — pítsa og Miðjarðarhafsréttir',
+    origin: 'Miðjarðarhafssvæðið',
+    daysToGerminate: [8, 14],
+    daysToHarvest: [40, 60],
+    notes:
+      'Einnig kölluð bergminta. Nægjusöm Miðjarðarhafsjurt sem vill mikla birtu og fremur þurra mold — bragðið verður sterkast í mögru umhverfi. Klipptu sprota reglulega áður en hún blómstrar.',
+    matureHeightCm: 30,
+    lifespanDays: 365,
+    harvestFrequency: 'Á 14 daga fresti',
+    suitableLocations: ['veritable', 'window', 'diy'],
+    care: windowHerbCare({
+      summary:
+        'Óreganó í gluggapotti — nægjusöm Miðjarðarhafsjurt. Mikil birta, mögur mold og sparleg vökvun gefa sterkasta bragðið; ofdekur gefur stór en bragðdauf blöð.',
+      targets: [
+        { label: 'Þurrkur', value: 'Látið þorna vel á milli', hint: 'Mögur, fremur þurr mold = meira bragð' },
+      ],
+      watering: [
+        'Óreganó vill þorna nær alveg milli vökvana — hér er betra að vökva of sjaldan en of oft.',
+      ],
+      normal: [
+        'Bragðið er sterkast rétt fyrir blómgun — klipptu þá heila sprota og þurrkaðu eða frystu.',
+      ],
+    }),
+  }),
+  h({
+    id: 'herb-thyme',
+    category: 'herb',
+    commonName: 'Timían',
+    glyph: 'sprig',
+    scientificName: 'Thymus vulgaris',
+    flavor: 'Jarðbundið, örlítið sítruskennt — pottréttir og ofnréttir',
+    origin: 'Miðjarðarhafssvæðið',
+    daysToGerminate: [10, 21],
+    daysToHarvest: [50, 70],
+    notes:
+      'Harðger hálfrunni sem þolir þurrk vel en ofvökvun illa — vökvaðu sjaldan og aðeins í þurra mold. Þarf björtustu gluggakistuna og gróðurljós á veturna. Trénar með aldri; klipptu mjúku sprotana ofan til.',
+    matureHeightCm: 25,
+    lifespanDays: 365,
+    harvestFrequency: 'Á 14 daga fresti',
+    suitableLocations: ['window', 'diy'],
+    care: windowHerbCare({
+      summary:
+        'Timían í gluggapotti — harðger hálfrunni sem biður um birtu og lítið annað. Sparleg vökvun og sendin mold skila þéttri, ilmsterkri plöntu.',
+      targets: [
+        { label: 'Mold', value: 'Sendin og vel framræst', hint: 'Blandaðu perlusteini eða sandi í pottamoldina' },
+        { label: 'Þurrkur', value: 'Látið þorna vel á milli', hint: 'Timían þolir þurrk — ekki blauta fætur' },
+      ],
+      watering: [
+        'Timían þarf minnst vatn af öllum gluggakryddjurtum — í svölum vetrarglugga getur hálfur mánuður liðið milli vökvana.',
+      ],
+      troubleshooting: [
+        { problem: 'Berir, trénaðir stönglar neðan til', cause: 'Plantan trénar með aldrinum', fix: 'Klipptu reglulega mjúka sprota ofan til og endurnýjaðu plöntuna á 1–2 ára fresti' },
+      ],
+    }),
+  }),
+  h({
+    id: 'herb-dill',
+    category: 'herb',
+    commonName: 'Dill',
+    glyph: 'frond',
+    scientificName: 'Anethum graveolens',
+    flavor: 'Ferskt, anískennt — fiskur og grafinn lax',
+    origin: 'Vestur-Asía / Miðjarðarhafssvæðið',
+    daysToGerminate: [10, 17],
+    daysToHarvest: [40, 55],
+    notes:
+      'Vex hratt en blómstrar fljótt — sáðu aftur á 3–4 vikna fresti fyrir stöðuga uppskeru. Stólparótin kann best við djúpan pott (15+ cm). Klipptu ytri fjaðrirnar fyrst og láttu miðjuna vaxa áfram.',
+    matureHeightCm: 40,
+    lifespanDays: 90,
+    harvestFrequency: 'Á 7 daga fresti',
+    suitableLocations: ['veritable', 'window', 'diy'],
+    care: windowHerbCare({
+      summary:
+        'Dill í gluggapotti — hraðvaxta en skammlíft. Djúpur pottur fyrir stólparótina, svalt og bjart sæti og raðsáning á 3–4 vikna fresti halda uppskerunni gangandi.',
+      targets: [
+        { label: 'Pottdýpt', value: '15+ cm', hint: 'Stólparótin þarf dýpt — grunnur pottur flýtir blómgun' },
+        { label: 'Raðsáning', value: 'Á 3–4 vikna fresti', hint: 'Hver sáning gefur fáar vikur — sáðu jafnóðum' },
+      ],
+      concern: [
+        'Blómsveipur myndast — uppskeran er á enda; klipptu hann strax eða leyfðu fræjunum að þroskast í krukku.',
+      ],
+    }),
+  }),
+  h({
+    id: 'herb-sage',
+    category: 'herb',
+    commonName: 'Salvía',
+    glyph: 'sprig',
+    scientificName: 'Salvia officinalis',
+    flavor: 'Kryddað, örlítið beiskt — smjörsósur og fylling',
+    origin: 'Miðjarðarhafssvæðið',
+    daysToGerminate: [10, 21],
+    daysToHarvest: [60, 75],
+    notes:
+      'Loðin, grágræn blöð sem þola ekki vatn ofan frá — vökvaðu við moldina og láttu þorna vel á milli. Klíptu toppana snemma svo hún verði þétt en ekki leggjalöng. Trénar með aldri; endurnýjaðu á 2–3 ára fresti.',
+    matureHeightCm: 40,
+    lifespanDays: 365,
+    harvestFrequency: 'Á 14 daga fresti',
+    suitableLocations: ['window', 'diy'],
+    care: windowHerbCare({
+      summary:
+        'Salvía í gluggapotti — loðin Miðjarðarhafsjurt sem vill birtu, þurrk og loft. Klíptu toppa snemma fyrir þétta plöntu og vökvaðu alltaf við moldina, ekki yfir blöðin.',
+      targets: [
+        { label: 'Klipping', value: 'Klíptu toppa snemma', hint: 'Annars verður hún leggjalöng og gisin' },
+      ],
+      watering: [
+        'Loðnu blöðin rotna ef vatn stendur á þeim — vökvaðu við moldina, ekki yfir plöntuna.',
+      ],
+      troubleshooting: [
+        { problem: 'Grá mygla á loðnum blöðum', cause: 'Rakt loft og vatn á blöðunum', fix: 'Vökvaðu neðan frá, bættu loftflæði og fjarlægðu sýkt blöð' },
+      ],
+    }),
+  }),
+  h({
+    id: 'herb-lemon-balm',
+    category: 'herb',
+    commonName: 'Sítrónumelissa',
+    glyph: 'sprig',
+    scientificName: 'Melissa officinalis',
+    flavor: 'Ferskt sítrónubragð — te og eftirréttir',
+    origin: 'Suður-Evrópa / Vestur-Asía',
+    daysToGerminate: [10, 18],
+    daysToHarvest: [40, 50],
+    notes:
+      'Einnig kölluð hjartafró — harðger myntuættingi með ljúfum sítrónuilm. Nægjusöm í glugga en teygist í skugga; gróðurljós heldur henni þéttri yfir veturinn. Klipptu heila sprota rétt fyrir notkun — ilmurinn dofnar hratt.',
+    matureHeightCm: 35,
+    lifespanDays: 240,
+    harvestFrequency: 'Á 10 daga fresti',
+    suitableLocations: ['veritable', 'window', 'diy'],
+  }),
+  h({
+    id: 'herb-rosemary',
+    category: 'herb',
+    commonName: 'Rósmarín',
+    glyph: 'sprig',
+    scientificName: 'Salvia rosmarinus',
+    flavor: 'Furunálar og kamfóra — lambakjöt og kartöflur',
+    origin: 'Miðjarðarhafssvæðið',
+    daysToGerminate: [14, 28],
+    daysToHarvest: [80, 100],
+    notes:
+      'Hægvaxta hálfrunni og frekastur allra á birtu — bjartasti glugginn plús gróðurljós yfir veturinn er skilyrði. Vökvaðu djúpt en sjaldan; blautar rætur eru helsta dánarorsökin. Frá fræi tekur uppskeran 3+ mánuði — græðlingur er fljótlegri leið.',
+    matureHeightCm: 50,
+    lifespanDays: 365,
+    harvestFrequency: 'Á 14 daga fresti',
+    suitableLocations: ['window', 'diy'],
+    care: windowHerbCare({
+      summary:
+        'Rósmarín í gluggapotti — frekasta birtujurtin og viðkvæmust fyrir ofvökvun. Bjartasti glugginn plús gróðurljós yfir veturinn, djúp en sjaldgæf vökvun og gott loftflæði er uppskriftin.',
+      targets: [
+        { label: 'Mold', value: 'Sendin og vel framræst', hint: 'Blautar rætur eru helsta dánarorsök rósmaríns' },
+        { label: 'Vetrarstaða', value: 'Svalt (10–16°C) og bjart', hint: 'Svöl vetrarhvíld líkir eftir Miðjarðarhafsvetri' },
+      ],
+      watering: [
+        'Vökvaðu djúpt en sjaldan — láttu pottinn léttast vel áður en þú vökvar aftur.',
+      ],
+      troubleshooting: [
+        { problem: 'Duftkennd mygla á nálunum', cause: 'Kyrrt, rakt loft yfir veturinn', fix: 'Loftaðu daglega eða settu litla viftu nálægt; hafðu svalt og bjart' },
+      ],
+      normal: [
+        'Hægvaxta frá fræi — fyrsta almennilega klippingin kemur eftir 3–4 mánuði; græðlingar flýta ferlinu.',
+      ],
+    }),
   }),
   h({
     id: 'leafy-baby-kale',
@@ -2057,6 +2383,80 @@ const HERBS: (HerbVariety | LeafyVariety)[] = [
     matureHeightCm: 15,
     lifespanDays: 35,
     harvestFrequency: 'Á 5 daga fresti',
+    suitableLocations: ['veritable', 'window', 'diy'],
+  }),
+  h({
+    id: 'leafy-baby-spinach',
+    category: 'leafy',
+    commonName: 'Spínat baby',
+    glyph: 'leafy',
+    scientificName: 'Spinacia oleracea',
+    flavor: 'Milt, mjúkt — ferskt í salat og á pönnu',
+    origin: 'Mið-Asía',
+    daysToGerminate: [5, 10],
+    daysToHarvest: [25, 35],
+    notes:
+      'Fljótsprottið babyblað sem kann best við svala (undir 22°C) — hiti flýtir blómgun. Klipptu ystu blöðin frá ~4 vikum og skildu hjartað eftir. Sáðu aftur á 3–4 vikna fresti fyrir samfellda uppskeru.',
+    matureHeightCm: 15,
+    lifespanDays: 75,
+    harvestFrequency: 'Á 7 daga fresti',
+    suitableLocations: ['veritable', 'window', 'diy'],
+    care: lingotCare(
+      'Baby-spínat í Véritable vatnsræktun — fljótt og svalsækið. Spírar á 5–10 dögum og fyrsta klipping eftir ~4 vikur. Haltu garðinum undir 24°C — hiti flýtir blómgun — og tíndu ystu blöðin svo hjartað gefi áfram.',
+    ),
+  }),
+  h({
+    id: 'leafy-butterhead',
+    category: 'leafy',
+    commonName: 'Smjörsalat',
+    glyph: 'leafy',
+    scientificName: 'Lactuca sativa',
+    flavor: 'Milt, smjörkennt — mjúk salatblöð',
+    origin: 'Evrópa',
+    daysToGerminate: [4, 8],
+    daysToHarvest: [30, 45],
+    notes:
+      'Mjúkt höfuðsalat sem má tína blað fyrir blað eða skera í heilu lagi. Kann best við 16–22°C og jafna vökvun; hiti gerir blöðin beisk. Í glugga þarf það gróðurljós yfir veturinn til að haldast þétt.',
+    matureHeightCm: 20,
+    lifespanDays: 90,
+    harvestFrequency: 'Á 7 daga fresti',
+    suitableLocations: ['veritable', 'window', 'diy'],
+    care: lingotCare(
+      'Smjörsalat í Véritable vatnsræktun — mjúk, smjörkennd blöð á ~5 vikum. Tíndu ystu blöðin („cut-and-come-again") svo hjartað haldi áfram að gefa. Haltu garðinum frá hitagjöfum; yfir 24°C verða blöðin beisk.',
+    ),
+  }),
+  h({
+    id: 'leafy-mizuna',
+    category: 'leafy',
+    commonName: 'Mizuna',
+    glyph: 'frond',
+    scientificName: 'Brassica rapa var. nipposinica',
+    flavor: 'Milt sinnepsbragð — japanskt salatblað',
+    origin: 'Austur-Asía (Japan)',
+    daysToGerminate: [4, 8],
+    daysToHarvest: [21, 30],
+    notes:
+      'Fjaðurskorin japönsk káltegund sem vex hratt og þolir svala vel — fín allan veturinn í glugga með ljósi. Klipptu blöðin ~3 cm yfir grunni og hún vex aftur hvað eftir annað. Sinnepsbitið dýpkar með aldri blaðanna.',
+    matureHeightCm: 20,
+    lifespanDays: 90,
+    harvestFrequency: 'Á 7 daga fresti',
+    suitableLocations: ['veritable', 'window', 'diy'],
+  }),
+  h({
+    id: 'leafy-baby-chard',
+    category: 'leafy',
+    commonName: 'Blaðbeðja baby',
+    glyph: 'leafy',
+    scientificName: 'Beta vulgaris',
+    flavor: 'Milt rauðrófubragð — litrík blöð og stilkar',
+    origin: 'Miðjarðarhafssvæðið',
+    daysToGerminate: [5, 12],
+    daysToHarvest: [30, 40],
+    notes:
+      'Litríkir stilkarnir lífga upp á salatið og blöðin má nota eins og spínat. Nægjusöm og þolir bæði svala og stofuhita; gefur lengur en flest önnur salatblöð. Tíndu ystu blöðin ung (8–10 cm) og miðjan heldur áfram.',
+    matureHeightCm: 20,
+    lifespanDays: 110,
+    harvestFrequency: 'Á 10 daga fresti',
     suitableLocations: ['veritable', 'window', 'diy'],
   }),
 ];

@@ -1,4 +1,6 @@
 import { useId } from 'react';
+import { motion } from 'framer-motion';
+import { EASE_OUT } from '@/lib/motion';
 
 /** Tilvísunarlína (meðal/lágmark/hámark) sem hægt er að birta yfir línuritinu. */
 type ReferenceLine = 'avg' | 'min' | 'max';
@@ -135,13 +137,17 @@ export function Sparkline({
             opacity={0.35}
           />
         )}
-        <path
+        {/* Línan teiknast inn við birtingu (pathLength 0→1, sama og GrowingPlant). */}
+        <motion.path
           d={path}
           fill="none"
           stroke={color}
           strokeWidth={1.5}
           strokeLinecap="round"
           strokeLinejoin="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.9, ease: EASE_OUT }}
         />
         {dotLast && (
           <circle

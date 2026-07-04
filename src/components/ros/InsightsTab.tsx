@@ -1,9 +1,16 @@
-import { Sparkles } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { PenLine, Sparkles } from 'lucide-react';
 import { RosAvatar } from '@/components/ros/RosAvatar';
 import { computeInsights } from '@/lib/ros/engine';
-import type { Grow, Plant, LogEntry, HarvestEntry } from '@/lib/db';
+import type { Grow, Plant, LogEntry, LogType, HarvestEntry } from '@/lib/db';
 import type { RosInsight } from '@/lib/ros/types';
-import { KIND_ICON, SEVERITY_STYLE, dueLabel } from '@/components/ros/rosWindowState';
+import {
+  KIND_ICON,
+  KIND_TO_LOG,
+  KIND_TO_LOG_DATA,
+  SEVERITY_STYLE,
+  dueLabel,
+} from '@/components/ros/rosWindowState';
 
 /* — RÁÐ — */
 
@@ -12,11 +19,14 @@ export function InsightsTab({
   plants,
   logs,
   harvests,
+  onQuickLog,
 }: {
   grow: Grow;
   plants: Plant[];
   logs: LogEntry[];
   harvests: HarvestEntry[];
+  /** Flýtiskráning (5.x): „Skrá"-hnappur á ráðum sem eiga sér skráningartegund. */
+  onQuickLog?: (type: LogType, plantId?: string, data?: Record<string, string>) => void;
 }) {
   const now = Date.now();
   const month = new Date(now).getMonth() + 1;
@@ -44,17 +54,38 @@ export function InsightsTab({
 
   return (
     <div className="flex-1 overflow-y-auto flex flex-col gap-2 pr-0.5">
-      {insights.map((ins) => (
-        <InsightCard key={ins.id} insight={ins} />
-      ))}
+      {/* Kort sem klárast (t.d. eftir flýtiskráningu) líða út í stað þess að
+          hverfa — popLayout lætur hin renna upp í plássið. */}
+      <AnimatePresence mode="popLayout" initial={false}>
+        {insights.map((ins) => (
+          <motion.div
+            key={ins.id}
+            layout
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.2 } }}
+            transition={{ duration: 0.25 }}
+          >
+            <InsightCard insight={ins} onQuickLog={onQuickLog} />
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 }
 
-function InsightCard({ insight }: { insight: RosInsight }) {
+function InsightCard({
+  insight,
+  onQuickLog,
+}: {
+  insight: RosInsight;
+  onQuickLog?: (type: LogType, plantId?: string, data?: Record<string, string>) => void;
+}) {
   const sev = SEVERITY_STYLE[insight.severity];
   const Icon = KIND_ICON[insight.kind] ?? Sparkles;
   const due = dueLabel(insight.dueInDays);
+  const logType = KIND_TO_LOG[insight.kind];
+  const canQuickLog = !!onQuickLog && !!logType && insight.severity !== 'info';
 
   return (
     <div
@@ -86,6 +117,18 @@ function InsightCard({ insight }: { insight: RosInsight }) {
         <p className="text-[12px] text-cream-300/80 mt-1 leading-relaxed">
           {insight.detail}
         </p>
+        {canQuickLog && (
+          <button
+            type="button"
+            onClick={() =>
+              onQuickLog?.(logType!, insight.plantId, KIND_TO_LOG_DATA[insight.kind])
+            }
+            className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-moss-700 bg-moss-800/60 px-2.5 py-1 text-[11px] font-medium text-cream-100 transition-all duration-150 hover:border-moss-500 active:scale-95"
+          >
+            <PenLine size={11} />
+            Skrá núna
+          </button>
+        )}
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ import { GrowRow } from '@/components/GrowRow';
 import { GrowsSkeleton } from '@/components/PageSkeletons';
 import { useDelayedFlag } from '@/lib/useDelayedFlag';
 import { db } from '@/lib/db';
+import { listItem, listStagger } from '@/lib/motion';
 
 export function Grows() {
   const navigate = useNavigate();
@@ -17,15 +18,19 @@ export function Grows() {
   const plants = useLiveQuery(() => db.plants.toArray());
   const [query, setQuery] = useState('');
 
-  const sorted = useMemo(() => {
+  const { activeSorted, archivedSorted } = useMemo(() => {
     const q = query.trim().toLocaleLowerCase('is');
-    return (grows ?? [])
+    const filtered = (grows ?? [])
       .slice()
-      .sort((a, b) => Number(a.archived) - Number(b.archived) || b.startDate - a.startDate)
+      .sort((a, b) => b.startDate - a.startDate)
       .filter((g) => {
         if (!q) return true;
         return `${g.name} ${g.location}`.toLocaleLowerCase('is').includes(q);
       });
+    return {
+      activeSorted: filtered.filter((g) => !g.archived),
+      archivedSorted: filtered.filter((g) => g.archived),
+    };
   }, [grows, query]);
 
   const loading = !grows || !plants;
@@ -61,8 +66,13 @@ export function Grows() {
         </div>
       )}
 
-      <div className="flex flex-col gap-3">
-        {sorted.length === 0 &&
+      <motion.div
+        className="flex flex-col gap-3"
+        variants={listStagger}
+        initial="hidden"
+        animate="show"
+      >
+        {activeSorted.length + archivedSorted.length === 0 &&
           (grows.length === 0 ? (
             <div className="text-cream-300/60 text-sm border border-dashed border-moss-800/40 rounded-2xl p-6 text-center">
               Engar ræktanir enn. Smelltu „Ný" til að byrja.
@@ -70,10 +80,23 @@ export function Grows() {
           ) : (
             <NoResults message="Engar ræktanir passa við leitina." />
           ))}
-        {sorted.map((g) => (
-          <GrowRow key={g.id} grow={g} plants={plants.filter((p) => p.growId === g.id)} />
+        {activeSorted.map((g) => (
+          <motion.div key={g.id} variants={listItem}>
+            <GrowRow grow={g} plants={plants.filter((p) => p.growId === g.id)} />
+          </motion.div>
         ))}
-      </div>
+        {/* Lokaðar ræktanir fá eigin fyrirsögn í stað þess að blandast virkum. */}
+        {archivedSorted.length > 0 && (
+          <motion.div variants={listItem} className="sp-label text-cream-400/70 mt-2">
+            Lokið
+          </motion.div>
+        )}
+        {archivedSorted.map((g) => (
+          <motion.div key={g.id} variants={listItem}>
+            <GrowRow grow={g} plants={plants.filter((p) => p.growId === g.id)} />
+          </motion.div>
+        ))}
+      </motion.div>
     </motion.div>
   );
 }

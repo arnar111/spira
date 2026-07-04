@@ -10,13 +10,23 @@
 import type { Plant } from '@/lib/db';
 import { needsGrowLight, daylightForMonth } from '@/lib/daylight';
 import { seasonForMonth, frostRisk, growIsOutdoor } from '@/lib/season';
+import { envTargetForPhase, formatBand } from '@/lib/envTargets';
+import { logData } from '@/lib/logSchema';
+import { resolveCare } from '@/lib/varieties';
 import { predictHarvestWindow } from '../predict';
 import {
   type EngineInput,
   dayWord,
   daysSince,
+  furthestPlant,
   growIsVeritable,
+  lastEc,
+  lastLogOfType,
   lastLogTs,
+  lastPestOrDisease,
+  lastPh,
+  logOptionLabel,
+  num,
   phaseLabel,
   plantLabel,
   plantStartTs,
@@ -41,6 +51,44 @@ function startedFromLabel(from: Plant['startedFrom']): string {
   }
 }
 
+/** Íslensk mánaðanöfn fyrir dagsetningarlínuna (handvirkt — engin locale-háð köllun). */
+const MONTHS_IS = [
+  'janúar',
+  'febrúar',
+  'mars',
+  'apríl',
+  'maí',
+  'júní',
+  'júlí',
+  'ágúst',
+  'september',
+  'október',
+  'nóvember',
+  'desember',
+];
+
+/** „í dag" / „fyrir N dögum"-stubbur fyrir aldur skráningar. */
+function ago(days: number): string {
+  return days === 0 ? 'í dag' : `fyrir ${days} ${dayWord(days)}`;
+}
+
+/**
+ * Fyrsta setning umhirðu-samantektar (fellur á allan textann ef enginn punktur).
+ * Íslenskar skammstafanir (t.d., þ.e., o.s.frv., u.þ.b., m.a., t.a.m.) eru
+ * huldar áður en skipt er — annars klipptist „…(t.d. Bell/Padrón)…" í miðjunni.
+ */
+function firstSentence(text: string): string {
+  // Felutákn sem kemur aldrei fyrir í umhirðutexta.
+  const MASK = '\u0000';
+  const masked = text.replace(
+    /(?:t\.d\.|\u00fe\.e\.|o\.s\.frv\.|u\.\u00fe\.b\.|m\.a\.|t\.a\.m\.)/gi,
+    (m) => m.replaceAll('.', MASK),
+  );
+  const m = masked.match(/^[^.!?]*[.!?]/);
+  const out = m ? m[0] : masked;
+  return out.replaceAll(MASK, '.').trim();
+}
+
 /**
  * Hnitmiðaður íslenskur samhengistexti fyrir LLM (Rós).
  * Inniheldur: nafn, dag, fasa, plöntulista með fösum, síðustu vökvun/áburð,
@@ -54,6 +102,11 @@ export function buildContextDigest(input: EngineInput): string {
   const growDay = Math.max(0, daysSince(now, grow.startDate));
 
   lines.push(`Ræktun: ${grow.name} (dagur ${growDay})`);
+  // Ísland er á UTC allt árið — UTC-lesarar halda fallinu hreinu og deterministic.
+  const nowDate = new Date(now);
+  lines.push(
+    `Dagsetning: ${nowDate.getUTCDate()}. ${MONTHS_IS[nowDate.getUTCMonth()]} ${nowDate.getUTCFullYear()}.`,
+  );
   if (focusPlant) {
     lines.push(
       `Spjall um eina plöntu: ${plantLabel(focusPlant)} (${focusPlant.variety}) — fasi ${phaseLabel(focusPlant.currentPhase)}.`,
@@ -61,7 +114,10 @@ export function buildContextDigest(input: EngineInput): string {
   }
   if (grow.location) lines.push(`Staðsetning: ${grow.location}`);
 
-  if (growIsVeritable(grow)) {
+  const veritable = growIsVeritable(grow);
+  const outdoor = !veritable && growIsOutdoor(grow, activePlants);
+
+  if (veritable) {
     // Véritable: LLM verður að ráðleggja út frá óvirkri vatnsrækt — EKKI moldarækt.
     lines.push(
       'Kerfi: Véritable SMART — innbyggður vatnsræktar-pottagarður (passiv vatnsrækt).',
@@ -69,7 +125,7 @@ export function buildContextDigest(input: EngineInput): string {
     lines.push(
       'Þetta er EKKI moldarækt: plönturnar standa í Lingot-pottum (mór/kókos/perlít) og fá vatn sjálfvirkt um hárpípu-dúka úr 2 lítra tanki — engin handvökvun á mold. Innbyggt LED keyrir fast ~16 klst/dag, svo ekkert auka-gróðurljós þarf óháð birtu úti. Innbyggð Lingot-næring dugar í ~12 vikur; aðeins aldinplöntur ≥ 8 vikna þurfa viðbótar fljótandi áburð í tankinn. Tankinn þarf að athuga á ~3 daga fresti og fylla á 7–14 daga fresti (eftir álagi). Öll ráð verða að miðast við óvirka vatnsrækt, ekki moldarmenningu.',
     );
-  } else if (growIsOutdoor(grow, activePlants)) {
+  } else if (outdoor) {
     const season = seasonForMonth(month);
     lines.push(
       `Útiræktun — ${season.name} (frost: ${frostRisk(month)}): ${season.outdoorNote}`,
@@ -93,6 +149,17 @@ export function buildContextDigest(input: EngineInput): string {
     if (p.sowDate !== undefined) lines.push(`- Sáning: ${shortDate(p.sowDate)}`);
     if (p.germinatedDate !== undefined) lines.push(`- Spírun: ${shortDate(p.germinatedDate)}`);
     if (p.transplantDate !== undefined) lines.push(`- Umpottun: ${shortDate(p.transplantDate)}`);
+
+    // Stutt umhirðu-samantekt afbrigðisins (resolveCare) — hnitmiðuð heimild fyrir LLM.
+    const care = resolveCare(plantVariety(p));
+    if (care) {
+      lines.push(`Umhirða afbrigðis: ${firstSentence(care.summary)}`);
+      if (care.watering.length > 0) lines.push(`- Vökvun: ${care.watering[0]}`);
+      const fert = care.fertilizer[0];
+      if (fert) lines.push(`- Næring: ${fert.npk} — ${fert.freq.toLowerCase()}`);
+      const light = care.targets.find((t) => t.label.startsWith('Ljós'));
+      if (light) lines.push(`- Ljós: ${light.value}`);
+    }
   } else if (activePlants.length > 0) {
     lines.push('Plöntur:');
     for (const p of activePlants) {
@@ -115,6 +182,80 @@ export function buildContextDigest(input: EngineInput): string {
       ? `Síðasti áburður: fyrir ${daysSince(now, lastFeed)} ${dayWord(daysSince(now, lastFeed))}.`
       : 'Síðasti áburður: enginn skráður.',
   );
+
+  // Síðasta aldintalning (fruitCount á frjóvgunar-skráningum) — fóður í uppskerumat.
+  let lastFruitCount: { count: number; ts: number } | undefined;
+  for (const l of logs) {
+    if (l.type !== 'pollinate') continue;
+    const fc = logData('pollinate', l.data).fruitCount;
+    if (fc === undefined) continue;
+    if (lastFruitCount === undefined || l.timestamp > lastFruitCount.ts) {
+      lastFruitCount = { count: fc, ts: l.timestamp };
+    }
+  }
+  if (lastFruitCount) {
+    lines.push(
+      `Síðasta aldintalning: ${num(lastFruitCount.count)} aldin (${ago(daysSince(now, lastFruitCount.ts))}).`,
+    );
+  }
+
+  // — Umhverfi: nýjustu mælingar + aldur, og markgildi fasans (aðeins innidyra). —
+  const envLines: string[] = [];
+  const envLog = lastLogOfType(logs, 'environment');
+  if (envLog) {
+    const env = logData('environment', envLog.data);
+    const parts: string[] = [];
+    if (env.tempC !== undefined) parts.push(`hiti ${num(env.tempC)}°C`);
+    if (env.humidityPct !== undefined) parts.push(`raki ${num(env.humidityPct)}%`);
+    if (env.lightHours !== undefined) parts.push(`ljós ${num(env.lightHours)} klst`);
+    if (parts.length > 0) {
+      envLines.push(`- Mæling (${ago(daysSince(now, envLog.timestamp))}): ${parts.join(', ')}`);
+    }
+  }
+  const ph = lastPh(logs);
+  if (ph) envLines.push(`- pH ${num(ph.value)} (${ago(daysSince(now, ph.ts))})`);
+  const ec = lastEc(logs);
+  if (ec) envLines.push(`- EC ${num(ec.value)} mS/cm (${ago(daysSince(now, ec.ts))})`);
+  if (!outdoor && activePlants.length > 0) {
+    const lead = furthestPlant(activePlants);
+    if (lead) {
+      const target = envTargetForPhase(lead.currentPhase, lead.category);
+      const bandParts = [
+        `hiti ${formatBand(target.tempC, '°C')}`,
+        `raki ${formatBand(target.humidityPct, '%')}`,
+      ];
+      if (target.ec) bandParts.push(`EC ${formatBand(target.ec, ' mS/cm')}`);
+      envLines.push(`- Markgildi (${phaseLabel(lead.currentPhase)}): ${bandParts.join(', ')}`);
+    }
+  }
+  if (envLines.length > 0) {
+    lines.push('Umhverfi:');
+    lines.push(...envLines);
+  }
+
+  // Nýjasta meindýra-/sjúkdómsskráning (innan 21 dags) — mikilvæg heimild fyrir ráð.
+  const pd = lastPestOrDisease(logs);
+  if (pd) {
+    const pdAge = daysSince(now, pd.timestamp);
+    if (pdAge <= 21) {
+      const pdType = pd.type as 'pest' | 'disease';
+      const data = logData(pdType, pd.data);
+      const kindLabel =
+        data.kind !== undefined
+          ? logOptionLabel(pdType, 'kind', data.kind)
+          : pdType === 'pest'
+            ? 'meindýr'
+            : 'sjúkdómur';
+      const sev =
+        data.severity !== undefined
+          ? `, umfang ${logOptionLabel(pdType, 'severity', data.severity).toLowerCase()}`
+          : '';
+      const det = data.detail ? ` — ${data.detail}` : '';
+      lines.push(
+        `${pdType === 'pest' ? 'Meindýr' : 'Sjúkdómur'} (${ago(pdAge)}): ${kindLabel}${sev}${det}.`,
+      );
+    }
+  }
 
   // Uppskera til þessa.
   if (harvests.length > 0) {

@@ -37,6 +37,7 @@ const RosEmbeddedPanel = lazy(() =>
   import('@/components/ros/RosEmbeddedPanel').then((m) => ({ default: m.RosEmbeddedPanel })),
 );
 import { db, type LogEntry, type LogType, type Plant } from '@/lib/db';
+import { LOG_FIELDS, LOG_TYPE_META } from '@/lib/logSchema';
 import { deletePhoto } from '@/lib/photos';
 import { announce } from '@/lib/announce';
 import {
@@ -47,6 +48,9 @@ import {
 } from '@/lib/phases';
 import { LOCATIONS } from '@/lib/locations';
 import { LOG_TYPES, pickRepresentativePhase } from './growdetail/shared';
+
+/** Gildar skráningartegundir fyrir ?skra-djúptenginguna. */
+const LOG_TYPES_ALL = new Set<LogType>(LOG_TYPE_META.map((m) => m.id));
 import { PlantRow } from './growdetail/PlantRow';
 import { LogFilters } from './growdetail/LogFilters';
 import { LogRow } from './growdetail/LogRow';
@@ -78,7 +82,14 @@ export function GrowDetail() {
     return rows[0];
   }, [id]);
 
-  const [openLog, setOpenLog] = useState(false);
+  // Skráningarglugginn (5.x): null = lokað; annars valfrjáls forvalin tegund/
+  // planta (flýtiskráning af ráði Rósar, ?skra-djúptenging, FAB á síma).
+  const [logRequest, setLogRequest] = useState<{
+    type?: LogType;
+    plantId?: string;
+    /** Forútfyllt skipulögð gögn (t.d. Véritable-verk af flýtiskráningu ráðs). */
+    data?: Record<string, string>;
+  } | null>(null);
   const [rosOpen, setRosOpen] = useState(false);
   const [rosEverOpened, setRosEverOpened] = useState(false);
   // Djúptenging af /ros („Spurning vikunnar"): opna Rós á Spjall-flipa með
@@ -95,6 +106,8 @@ export function GrowDetail() {
   const [logTypeFilter, setLogTypeFilter] = useState<LogType | 'all'>('all');
   const [logPlantFilter, setLogPlantFilter] = useState<string>('all');
   const [logRange, setLogRange] = useState<7 | 30 | 0>(0);
+  // Listinn skar áður hljóðlaust við 50 — nú „Sýna fleiri" í skrefum.
+  const [logLimit, setLogLimit] = useState(50);
   const [photosPlant, setPhotosPlant] = useState<Plant | null>(null);
   const [carePlant, setCarePlant] = useState<Plant | null>(null);
 
@@ -109,6 +122,31 @@ export function GrowDetail() {
     const next = new URLSearchParams(searchParams);
     next.delete('spyrja');
     next.delete('q');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // Djúptenging af /ros-dagskránni (5.x): ?skra=<tegund>&planta=<id> opnar
+  // skráningargluggann beint forvalinn — sama mynstur og ?spyrja að ofan.
+  useEffect(() => {
+    const skra = searchParams.get('skra');
+    if (skra === null) return;
+    const valid = LOG_TYPES_ALL.has(skra as LogType) ? (skra as LogType) : undefined;
+    // `verk` forvelur viðhaldsverk — aðeins gild verk úr LOG_FIELDS sleppa í gegn.
+    const verk = searchParams.get('verk');
+    const validTask = LOG_FIELDS.maintenance?.find((f) => f.key === 'task')?.options?.some(
+      (o) => o.value === verk,
+    )
+      ? verk
+      : null;
+    setLogRequest({
+      type: valid,
+      plantId: searchParams.get('planta') ?? undefined,
+      data: valid === 'maintenance' && validTask ? { task: validTask } : undefined,
+    });
+    const next = new URLSearchParams(searchParams);
+    next.delete('skra');
+    next.delete('planta');
+    next.delete('verk');
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
@@ -140,7 +178,7 @@ export function GrowDetail() {
   const stageDay = growStageDay(grow.startDate, plants, timeline);
   const phase = getPhaseForDay(stageDay, timeline.phases);
   const loc = LOCATIONS.find((l) => l.key === grow.locationKey);
-  const heroVariety = plants[0]?.variety ?? 'Habanero Helios';
+  const heroVariety = plants[0]?.variety;
   const totalHarvest = (harvests ?? []).reduce((s, h) => s + (h.weightG ?? 0), 0);
   // Fulltrúa-fasi fyrir umhverfis-markgildi: lengst kominn virkur fasi.
   const representativePhase = pickRepresentativePhase(plants);
@@ -176,7 +214,13 @@ export function GrowDetail() {
       className="px-5 sm:px-7 py-6"
     >
       <button
-        onClick={() => navigate(-1)}
+        onClick={() => {
+          // Djúptenging/fersk PWA-ræsing á enga sögu — þá færi navigate(-1)
+          // út úr appinu. Föllum á ræktanalistann í staðinn.
+          const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0;
+          if (idx > 0) navigate(-1);
+          else navigate('/grows');
+        }}
         className="flex items-center gap-1.5 text-cream-300 hover:text-cream-100 transition-colors text-sm mb-3"
       >
         <ArrowLeft size={16} />
@@ -189,7 +233,7 @@ export function GrowDetail() {
       */}
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-6 lg:items-start">
         <div className="min-w-0">
-      <HeroCard glyph={<PlantGlyph name={heroVariety} size={130} tilt={8} />}>
+      <HeroCard glyph={<PlantGlyph name={heroVariety} category={grow.category} size={130} tilt={8} />}>
         <div className="flex gap-1.5 mb-2">
           {loc && <Pill tone="moss" size="sm">{loc.label}</Pill>}
           <Pill tone="cap" size="sm">D{day}</Pill>
@@ -199,7 +243,14 @@ export function GrowDetail() {
         <div className="sp-h2" style={{ marginTop: 4, marginBottom: 10 }}>
           {grow.name}
         </div>
-        <PhaseBar phases={timeline.phases} currentDay={stageDay} totalDays={timeline.totalDays} />
+        {/* Fasamerkin komast ekki fyrir á síma (6 merki á ~310px) og runnu
+            saman í bendu — fasaheitið er hvort eð er í mónó-línunni neðar. */}
+        <PhaseBar
+          phases={timeline.phases}
+          currentDay={stageDay}
+          totalDays={timeline.totalDays}
+          showLabels={isDesktop}
+        />
         <div
           className="sp-mono"
           style={{
@@ -255,6 +306,7 @@ export function GrowDetail() {
           <Card tone="strong" radius={18} padding={16} className="mt-4">
             <EnvBand
               phase={representativePhase}
+              category={grow.category}
               tempC={latestEnv.tempC}
               humidityPct={latestEnv.humidityPct}
             />
@@ -305,7 +357,7 @@ export function GrowDetail() {
       <section className="mt-6">
         <div className="flex items-center justify-between mb-2">
           <h2 className="sp-h3">Skráningar</h2>
-          <Button size="sm" variant="primary" onClick={() => setOpenLog(true)}>
+          <Button size="sm" variant="primary" onClick={() => setLogRequest({})}>
             <Plus size={14} /> Skrá
           </Button>
         </div>
@@ -324,7 +376,7 @@ export function GrowDetail() {
         )}
 
         <div className="flex flex-col gap-2">
-          {filteredLogs.slice(0, 50).map((l) => (
+          {filteredLogs.slice(0, logLimit).map((l) => (
             <LogRow
               key={l.id}
               log={l}
@@ -333,6 +385,15 @@ export function GrowDetail() {
               onDelete={setDeletingLog}
             />
           ))}
+          {filteredLogs.length > logLimit && (
+            <button
+              type="button"
+              onClick={() => setLogLimit((n) => n + 50)}
+              className="text-sm text-cream-300 hover:text-cream-100 transition-colors w-full py-2.5 rounded-xl border border-dashed border-moss-800/40"
+            >
+              Sýna fleiri — {filteredLogs.length - logLimit} í viðbót
+            </button>
+          )}
           {logs.length === 0 ? (
             <div className="text-sm text-cream-300/60 border border-dashed border-moss-800/40 rounded-2xl p-5 text-center">
               Engar skráningar enn. Smelltu „Skrá" til að bæta við.
@@ -370,11 +431,40 @@ export function GrowDetail() {
         >
           <Card tone="strong" radius={20} padding={16} className="h-full flex flex-col min-h-0">
             <Suspense fallback={null}>
-              <RosEmbeddedPanel grow={grow} />
+              <RosEmbeddedPanel
+                grow={grow}
+                onQuickLog={(type, plantId, data) => setLogRequest({ type, plantId, data })}
+              />
             </Suspense>
           </Card>
         </aside>
       </div>
+
+      {/*
+        Flýti-„Skrá" (5.x): svifhnappur á síma — algengasta aðgerð síðunnar
+        (skrá viðburð) var áður neðst undir gröfum og galleríi. Situr ofan við
+        föstu botnstikuna; falinn á lg+ þar sem „Skrá" hnappurinn er nærtækur.
+      */}
+      {!grow.archived && (
+        <motion.button
+          type="button"
+          onClick={() => setLogRequest({})}
+          aria-label="Skrá viðburð"
+          className="lg:hidden fixed right-5 z-40 inline-flex items-center gap-2 rounded-full px-4 h-12 text-sm font-semibold text-cream-50 shadow-lg shadow-moss-900/40"
+          style={{
+            bottom: 'calc(96px + env(safe-area-inset-bottom))',
+            background: 'var(--moss-600)',
+            border: '1px solid var(--moss-400)',
+          }}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, duration: 0.3 }}
+          whileTap={{ scale: 0.94 }}
+        >
+          <Plus size={17} />
+          Skrá
+        </motion.button>
+      )}
 
       <ConfirmDialog
         open={confirmArchive}
@@ -389,8 +479,11 @@ export function GrowDetail() {
       <LogComposer
         growId={grow.id}
         plants={plants}
-        open={openLog}
-        onClose={() => setOpenLog(false)}
+        open={logRequest !== null}
+        defaultType={logRequest?.type}
+        defaultPlantId={logRequest?.plantId}
+        defaultData={logRequest?.data}
+        onClose={() => setLogRequest(null)}
       />
 
       {editingLog && (
@@ -451,6 +544,11 @@ export function GrowDetail() {
             onClose={() => setRosOpen(false)}
             initialTab={rosInitialTab}
             initialChatDraft={rosChatDraft}
+            onQuickLog={(type, plantId, data) => {
+              // Lokum Rós fyrst svo skráningarglugginn taki fókusinn.
+              setRosOpen(false);
+              setLogRequest({ type, plantId, data });
+            }}
           />
         </Suspense>
       )}

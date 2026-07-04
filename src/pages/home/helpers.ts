@@ -18,6 +18,10 @@ export function categoryLabel(c: Grow['category']): string {
       return 'Pipur';
     case 'tomato':
       return 'Tómatar';
+    case 'strawberry':
+      return 'Jarðarber';
+    case 'potato':
+      return 'Kartöflur';
     case 'herb':
       return 'Krydd';
     case 'leafy':
