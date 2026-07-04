@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
@@ -15,10 +16,17 @@ import { db, type Plant } from '@/lib/db';
 import { shortDate } from '@/lib/dates';
 import { categoryLabel, relativeTime } from './helpers';
 import { EmptyGrowsCard } from './EmptyGrowsCard';
+import { HomeAgenda } from './HomeAgenda';
 import type { DerivedGrow, ViewProps } from './useHomeData';
 
-export function HomeDesktop({ active, plants, archivedCount }: ViewProps) {
+export function HomeDesktop({ active, plants, archivedCount, agenda }: ViewProps) {
   const navigate = useNavigate();
+  // Flokka-flipar yfir ræktanalistanum (5.x): áður hreint skraut („Pipur/Krydd"
+  // án onChange) — nú alvöru sía byggð á flokkunum sem raunverulega eru til.
+  const [catTab, setCatTab] = useState(0);
+  const categories = Array.from(new Set(active.map((g) => g.category)));
+  const visibleGrows =
+    catTab === 0 ? active : active.filter((g) => g.category === categories[catTab - 1]);
   // Nýjasta umhverfismæling aðalræktunarinnar (1.4) — kemur í stað gervikorts.
   const primaryGrow = active[0];
   const primaryGrowId = primaryGrow?.id;
@@ -104,7 +112,8 @@ export function HomeDesktop({ active, plants, archivedCount }: ViewProps) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/varieties')}>
+          {/* „Leita" á að leita — plöntusíðan er eini staðurinn með leitarreit. */}
+          <Button variant="ghost" size="sm" onClick={() => navigate('/plants')}>
             <Search size={14} />
             Leita
           </Button>
@@ -140,13 +149,19 @@ export function HomeDesktop({ active, plants, archivedCount }: ViewProps) {
             }}
           >
             <div className="sp-h3">Virkar ræktanir</div>
-            <Tabs tabs={['Allar', 'Pipur', 'Krydd']} active={0} />
+            {categories.length > 1 && (
+              <Tabs
+                tabs={['Allar', ...categories.map((c) => categoryLabel(c))]}
+                active={catTab}
+                onChange={setCatTab}
+              />
+            )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {active.length === 0 ? (
               <EmptyGrowsCard onCreate={() => navigate('/setup')} />
             ) : (
-              active.map((g) => {
+              visibleGrows.map((g) => {
                 const growPlants = plants.filter((p) => p.growId === g.id);
                 return <DesktopGrowRow key={g.id} grow={g} plants={growPlants} />;
               })
@@ -155,6 +170,8 @@ export function HomeDesktop({ active, plants, archivedCount }: ViewProps) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
+          {agenda.length > 0 && <HomeAgenda agenda={agenda} />}
+
           <Card tone="strong" padding={18} radius={18}>
             <div
               style={{

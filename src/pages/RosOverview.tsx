@@ -38,6 +38,14 @@ export function RosOverview() {
   // „Spurning vikunnar" → opna ræktunina með Rós á Spjall + spurningu forskrifaða.
   const askInGrow = (growId: string, question: string) =>
     navigate(`/grow/${growId}?spyrja=1&q=${encodeURIComponent(question)}`);
+  // Flýtiskráning af dagskrárlið (5.x) — opnar skráningargluggann forvalinn
+  // í ræktuninni gegnum ?skra-djúptenginguna (sama mynstur og ?spyrja).
+  const quickLogInGrow = (growId: string, type: string, plantId?: string) =>
+    navigate(
+      `/grow/${growId}?skra=${encodeURIComponent(type)}${
+        plantId ? `&planta=${encodeURIComponent(plantId)}` : ''
+      }`,
+    );
 
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
@@ -58,7 +66,12 @@ export function RosOverview() {
           </div>
         </header>
 
-        <AgendaSection dueAndSoon={dueAndSoon} infoCount={infoCount} onOpen={openGrow} />
+        <AgendaSection
+          dueAndSoon={dueAndSoon}
+          infoCount={infoCount}
+          onOpen={openGrow}
+          onQuickLog={quickLogInGrow}
+        />
 
         <YieldOverviewSection data={yieldOverview} />
 

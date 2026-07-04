@@ -6,8 +6,8 @@
  * vélræn útdráttur úr gamla engine.ts (engin hegðunarbreyting).
  */
 
-import type { Grow, Plant, LogEntry, HarvestEntry, GrowPhase, PlantCategory } from '@/lib/db';
-import { logData } from '@/lib/logSchema';
+import type { Grow, Plant, LogEntry, HarvestEntry, GrowPhase, LogType, PlantCategory } from '@/lib/db';
+import { LOG_FIELDS, logData } from '@/lib/logSchema';
 import { varietyByName, varietyById } from '@/lib/varieties';
 import type { RosInsight, RosSeverity } from '../types';
 
@@ -150,6 +150,36 @@ export function lastPh(logs: LogEntry[]): { value: number; ts: number } | undefi
   return best;
 }
 
+/** Nýjasta EC-gildi (mS/cm) úr vökvun/áburði ásamt tímastimpli, eða undefined. */
+export function lastEc(logs: LogEntry[]): { value: number; ts: number } | undefined {
+  let best: { value: number; ts: number } | undefined;
+  for (const l of logs) {
+    if (l.type !== 'water' && l.type !== 'feed') continue;
+    const ec = logData(l.type, l.data).ec;
+    if (ec === undefined) continue;
+    if (best === undefined || l.timestamp > best.ts) best = { value: ec, ts: l.timestamp };
+  }
+  return best;
+}
+
+/** Nýjasta meindýra- eða sjúkdómsskráning (pest/disease), eða undefined. */
+export function lastPestOrDisease(logs: LogEntry[]): LogEntry | undefined {
+  let latest: LogEntry | undefined;
+  for (const l of logs) {
+    if (l.type !== 'pest' && l.type !== 'disease') continue;
+    if (latest === undefined || l.timestamp > latest.timestamp) latest = l;
+  }
+  return latest;
+}
+
+/** Íslenskt heiti select-valkosts úr LOG_FIELDS (sama og formatLogData), eða hráa gildið. */
+export function logOptionLabel(type: LogType, key: string, value: string): string {
+  const opt = LOG_FIELDS[type]
+    ?.find((f) => f.key === key)
+    ?.options?.find((o) => o.value === value);
+  return opt?.label ?? value;
+}
+
 /** Lengst kominn virkur fasi (fyrir umhverfis-markgildi). */
 const PHASE_PROGRESS: GrowPhase[] = [
   'planning',
@@ -174,11 +204,27 @@ export function furthestPhase(plants: Plant[]): GrowPhase {
   return best;
 }
 
+/** Lengst komna plantan sjálf (sama röðun og furthestPhase), eða undefined. */
+export function furthestPlant(plants: Plant[]): Plant | undefined {
+  let best: Plant | undefined;
+  let rank = -1;
+  for (const p of plants) {
+    const r = PHASE_PROGRESS.indexOf(p.currentPhase);
+    if (r > rank) {
+      rank = r;
+      best = p;
+    }
+  }
+  return best;
+}
+
 /** Ráðlagt pH-bil innandyra (mold/vatnsrækt) — utan þess læsist næring. */
 export const PH_MIN = 5.5;
 export const PH_MAX = 6.8;
 /** Umhverfis-lestur telst „nýlegur" innan þessa glugga (ms). */
 export const ENV_FRESH_MS = 48 * 60 * 60 * 1000;
+/** pH/EC-lestur úr vökvun/áburði telst „nýlegur" innan þessa glugga (dagar). */
+export const READING_FRESH_DAYS = 7;
 
 /** Sækir afbrigði fyrir plöntu — fyrst eftir id, svo eftir nafni. */
 export function plantVariety(p: Plant) {

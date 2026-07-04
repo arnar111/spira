@@ -1,5 +1,7 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useId, type CSSProperties, type ReactNode } from 'react';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/cn';
+import { SPRING_SOFT } from '@/lib/motion';
 
 interface TabsProps {
   /** Einfaldur strengjalisti (upprunalega API-ið — óbreytt). */
@@ -18,6 +20,12 @@ interface TabsProps {
   style?: CSSProperties;
 }
 
+/**
+ * Flipastöng með rennandi virkni-vísi: virki bakgrunnurinn er deilt
+ * motion-lag (layoutId) sem líður milli flipa í stað þess að hoppa.
+ * layoutId þarf að vera einkvæmt per Tabs-tilvik (useId) svo tvær
+ * flipastangir á sömu síðu deili ekki vísinum.
+ */
 export function Tabs({
   tabs,
   items,
@@ -29,6 +37,7 @@ export function Tabs({
   style,
 }: TabsProps) {
   const entries: ReactNode[] = items ?? tabs ?? [];
+  const indicatorId = useId();
 
   if (variant === 'segmented') {
     return (
@@ -45,13 +54,19 @@ export function Tabs({
             type="button"
             onClick={() => onChange?.(i)}
             className={cn(
-              'flex-1 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-all',
-              i === active
-                ? 'bg-moss-800/80 text-cream-50 shadow'
-                : 'text-cream-300 hover:text-cream-100',
+              'relative flex-1 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
+              i === active ? 'text-cream-50' : 'text-cream-300 hover:text-cream-100',
             )}
           >
-            {t}
+            {i === active && (
+              <motion.span
+                layoutId={indicatorId}
+                transition={SPRING_SOFT}
+                className="absolute inset-0 rounded-xl bg-moss-800/80 shadow"
+                aria-hidden
+              />
+            )}
+            <span className="relative z-[1] flex items-center gap-1.5">{t}</span>
           </button>
         ))}
       </div>
@@ -76,19 +91,34 @@ export function Tabs({
           type="button"
           onClick={() => onChange?.(i)}
           style={{
+            position: 'relative',
             flex: fullWidth ? 1 : undefined,
             padding: '6px 14px',
             borderRadius: 999,
             border: 'none',
-            background: i === active ? 'var(--moss-600)' : 'transparent',
+            background: 'transparent',
             color: i === active ? '#fdfbf6' : 'rgba(231,217,168,.7)',
             fontSize: 12,
             fontWeight: 500,
             cursor: 'pointer',
             fontFamily: 'var(--font-sans)',
+            transition: 'color .18s ease',
           }}
         >
-          {t}
+          {i === active && (
+            <motion.span
+              layoutId={indicatorId}
+              transition={SPRING_SOFT}
+              aria-hidden
+              style={{
+                position: 'absolute',
+                inset: 0,
+                borderRadius: 999,
+                background: 'var(--moss-600)',
+              }}
+            />
+          )}
+          <span style={{ position: 'relative', zIndex: 1 }}>{t}</span>
         </button>
       ))}
     </div>

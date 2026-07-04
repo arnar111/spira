@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useScrollLock } from '@/lib/useScrollLock';
+import { DUR, EASE_OUT } from '@/lib/motion';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 
 type ModalSize = 'sm' | 'md' | 'lg';
@@ -110,7 +111,7 @@ export function Modal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.18 }}
+          transition={{ duration: DUR.backdrop }}
         >
           <motion.div
             ref={panelRef}
@@ -130,7 +131,7 @@ export function Modal({
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: DUR.panel, ease: EASE_OUT }}
           >
             {(eyebrow || title) && (
               <div className={fullHeight ? 'shrink-0' : undefined}>

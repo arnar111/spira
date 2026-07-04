@@ -1,7 +1,14 @@
 import { useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Tabs } from '@/components/ui/Tabs';
-import { db, type Grow, type Plant, type LogEntry, type HarvestEntry } from '@/lib/db';
+import {
+  db,
+  type Grow,
+  type Plant,
+  type LogEntry,
+  type LogType,
+  type HarvestEntry,
+} from '@/lib/db';
 
 /** Samhengið sem hver Rós-flipi fær: ræktunin og lifandi gögnin hennar. */
 export interface RosPanelContext {
@@ -9,6 +16,11 @@ export interface RosPanelContext {
   plants: Plant[];
   logs: LogEntry[];
   harvests: HarvestEntry[];
+  /**
+   * Flýtiskráning af ráði (5.x): opnar skráningargluggann forvalinn á tegund
+   * (og plöntu ef ráðið á við eina). Ósett í samhengjum án skráningarglugga.
+   */
+  onQuickLog?: (type: LogType, plantId?: string) => void;
 }
 
 /** Einn flipi: merki á stönginni + fall sem birtir innihaldið úr samhenginu. */
@@ -28,6 +40,8 @@ interface RosPanelProps {
    * ólík á borðtölvu/síma). Hunsað ef merkið finnst ekki.
    */
   initialTab?: string;
+  /** Flýtiskráning af ráði — rennur inn í samhengi flipanna (sjá RosPanelContext). */
+  onQuickLog?: (type: LogType, plantId?: string) => void;
 }
 
 /**
@@ -37,7 +51,13 @@ interface RosPanelProps {
  * skrunbyggingu og áður. Bæði RosWindow (Modal) og innfelldi flöturinn á
  * GrowDetail nota þennan flöt — bara með ólík flipasett.
  */
-export function RosPanel({ grow, tabs, header, initialTab }: RosPanelProps): JSX.Element {
+export function RosPanel({
+  grow,
+  tabs,
+  header,
+  initialTab,
+  onQuickLog,
+}: RosPanelProps): JSX.Element {
   // Byrjunarflipi: vísitala merkisins ef það finnst, annars fyrsti flipinn.
   const [tab, setTab] = useState(() => {
     if (!initialTab) return 0;
@@ -58,7 +78,7 @@ export function RosPanel({ grow, tabs, header, initialTab }: RosPanelProps): JSX
     useLiveQuery(() => db.harvests.where('growId').equals(grow.id).toArray(), [grow.id]) ?? [];
 
   const active = Math.min(tab, tabs.length - 1);
-  const ctx: RosPanelContext = { grow, plants, logs, harvests };
+  const ctx: RosPanelContext = { grow, plants, logs, harvests, onQuickLog };
 
   return (
     <div className="flex flex-col min-h-0 h-full">

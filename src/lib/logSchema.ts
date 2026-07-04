@@ -12,6 +12,12 @@ export interface LogField {
   step?: number;
   placeholder?: string;
   options?: { value: string; label: string }[];
+  /**
+   * Ítarlegri reitur (5.x) — falinn á bak við „Meira"-fellinguna í skráningar-
+   * forminu svo algengasta flæðið (t.d. bara magn við vökvun) haldist létt.
+   * Birtist sjálfkrafa í breytingarham þegar reiturinn ber gildi.
+   */
+  advanced?: boolean;
 }
 
 /**
@@ -21,15 +27,15 @@ export interface LogField {
 export const LOG_FIELDS: Partial<Record<LogType, LogField[]>> = {
   water: [
     { key: 'amountMl', label: 'Magn', unit: 'ml', kind: 'number', min: 0, step: 50, placeholder: 't.d. 200' },
-    { key: 'ph', label: 'pH', kind: 'number', min: 3, max: 9, step: 0.1, placeholder: 't.d. 6.2' },
-    { key: 'ec', label: 'EC', unit: 'mS/cm', kind: 'number', min: 0, step: 0.1, placeholder: 't.d. 1.4' },
-    { key: 'runoffMl', label: 'Frárennsli', unit: 'ml', kind: 'number', min: 0, step: 50 },
+    { key: 'ph', label: 'pH', kind: 'number', min: 3, max: 9, step: 0.1, placeholder: 't.d. 6.2', advanced: true },
+    { key: 'ec', label: 'EC', unit: 'mS/cm', kind: 'number', min: 0, step: 0.1, placeholder: 't.d. 1.4', advanced: true },
+    { key: 'runoffMl', label: 'Frárennsli', unit: 'ml', kind: 'number', min: 0, step: 50, advanced: true },
   ],
   feed: [
     { key: 'nutrient', label: 'Áburður', kind: 'text', placeholder: 't.d. CalMag + Bloom A/B' },
     { key: 'doseMlPerL', label: 'Skammtur', unit: 'ml/L', kind: 'number', min: 0, step: 0.5, placeholder: 't.d. 2' },
-    { key: 'ec', label: 'EC', unit: 'mS/cm', kind: 'number', min: 0, step: 0.1, placeholder: 't.d. 1.6' },
-    { key: 'ph', label: 'pH', kind: 'number', min: 3, max: 9, step: 0.1, placeholder: 't.d. 6.0' },
+    { key: 'ec', label: 'EC', unit: 'mS/cm', kind: 'number', min: 0, step: 0.1, placeholder: 't.d. 1.6', advanced: true },
+    { key: 'ph', label: 'pH', kind: 'number', min: 3, max: 9, step: 0.1, placeholder: 't.d. 6.0', advanced: true },
   ],
   environment: [
     { key: 'tempC', label: 'Hiti', unit: '°C', kind: 'number', step: 0.5, placeholder: 't.d. 24' },
@@ -131,26 +137,37 @@ export const LOG_FIELDS: Partial<Record<LogType, LogField[]>> = {
   phase_change: [],
 };
 
+/** Flokkun tegunda í skráningarvalinu (5.x) — birtingarröð hópanna. */
+export type LogGroupId = 'daglegt' | 'umhirda' | 'maelingar' | 'vandamal';
+
+export const LOG_GROUPS: { id: LogGroupId; label: string }[] = [
+  { id: 'daglegt', label: 'Daglegt' },
+  { id: 'umhirda', label: 'Umhirða' },
+  { id: 'maelingar', label: 'Mælingar' },
+  { id: 'vandamal', label: 'Vandamál' },
+];
+
 /** Lucide icon names referenced by string so this module stays React-free. */
 export const LOG_TYPE_META: {
   id: LogType;
   label: string;
   icon: string;
   quick?: boolean;
+  group: LogGroupId;
 }[] = [
-  { id: 'water', label: 'Vökva', icon: 'Droplet', quick: true },
-  { id: 'feed', label: 'Næring', icon: 'Leaf', quick: true },
-  { id: 'photo', label: 'Mynd', icon: 'Camera', quick: true },
-  { id: 'note', label: 'Nóta', icon: 'StickyNote', quick: true },
-  { id: 'environment', label: 'Umhverfi', icon: 'Thermometer' },
-  { id: 'pollinate', label: 'Frjóvgun', icon: 'Flame' },
-  { id: 'prune', label: 'Klippt', icon: 'Scissors' },
-  { id: 'top', label: 'Toppað', icon: 'Sparkles' },
-  { id: 'harvest', label: 'Uppskera', icon: 'Sprout' },
-  { id: 'transplant', label: 'Umpotta', icon: 'Move' },
-  { id: 'maintenance', label: 'Viðhald', icon: 'Wrench' },
-  { id: 'pest', label: 'Meindýr', icon: 'Bug' },
-  { id: 'disease', label: 'Sjúkdómur', icon: 'ShieldAlert' },
+  { id: 'water', label: 'Vökva', icon: 'Droplet', quick: true, group: 'daglegt' },
+  { id: 'feed', label: 'Næring', icon: 'Leaf', quick: true, group: 'daglegt' },
+  { id: 'photo', label: 'Mynd', icon: 'Camera', quick: true, group: 'daglegt' },
+  { id: 'note', label: 'Nóta', icon: 'StickyNote', quick: true, group: 'daglegt' },
+  { id: 'pollinate', label: 'Frjóvgun', icon: 'Flame', group: 'umhirda' },
+  { id: 'prune', label: 'Klippt', icon: 'Scissors', group: 'umhirda' },
+  { id: 'top', label: 'Toppað', icon: 'Sparkles', group: 'umhirda' },
+  { id: 'transplant', label: 'Umpotta', icon: 'Move', group: 'umhirda' },
+  { id: 'maintenance', label: 'Viðhald', icon: 'Wrench', group: 'umhirda' },
+  { id: 'environment', label: 'Umhverfi', icon: 'Thermometer', group: 'maelingar' },
+  { id: 'harvest', label: 'Uppskera', icon: 'Sprout', group: 'maelingar' },
+  { id: 'pest', label: 'Meindýr', icon: 'Bug', group: 'vandamal' },
+  { id: 'disease', label: 'Sjúkdómur', icon: 'ShieldAlert', group: 'vandamal' },
 ];
 
 function asNumber(value: unknown): number | undefined {

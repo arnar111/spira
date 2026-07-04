@@ -767,13 +767,39 @@ describe('env-band insights', () => {
 // ─── pH ───────────────────────────────────────────────────────────────────────
 
 describe('pH insights', () => {
-  it('pH 4.9 (below 5.5 min) → info with "of lágt" title', () => {
+  it('pH 4.9 (0.6 below 5.5 min → >0.5 drift) → soon with "of lágt" title', () => {
+    // 5.5-rule: drift > 0.5 outside the band escalates the insight to 'soon'.
     const ins = byId(
       run({ logs: [mkLog({ type: 'water', data: { ph: 4.9 } })] }),
       'ph-g1',
     );
-    expect(ins?.severity).toBe('info');
+    expect(ins?.severity).toBe('soon');
     expect(ins?.title).toContain('lágt');
+  });
+
+  it('pH 5.2 (0.3 below min → mild drift) → info', () => {
+    const ins = byId(
+      run({ logs: [mkLog({ type: 'water', data: { ph: 5.2 } })] }),
+      'ph-g1',
+    );
+    expect(ins?.severity).toBe('info');
+  });
+
+  it('stale pH reading (8 days old) no longer fires (5.5 freshness window)', () => {
+    expect(
+      byId(
+        run({ logs: [mkLog({ type: 'water', timestamp: NOW - 8 * DAY_MS, data: { ph: 4.5 } })] }),
+        'ph-g1',
+      ),
+    ).toBeUndefined();
+  });
+
+  it('pH detail includes the reading age', () => {
+    const ins = byId(
+      run({ logs: [mkLog({ type: 'water', timestamp: NOW - 2 * DAY_MS, data: { ph: 7.0 } })] }),
+      'ph-g1',
+    );
+    expect(ins?.detail).toContain('fyrir 2 daga');
   });
 
   it('pH 7.0 (above 6.8 max) → info with "of hátt" title', () => {
@@ -803,12 +829,13 @@ describe('pH insights', () => {
     ).toBeUndefined();
   });
 
-  it('pH from feed log is also used', () => {
+  it('pH from feed log is also used (8.0 is 1.2 over → soon)', () => {
+    // 5.5-rule: drift > 0.5 outside the band escalates to 'soon'.
     const ins = byId(
       run({ logs: [mkLog({ type: 'feed', data: { ph: 8.0 } })] }),
       'ph-g1',
     );
-    expect(ins?.severity).toBe('info');
+    expect(ins?.severity).toBe('soon');
   });
 
   it('outdoor grow → no pH insight', () => {

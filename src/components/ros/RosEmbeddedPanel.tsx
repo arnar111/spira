@@ -6,7 +6,7 @@ import { InsightsTab } from '@/components/ros/InsightsTab';
 import { YieldTab } from '@/components/ros/YieldTab';
 import { TimelineTab } from '@/components/ros/TimelineTab';
 import { WeekTab } from '@/components/ros/WeekTab';
-import { type Grow } from '@/lib/db';
+import { type Grow, type LogType } from '@/lib/db';
 
 /**
  * Innfelldi Rós-flöturinn í kyrrstæða dálkinum á GrowDetail (borðtölva).
@@ -14,7 +14,14 @@ import { type Grow } from '@/lib/db';
  * popout-glugganum (RosWindow). Hlaðinn sér (React.lazy) svo react-markdown
  * o.fl. haldist utan við aðalbúntið — eins og RosWindow.
  */
-export function RosEmbeddedPanel({ grow }: { grow: Grow }): JSX.Element {
+export function RosEmbeddedPanel({
+  grow,
+  onQuickLog,
+}: {
+  grow: Grow;
+  /** Flýtiskráning af ráði — GrowDetail opnar skráningargluggann forvalinn. */
+  onQuickLog?: (type: LogType, plantId?: string) => void;
+}): JSX.Element {
   const tabs = useMemo<RosPanelTab[]>(
     () => [
       { label: 'Ráð', render: (ctx) => <InsightsTab {...ctx} /> },
@@ -29,6 +36,7 @@ export function RosEmbeddedPanel({ grow }: { grow: Grow }): JSX.Element {
     <RosPanel
       grow={grow}
       tabs={tabs}
+      onQuickLog={onQuickLog}
       header={
         <header className="shrink-0 flex items-center gap-2.5 mb-3">
           <RosAvatar size={32} />

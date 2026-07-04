@@ -90,7 +90,7 @@ export function Varieties() {
       className="px-5 sm:px-7 py-6"
     >
       <header className="mb-5">
-        <Eyebrow color="var(--terra-300)">Pipra-bókasafn</Eyebrow>
+        <Eyebrow color="var(--terra-300)">Plöntu-bókasafn</Eyebrow>
         <h1
           className="sp-display"
           style={{
@@ -141,31 +141,37 @@ export function Varieties() {
           Salat
         </Chip>
       </FilterRow>
-      <FilterRow label="Móðurtegund">
-        <Chip active={mother === 'all'} onClick={() => setMother('all')}>
-          Allar
-        </Chip>
-        {MOTHER_SPECIES.map((m) => (
-          <Chip key={m} active={mother === m} onClick={() => setMother(m)}>
-            {m}
-          </Chip>
-        ))}
-      </FilterRow>
-      <FilterRow label="Litur">
-        <Chip active={color === 'all'} onClick={() => setColor('all')}>
-          Allir
-        </Chip>
-        {(Object.keys(COLOR_LABEL) as PepperColor[]).map((c) => (
-          <Chip
-            key={c}
-            swatch={COLOR_HEX[c]}
-            active={color === c}
-            onClick={() => setColor(c)}
-          >
-            {COLOR_LABEL[c]}
-          </Chip>
-        ))}
-      </FilterRow>
+      {/* Pipar-sértækar síur eiga aðeins við þegar piprar geta birst — annars
+          birtust einmana „Allar/Allir" raðir sem síuðu allt í burtu. */}
+      {(type === 'all' || type === 'pepper') && (
+        <>
+          <FilterRow label="Móðurtegund">
+            <Chip active={mother === 'all'} onClick={() => setMother('all')}>
+              Allar
+            </Chip>
+            {MOTHER_SPECIES.map((m) => (
+              <Chip key={m} active={mother === m} onClick={() => setMother(m)}>
+                {m}
+              </Chip>
+            ))}
+          </FilterRow>
+          <FilterRow label="Litur">
+            <Chip active={color === 'all'} onClick={() => setColor('all')}>
+              Allir
+            </Chip>
+            {(Object.keys(COLOR_LABEL) as PepperColor[]).map((c) => (
+              <Chip
+                key={c}
+                swatch={COLOR_HEX[c]}
+                active={color === c}
+                onClick={() => setColor(c)}
+              >
+                {COLOR_LABEL[c]}
+              </Chip>
+            ))}
+          </FilterRow>
+        </>
+      )}
 
       <div className="flex flex-col gap-2 mt-4">
         {list.map((v) => (
@@ -210,6 +216,10 @@ function VarietyCard({ v }: { v: Variety }) {
               <Pill tone="cap" size="sm">Jarðarber</Pill>
             ) : isPotato(v) ? (
               <Pill tone="moss" size="sm">Kartafla</Pill>
+            ) : isHerb(v) ? (
+              <Pill tone="moss" size="sm">Kryddjurt</Pill>
+            ) : isLeafy(v) ? (
+              <Pill tone="moss" size="sm">Salat</Pill>
             ) : (
               <Pill tone="terra" size="sm">Tómatur</Pill>
             )}

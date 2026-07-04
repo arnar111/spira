@@ -26,6 +26,7 @@ import {
   waterInsights,
 } from './indoor';
 import {
+  ecInsights,
   envBandInsights,
   envStaleInsights,
   germinationInsights,
@@ -35,6 +36,12 @@ import {
 } from './indoorEnv';
 import { outdoorInsights } from './outdoor';
 import { veritableInsights } from './veritable';
+import {
+  paceInsights,
+  pestFollowUpInsights,
+  springWakeInsights,
+  transplantInsights,
+} from './care';
 
 /**
  * Reiknar allar virkar innsýnir fyrir eitt grow.
@@ -75,6 +82,12 @@ export function computeInsights(input: EngineInput): RosInsight[] {
     ...germinationInsights(ctx),
     ...photoInsights(ctx),
     ...spiderMiteInsights(ctx),
+    // — Ný söfn (5.5) — AÐEINS bætt aftast; röð eldri safna er samningur.
+    ...ecInsights(ctx),
+    ...pestFollowUpInsights(ctx),
+    ...paceInsights(ctx),
+    ...transplantInsights(ctx),
+    ...springWakeInsights(ctx),
   ];
 
   // Stöðug röðun: 'due' -> 'soon' -> 'info'. Innan sömu severity helst upphafleg röð.

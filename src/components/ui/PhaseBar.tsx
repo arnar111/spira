@@ -1,4 +1,6 @@
 import type { CSSProperties } from 'react';
+import { motion } from 'framer-motion';
+import { EASE_OUT } from '@/lib/motion';
 
 export interface PhaseInfo {
   name: string;
@@ -65,26 +67,27 @@ export function PhaseBar({
             />
           );
         })}
-        {/* Progress fill: advances proportionally to currentDay / totalDays. */}
-        <div
+        {/* Progress fill: rennur upp í rétta stöðu við birtingu (5.x) og
+            hreyfist svo mjúkt við síðari uppfærslur — framer sér um hvort tveggja. */}
+        <motion.div
           style={{
             position: 'absolute',
             left: 0,
             top: 0,
             bottom: 0,
-            width: `${progress * 100}%`,
             background:
               'linear-gradient(90deg, rgba(253,251,246,.12), rgba(253,251,246,.28))',
             borderRight: '1px solid rgba(253,251,246,.35)',
-            transition: 'width .35s ease',
           }}
+          initial={{ width: 0 }}
+          animate={{ width: `${progress * 100}%` }}
+          transition={{ duration: 0.7, ease: EASE_OUT }}
         />
       </div>
       {/* Marker sits above the (clipped) track so its glow stays visible. */}
-      <div
+      <motion.div
         style={{
           position: 'absolute',
-          left: `${progress * 100}%`,
           top: -2,
           height: 12,
           width: 3,
@@ -92,8 +95,10 @@ export function PhaseBar({
           background: 'var(--cream-50)',
           borderRadius: 2,
           boxShadow: '0 0 8px rgba(253,251,246,.5)',
-          transition: 'left .35s ease',
         }}
+        initial={{ left: '0%' }}
+        animate={{ left: `${progress * 100}%` }}
+        transition={{ duration: 0.7, ease: EASE_OUT }}
       />
       {showLabels && (
         <div

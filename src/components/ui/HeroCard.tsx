@@ -30,7 +30,18 @@ export function HeroCard({ children, glyph, glyphInset = 120, style }: HeroCardP
       }}
     >
       {glyph && (
-        <div style={{ position: 'absolute', right: -8, top: -4 }}>{glyph}</div>
+        <div
+          className="animate-sway"
+          style={{
+            position: 'absolute',
+            right: -8,
+            top: -4,
+            // Vaggið snýst um „rótina" — neðri brún tákns — eins og planta í golu.
+            transformOrigin: '50% 90%',
+          }}
+        >
+          {glyph}
+        </div>
       )}
       {children}
     </div>

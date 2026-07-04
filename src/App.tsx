@@ -1,10 +1,11 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { Welcome } from './pages/Welcome';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { Layout } from './components/Layout';
+import { CelebrationHost } from './components/celebrate/CelebrationHost';
 import { Grows } from './pages/Grows';
 import { GrowDetail } from './pages/GrowDetail';
 import { Plants } from './pages/Plants';
@@ -27,14 +28,16 @@ const History = lazy(() =>
   import('./pages/History').then((m) => ({ default: m.History })),
 );
 
-/** Látlaus biðskjár fyrir letihlaðnar síður — sama og app-hleðslan. */
+/**
+ * Biðskjár letihlaðinna síðna: beinagrind eftir ~150 ms töf (sama regla og
+ * useDelayedFlag-síðurnar) í stað óstílaðs „Hleður…"-texta sem blikkaði.
+ */
 function LazyFallback() {
-  return (
-    <div className="flex h-40 items-center justify-center">
-      <div className="text-cream-300 text-sm">Hleður…</div>
-    </div>
-  );
+  const show = useDelayedFlag(true);
+  return show ? <GrowsSkeleton /> : null;
 }
+import { useDelayedFlag } from './lib/useDelayedFlag';
+import { GrowsSkeleton } from './components/PageSkeletons';
 import { db, getOnboardingComplete } from './lib/db';
 import { BUILT_IN_VARIETIES } from './lib/varieties';
 import { getCurrentAccount, type Account } from './lib/account';
@@ -99,17 +102,20 @@ export default function App() {
 
   if (state.kind === 'unauthenticated') {
     return (
-      <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
-          <Route path="*" element={<Login onSignedIn={refreshAfterSignIn} />} />
-        </Routes>
-      </AnimatePresence>
+      <MotionConfig reducedMotion="user">
+        <AnimatePresence mode="wait">
+          <Routes location={location} key={location.pathname}>
+            <Route path="*" element={<Login onSignedIn={refreshAfterSignIn} />} />
+          </Routes>
+        </AnimatePresence>
+      </MotionConfig>
     );
   }
 
   const { account, onboardingComplete } = state;
 
   return (
+    <MotionConfig reducedMotion="user">
     <AnimatePresence mode="wait">
       <Suspense fallback={<LazyFallback />}>
         <Routes location={location} key={location.pathname}>
@@ -142,5 +148,7 @@ export default function App() {
         </Routes>
       </Suspense>
     </AnimatePresence>
+    <CelebrationHost />
+    </MotionConfig>
   );
 }

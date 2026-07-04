@@ -9,7 +9,7 @@ import { InsightsTab } from '@/components/ros/InsightsTab';
 import { HealthTab } from '@/components/ros/HealthTab';
 import { ChatTab } from '@/components/ros/ChatTab';
 import { useMediaQuery } from '@/lib/useMediaQuery';
-import { type Grow } from '@/lib/db';
+import { type Grow, type LogType } from '@/lib/db';
 
 interface RosWindowProps {
   grow: Grow;
@@ -19,6 +19,8 @@ interface RosWindowProps {
   initialTab?: string;
   /** Forskrifaður texti í spjall-inntakið (t.d. „Spurning vikunnar" af /ros). */
   initialChatDraft?: string;
+  /** Flýtiskráning af ráði (símaflipinn „Ráð") — kallarinn lokar glugganum og opnar skráningu. */
+  onQuickLog?: (type: LogType, plantId?: string) => void;
 }
 
 /**
@@ -37,6 +39,7 @@ export function RosWindow({
   onClose,
   initialTab,
   initialChatDraft,
+  onQuickLog,
 }: RosWindowProps): JSX.Element {
   const isDesktop = useMediaQuery('(min-width: 1024px)');
 
@@ -67,6 +70,7 @@ export function RosWindow({
         grow={grow}
         tabs={tabs}
         initialTab={initialTab}
+        onQuickLog={onQuickLog}
         header={
           <header className="shrink-0 flex items-center gap-3 mb-3">
             <RosAvatar size={40} />

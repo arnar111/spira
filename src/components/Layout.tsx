@@ -62,6 +62,11 @@ interface LayoutProps {
 
 export function Layout({ account, onSignOut }: LayoutProps) {
   const location = useLocation();
+  // /grow/:id tilheyrir „Ræktanir" — NavLink-pörun ein sér missir af því og
+  // aðalvinnuskjárinn stóð þá án virks flipa í leiðsögninni (5.x).
+  const growDetailOpen = location.pathname.startsWith('/grow/');
+  const navActive = (to: string, isActive: boolean) =>
+    isActive || (to === '/grows' && growDetailOpen);
   return (
     <div className="sp-bg min-h-screen md:flex">
       <aside
@@ -79,21 +84,27 @@ export function Layout({ account, onSignOut }: LayoutProps) {
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-[13px] font-medium transition-colors',
-                  isActive
+                  navActive(item.to, isActive)
                     ? 'text-[var(--cream-50)]'
                     : 'text-[rgba(231,217,168,.7)] hover:bg-[rgba(84,130,85,.12)]',
                   !item.available && 'opacity-50 pointer-events-none',
                 )
               }
               style={({ isActive }) =>
-                isActive ? { background: 'rgba(84,130,85,.18)' } : undefined
+                navActive(item.to, isActive)
+                  ? { background: 'rgba(84,130,85,.18)' }
+                  : undefined
               }
             >
               {({ isActive }) => (
                 <>
                   <item.icon
                     size={16}
-                    color={isActive ? 'var(--moss-300)' : 'rgba(231,217,168,.5)'}
+                    color={
+                      navActive(item.to, isActive)
+                        ? 'var(--moss-300)'
+                        : 'rgba(231,217,168,.5)'
+                    }
                   />
                   <span>{item.label}</span>
                 </>
@@ -145,6 +156,10 @@ function MobileNav() {
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreActive = mobileMore.some((m) => location.pathname.startsWith(m.to));
+  // Sama regla og í hliðarstikunni: /grow/:id kveikir á „Ræktanir".
+  const growDetailOpen = location.pathname.startsWith('/grow/');
+  const navActive = (to: string, isActive: boolean) =>
+    isActive || (to === '/grows' && growDetailOpen);
   return (
     <>
       <nav
@@ -169,7 +184,9 @@ function MobileNav() {
               className={({ isActive }) =>
                 cn(
                   'flex flex-col items-center gap-0.5 transition-colors',
-                  isActive ? 'text-[var(--cream-50)]' : 'text-[rgba(231,217,168,.45)]',
+                  navActive(item.to, isActive)
+                    ? 'text-[var(--cream-50)]'
+                    : 'text-[rgba(231,217,168,.45)]',
                 )
               }
             >
@@ -181,8 +198,10 @@ function MobileNav() {
                       width: 48,
                       height: 32,
                       borderRadius: 999,
-                      background: isActive ? 'rgba(84,130,85,.35)' : 'transparent',
-                      border: isActive
+                      background: navActive(item.to, isActive)
+                        ? 'rgba(84,130,85,.35)'
+                        : 'transparent',
+                      border: navActive(item.to, isActive)
                         ? '1px solid rgba(159,191,157,.4)'
                         : '1px solid transparent',
                     }}

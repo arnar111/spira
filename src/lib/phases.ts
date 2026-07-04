@@ -3,9 +3,11 @@ import type { GrowPhase, Plant, PlantCategory } from '@/lib/db';
 
 /**
  * Per-crop grow-cycle timelines. The phase *display* timeline differs by crop —
- * peppers run ~140 days and end in "Aldin/Uppskera", while potatoes run ~115
- * days through "Niðursetning → Hreyking → Hnýði → Uppskera". `timelineForCategory`
- * picks the right one; unknown categories fall back to the pepper timeline.
+ * peppers run ~140 days and end in "Aldin/Uppskera", potatoes run ~115 days
+ * through "Niðursetning → Hreyking → Hnýði → Uppskera", and herbs/leafy greens
+ * are cut-and-come-again crops whose "Uppskera" phase starts early and lasts
+ * the rest of the cycle. `timelineForCategory` picks the right one; unknown
+ * categories fall back to the pepper timeline.
  */
 export interface CropTimeline {
   phases: PhaseInfo[];
@@ -113,11 +115,65 @@ const POTATO_TIMELINE: CropTimeline = {
   },
 };
 
+/**
+ * Kryddjurtir (basilíka, minta, timían…) — sítínsla: uppskeran hefst um dag 40
+ * og heldur svo áfram út ~150 daga líftíma plöntunnar. Blómgun hjá kryddjurtum
+ * er njóli seint á ferlinum og varpast því inn í uppskerutímabilið.
+ */
+const HERB_TIMELINE: CropTimeline = {
+  phases: [
+    { name: 'spírun', label: 'Spírun', startDay: 0, color: '#9fbf9d' },
+    { name: 'seedling', label: 'Plöntu', startDay: 12, color: '#739f73' },
+    { name: 'veg', label: 'Vöxtur', startDay: 25, color: '#548255' },
+    { name: 'harvest', label: 'Uppskera', startDay: 40, color: '#c92f17' },
+  ],
+  totalDays: 150,
+  phaseToDay: {
+    planning: 0,
+    germinating: 0,
+    seedling: 12,
+    vegetative: 25,
+    flowering: 60,
+    fruiting: 60,
+    ripening: 60,
+    harvest: 40,
+    overwintering: 120,
+    dormant: 0,
+    finished: 150,
+  },
+};
+
+/** Salatblöð og spírur — hraðari lota (~90 dagar) með klippingu frá degi 30. */
+const LEAFY_TIMELINE: CropTimeline = {
+  phases: [
+    { name: 'spírun', label: 'Spírun', startDay: 0, color: '#9fbf9d' },
+    { name: 'seedling', label: 'Plöntu', startDay: 8, color: '#739f73' },
+    { name: 'veg', label: 'Vöxtur', startDay: 18, color: '#548255' },
+    { name: 'harvest', label: 'Uppskera', startDay: 30, color: '#c92f17' },
+  ],
+  totalDays: 90,
+  phaseToDay: {
+    planning: 0,
+    germinating: 0,
+    seedling: 8,
+    vegetative: 18,
+    flowering: 45,
+    fruiting: 45,
+    ripening: 45,
+    harvest: 30,
+    overwintering: 75,
+    dormant: 0,
+    finished: 90,
+  },
+};
+
 const TIMELINES: Partial<Record<PlantCategory, CropTimeline>> = {
   pepper: PEPPER_TIMELINE,
   tomato: TOMATO_TIMELINE,
   strawberry: STRAWBERRY_TIMELINE,
   potato: POTATO_TIMELINE,
+  herb: HERB_TIMELINE,
+  leafy: LEAFY_TIMELINE,
 };
 
 /** The grow-cycle timeline for a crop category (pepper timeline by default). */

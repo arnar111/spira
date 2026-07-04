@@ -265,6 +265,29 @@ export function pollinationInsights(ctx: EngineContext): RosInsight[] {
       });
     }
   }
+
+  // — ALDINFASI (tómatur/paprika innandyra) — ódeterminant plöntur halda áfram
+  // að blómstra með aldinum; róleg áminning á ~4 daga fresti, aldrei sterkari
+  // en 'soon'. Blómgunarfasinn hér að ofan er ÓBREYTTUR.
+  if (!outdoor) {
+    const FRUITING_POLLINATE_CADENCE = 4;
+    for (const p of plantsInPhase(activePlants, 'fruiting')) {
+      if (p.category !== 'tomato' && p.category !== 'pepper') continue;
+      const last = lastLogForPlant(logs, 'pollinate', p.id);
+      const since = last !== undefined ? daysSince(now, last) : undefined;
+      if (since !== undefined && since < FRUITING_POLLINATE_CADENCE) continue;
+      out.push({
+        id: `pollinate-${p.id}`,
+        kind: 'pollinate',
+        severity: 'soon',
+        title: `Frjóvgaðu ný blóm á ${plantLabel(p)}`,
+        detail:
+          'Plantan blómstrar áfram þótt aldin séu komin. Hristu hana létt eða strjúktu ný blóm með pensli á ~4 daga fresti svo þau setji líka aldin.',
+        dueInDays: since !== undefined ? FRUITING_POLLINATE_CADENCE - since : 0,
+        plantId: p.id,
+      });
+    }
+  }
   return out;
 }
 

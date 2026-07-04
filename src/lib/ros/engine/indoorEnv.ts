@@ -16,9 +16,12 @@ import {
   ENV_FRESH_MS,
   PH_MAX,
   PH_MIN,
+  READING_FRESH_DAYS,
   dayWord,
   daysSince,
   furthestPhase,
+  furthestPlant,
+  lastEc,
   lastLogOfType,
   lastLogTs,
   lastPh,
@@ -27,6 +30,11 @@ import {
   plantVariety,
   plantsInPhase,
 } from './helpers';
+
+/** „fyrir N dögum"-stubbur fyrir aldur lesturs (0 → „í dag"). */
+function readingAge(days: number): string {
+  return days === 0 ? 'í dag' : `fyrir ${days} ${dayWord(days)}`;
+}
 
 /** — UMHVERFI (innidyra) — vægur hnippur ef engin nýleg umhverfis-skráning. */
 export function envStaleInsights(ctx: EngineContext): RosInsight[] {
@@ -91,21 +99,60 @@ export function envBandInsights(ctx: EngineContext): RosInsight[] {
   return out;
 }
 
-/** — SÝRUSTIG (pH) UTAN BILS — innidyra (mold + Véritable). */
+/** — SÝRUSTIG (pH) UTAN BILS — innidyra (mold + Véritable). Aðeins nýlegir
+ * lestrar (≤ 7 daga) kveikja; alvarleiki fer eftir fráviki (> 0,5 → soon). */
 export function phInsights(ctx: EngineContext): RosInsight[] {
-  const { grow, logs, growActive, outdoor } = ctx;
+  const { grow, logs, now, growActive, outdoor } = ctx;
   const out: RosInsight[] = [];
   if (growActive && !outdoor) {
     const ph = lastPh(logs);
     if (ph && (ph.value < PH_MIN || ph.value > PH_MAX)) {
-      const lowSide = ph.value < PH_MIN;
-      out.push({
-        id: `ph-${grow.id}`,
-        kind: 'ph',
-        severity: 'info',
-        title: lowSide ? 'pH of lágt' : 'pH of hátt',
-        detail: `Síðasta skráða pH var ${num(ph.value)} — ${lowSide ? 'undir' : 'yfir'} ráðlögðu bili (${PH_MIN}–${PH_MAX}). Utan þess læsist upptaka næringarefna (t.d. járn/kalk). Leiðréttu vatnið/næringarlausnina að næsta sinni.`,
-      });
+      const age = daysSince(now, ph.ts);
+      if (age <= READING_FRESH_DAYS) {
+        const lowSide = ph.value < PH_MIN;
+        const drift = lowSide ? PH_MIN - ph.value : ph.value - PH_MAX;
+        out.push({
+          id: `ph-${grow.id}`,
+          kind: 'ph',
+          severity: drift > 0.5 ? 'soon' : 'info',
+          title: lowSide ? 'pH of lágt' : 'pH of hátt',
+          detail: `Skráð pH (${readingAge(age)}) var ${num(ph.value)} — ${lowSide ? 'undir' : 'yfir'} ráðlögðu bili (${PH_MIN}–${PH_MAX}). Utan þess læsist upptaka næringarefna (t.d. járn/kalk). Leiðréttu vatnið/næringarlausnina að næsta sinni.`,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/** — LEIÐNI (EC) UTAN FASA-BANDS — nýlegur lestur (≤ 7 daga) úr vökvun/áburði
+ * borinn saman við EC-band fasans í envTargets. Vægt frávik → info, > 0,5 mS/cm
+ * út fyrir band → soon. Bandið tekur mið af flokki lengst komnu plöntunnar
+ * (kryddjurtir/lauf fá mildara snið). */
+export function ecInsights(ctx: EngineContext): RosInsight[] {
+  const { grow, logs, now, activePlants, growActive, outdoor } = ctx;
+  const out: RosInsight[] = [];
+  if (growActive && !outdoor) {
+    const ec = lastEc(logs);
+    if (ec) {
+      const age = daysSince(now, ec.ts);
+      const lead = furthestPlant(activePlants);
+      const band = envTargetForPhase(lead?.currentPhase ?? 'vegetative', lead?.category).ec;
+      if (age <= READING_FRESH_DAYS && band) {
+        const status = bandStatus(ec.value, band);
+        if (status !== 'in') {
+          const drift = status === 'low' ? band.min - ec.value : ec.value - band.max;
+          out.push({
+            id: `ec-${grow.id}`,
+            kind: 'ec',
+            severity: drift > 0.5 ? 'soon' : 'info',
+            title: status === 'low' ? 'EC undir marki' : 'EC yfir marki',
+            detail:
+              status === 'low'
+                ? `Skráð EC (${readingAge(age)}) var ${num(ec.value)} mS/cm — undir ráðlögðu bili (${formatBand(band, ' mS/cm')}) á þessum fasa. Plönturnar fá líklega of litla næringu; styrktu lausnina varlega í næstu gjöf.`
+                : `Skráð EC (${readingAge(age)}) var ${num(ec.value)} mS/cm — yfir ráðlögðu bili (${formatBand(band, ' mS/cm')}) á þessum fasa. Of sterk lausn brennir rætur og blaðjaðra; þynntu með hreinu vatni í næstu gjöf.`,
+          });
+        }
+      }
     }
   }
   return out;

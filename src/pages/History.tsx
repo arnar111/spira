@@ -7,10 +7,11 @@ import { Eyebrow } from '@/components/ui/Eyebrow';
 import { Pill } from '@/components/ui/Pill';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { SearchInput, NoResults } from '@/components/ui/SearchInput';
-import { Chili } from '@/components/Chili';
+import { PlantGlyph } from '@/components/PlantGlyph';
+import { GrowsSkeleton } from '@/components/PageSkeletons';
+import { useDelayedFlag } from '@/lib/useDelayedFlag';
 import { db } from '@/lib/db';
 import { LOCATIONS } from '@/lib/locations';
-import { chiliForVarietyName } from '@/lib/varieties';
 
 export function History() {
   const grows = useLiveQuery(() => db.grows.toArray());
@@ -19,7 +20,9 @@ export function History() {
   const [reopenTarget, setReopenTarget] = useState<{ id: string; name: string } | null>(null);
   const [query, setQuery] = useState('');
 
-  if (!grows || !plants || !harvests) return null;
+  const loading = !grows || !plants || !harvests;
+  const showSkeleton = useDelayedFlag(loading);
+  if (loading) return showSkeleton ? <GrowsSkeleton /> : null;
 
   const allArchived = grows.filter((g) => g.archived);
   const q = query.trim().toLocaleLowerCase('is');
@@ -81,7 +84,7 @@ export function History() {
               key={g.id}
               className="flex items-center gap-3 rounded-2xl p-3 border bg-moss-900/40 border-moss-800/40"
             >
-              <Chili variety={chiliForVarietyName(gp[0]?.variety)} size={50} tilt={6} />
+              <PlantGlyph name={gp[0]?.variety} size={50} tilt={6} />
               <div className="flex-1 min-w-0">
                 <Link
                   to={`/grow/${g.id}`}

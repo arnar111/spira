@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Pencil, StickyNote, Trash2 } from 'lucide-react';
-import { Modal } from '@/components/ui/Modal';
+import { Pencil, Trash2 } from 'lucide-react';
+import { Lightbox } from '@/components/ui/Lightbox';
 import { LogDataChips, LogThumbnail } from '@/components/LogComposer';
 import { usePhotoUrl } from '@/lib/photos';
 import { shortDate } from '@/lib/dates';
 import type { LogEntry, Plant } from '@/lib/db';
-import { LOG_TYPES } from './shared';
+import { logTypeMeta } from './shared';
 
 /** Ein skráninga-röð með breyta/eyða aðgerðum og mynd-skoðara (1.4). */
 export function LogRow({
@@ -19,11 +19,13 @@ export function LogRow({
   onEdit: (log: LogEntry) => void;
   onDelete: (log: LogEntry) => void;
 }) {
-  const meta = LOG_TYPES.find((t) => t.id === log.type);
-  const Icon = meta?.icon ?? StickyNote;
+  const meta = logTypeMeta(log.type);
+  const Icon = meta.icon;
   const plant = plants.find((p) => p.id === log.plantId);
   const date = new Date(log.timestamp);
   const [viewerOpen, setViewerOpen] = useState(false);
+  // Myndin er aðeins sótt þegar skoðarinn er opinn (sama og áður).
+  const photoUrl = usePhotoUrl(viewerOpen ? log.photoId : undefined);
   // Sjálfvirkar fasaskráningar eru ekki ritstýranlegar (búnar til af kerfinu).
   const editable = log.type !== 'phase_change';
   return (
@@ -36,9 +38,7 @@ export function LogRow({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-cream-100 text-sm font-medium">
-            {meta?.label ?? log.type}
-          </span>
+          <span className="text-cream-100 text-sm font-medium">{meta.label}</span>
           {plant && (
             <span className="text-[10px] text-cream-400/70">
               {plant.nickname || plant.variety}
@@ -76,37 +76,19 @@ export function LogRow({
         {log.photoId && (
           <>
             <LogThumbnail photoId={log.photoId} onOpen={() => setViewerOpen(true)} />
-            <PhotoViewer
-              photoId={log.photoId}
+            {/* Sami skoðari og galleríið (ui/Lightbox) — áður sér-Modal hér,
+                svo tvö ólík myndaviðmót bjuggu á sömu síðu. */}
+            <Lightbox
               open={viewerOpen}
               onClose={() => setViewerOpen(false)}
+              src={photoUrl ?? undefined}
+              date={shortDate(date.getTime())}
+              plantName={plant ? plant.nickname || plant.variety : undefined}
+              note={log.note}
             />
           </>
         )}
       </div>
     </div>
-  );
-}
-
-function PhotoViewer({
-  photoId,
-  open,
-  onClose,
-}: {
-  photoId: string;
-  open: boolean;
-  onClose: () => void;
-}) {
-  const url = usePhotoUrl(open ? photoId : undefined);
-  return (
-    <Modal open={open} onClose={onClose}>
-      <div className="rounded-xl overflow-hidden bg-moss-950/60 border border-moss-800/50">
-        {url ? (
-          <img src={url} alt="Skráð mynd" className="w-full h-auto object-contain" />
-        ) : (
-          <div className="aspect-square w-full" />
-        )}
-      </div>
-    </Modal>
   );
 }
